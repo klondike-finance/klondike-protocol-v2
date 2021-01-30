@@ -1,6 +1,6 @@
 import "@nomiclabs/hardhat-waffle";
 import "solidity-coverage"
-import { task } from "hardhat/config";
+import { task, HardhatUserConfig } from "hardhat/config";
 
 // import ethers from "ethers";
 
@@ -14,13 +14,29 @@ task("accounts", "Prints the list of accounts", async () => {
   // }
 });
 
-// You need to export an object to set up your config
-// Go to https://hardhat.org/config/ to learn more
+const config: HardhatUserConfig = {
+  solidity: {
+    compilers: [{
+      version: "0.8.0",
+      settings: {
+        optimizer: {
+          enabled: true,
+          runs: 200,
+        },
+      },
+    },
+    {
+      version: "0.5.16",
+      settings: {
+        optimizer: {
+          enabled: true,
+          runs: 200,
+        },
+      },
+    },
+  ]
+  },
+}
 
-/**
- * @type import('hardhat/config').HardhatUserConfig
- */
-module.exports = {
-  solidity: "0.8.0",
-};
+export default config;
 
