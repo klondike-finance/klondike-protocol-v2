@@ -29,10 +29,17 @@ contract SyntheticToken is ERC20Burnable, Operatable {
         _mint(recipient, amount);
     }
 
+    ///  Burns token from the caller
+    ///  @param amount The amount of tokens to burn
     function burn(uint256 amount) public override onlyOperator {
         super.burn(amount);
     }
 
+    ///  Burns token from address
+    ///  @param account The account to burn from
+    ///  @param amount The amount of tokens to burn
+    ///  @dev The allowance for sender in address account must be
+    ///  strictly >= amount. Otherwise the function call will fail.
     function burnFrom(address account, uint256 amount)
         public
         override
