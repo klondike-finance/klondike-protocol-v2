@@ -1,5 +1,5 @@
 import "@nomiclabs/hardhat-waffle";
-import "solidity-coverage"
+import "solidity-coverage";
 import { task, HardhatUserConfig } from "hardhat/config";
 
 // import ethers from "ethers";
@@ -8,7 +8,6 @@ import { task, HardhatUserConfig } from "hardhat/config";
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async () => {
   // const accounts = await ethers.getSigners();
-
   // for (const account of accounts) {
   //   console.log(account.address);
   // }
@@ -16,27 +15,27 @@ task("accounts", "Prints the list of accounts", async () => {
 
 const config: HardhatUserConfig = {
   solidity: {
-    compilers: [{
-      version: "0.8.0",
-      settings: {
-        optimizer: {
-          enabled: true,
-          runs: 200,
+    compilers: [
+      {
+        version: "0.6.12",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
         },
       },
-    },
-    {
-      version: "0.5.16",
-      settings: {
-        optimizer: {
-          enabled: true,
-          runs: 200,
+      {
+        version: "0.5.16",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
         },
       },
-    },
-  ]
+    ],
   },
-}
+};
 
 export default config;
-
