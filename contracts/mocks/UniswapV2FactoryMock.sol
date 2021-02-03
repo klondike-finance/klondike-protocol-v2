@@ -7,5 +7,5 @@ import "@uniswap/v2-core/contracts/UniswapV2Factory.sol";
 /// @title Oracle
 /// @dev note that the price average is only guaranteed to be over at least 1 period, but may be over a longer period
 contract UniswapV2FactoryMock is UniswapV2Factory {
-
+    constructor(address _feeToSetter) public UniswapV2Factory(_feeToSetter) {}
 }
