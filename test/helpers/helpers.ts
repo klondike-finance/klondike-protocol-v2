@@ -1,4 +1,9 @@
 import { Block, JsonRpcProvider } from "@ethersproject/providers";
+import { BigNumber } from "ethers";
+import { ethers } from "hardhat";
+
+export const BTC = BigNumber.from(10).pow(8);
+export const ETH = BigNumber.from(10).pow(18);
 
 export async function fastForward(
   provider: JsonRpcProvider,
@@ -19,4 +24,9 @@ export async function fastForwardAndMine(
   await fastForward(provider, time);
   await mine(provider);
   return Promise.resolve(provider.getBlock("latest"));
+}
+
+export async function now(): Promise<number> {
+  const { timestamp } = await ethers.provider.getBlock("latest");
+  return timestamp;
 }

@@ -74,6 +74,12 @@ contract Oracle is Debouncable, Timeboundable {
         price1Average = FixedPoint.uq112x112(
             uint224((price1Cumulative - price1CumulativeLast) / timeElapsed)
         );
+        emit Updated(
+            price0CumulativeLast,
+            price0Cumulative,
+            price1CumulativeLast,
+            price1Cumulative
+        );
         price0CumulativeLast = price0Cumulative;
         price1CumulativeLast = price1Cumulative;
         blockTimestampLast = blockTimestamp;
@@ -98,4 +104,11 @@ contract Oracle is Debouncable, Timeboundable {
             amountOut = price1Average.mul(amountIn).decode144();
         }
     }
+
+    event Updated(
+        uint256 price0CumulativeBefore,
+        uint256 price0CumulativeAfter,
+        uint256 price1CumulativeBefore,
+        uint256 price1CumulativeAfter
+    );
 }

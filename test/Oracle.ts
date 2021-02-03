@@ -3,6 +3,7 @@ import { BigNumber, Contract, ContractFactory, Wallet } from "ethers";
 import { ethers } from "hardhat";
 import UniswapV2FactoryBuild from "@uniswap/v2-core/build/UniswapV2Factory.json";
 import UniswapV2RouterBuild from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
+import { BTC, ETH, fastForwardAndMine, now } from "./helpers/helpers";
 
 describe("Oracle", () => {
   let Oracle: ContractFactory;
@@ -39,12 +40,12 @@ describe("Oracle", () => {
     await router.addLiquidity(
       stable.address,
       synthetic.address,
-      BigNumber.from(10).pow(8),
-      BigNumber.from(10).pow(18),
-      BigNumber.from(10).pow(8),
-      BigNumber.from(10).pow(18),
+      BTC,
+      ETH,
+      BTC,
+      ETH,
       operator.address,
-      Math.floor(new Date().getTime() / 1000) + 60
+      (await now()) + 1000000
     );
   }
 
@@ -74,11 +75,131 @@ describe("Oracle", () => {
           stable.address,
           synthetic.address,
           3600,
-          new Date().getTime() + 1000
+          (await now()) + 30
         );
         await expect(oracle.update()).to.be.revertedWith(
           "Timeboundable: Not started yet"
         );
+      });
+    });
+    describe("after start time", () => {
+      describe("when triggered for the first time", () => {
+        it("returns some random average price", async () => {
+          oracle = await Oracle.deploy(
+            factory.address,
+            stable.address,
+            synthetic.address,
+            3600,
+            await now()
+          );
+          await fastForwardAndMine(ethers.provider, 60);
+          await oracle.update();
+          const btcPrice = await oracle.consult(stable.address, BTC);
+          expect(btcPrice.lte(ETH)).to.be.true;
+          expect(btcPrice.gte(0)).to.be.true;
+        });
+      });
+      describe("when triggered for the second time", () => {
+        describe("with constant price", () => {
+          it("returns constant price", async () => {
+            oracle = await Oracle.deploy(
+              factory.address,
+              stable.address,
+              synthetic.address,
+              3600,
+              await now()
+            );
+            await fastForwardAndMine(ethers.provider, 60);
+            await oracle.update();
+            await fastForwardAndMine(ethers.provider, 3600);
+            await oracle.update();
+
+            const btcPrice: BigNumber = await oracle.consult(
+              stable.address,
+              BTC
+            );
+            expect(btcPrice.eq(ETH)).to.be.true;
+          });
+        });
+        describe("with growing price", () => {
+          it("returns increased price", async () => {
+            const [operator] = await ethers.getSigners();
+            oracle = await Oracle.deploy(
+              factory.address,
+              stable.address,
+              synthetic.address,
+              3600,
+              await now()
+            );
+            await fastForwardAndMine(ethers.provider, 60);
+            await oracle.update();
+            router.swapExactTokensForTokens(
+              ETH.div(1000),
+              BTC.div(1000).div(2),
+              [synthetic.address, stable.address],
+              operator.address,
+              (await now()) + 1800
+            );
+            await fastForwardAndMine(ethers.provider, 3600);
+            await oracle.update();
+
+            const btcPrice: BigNumber = await oracle.consult(
+              stable.address,
+              BTC
+            );
+            expect(btcPrice.lt(ETH)).to.be.true;
+          });
+        });
+      });
+
+      describe("when triggered twice", async () => {
+        describe("in one block", () => {
+          it("fails", async () => {
+            oracle = await Oracle.deploy(
+              factory.address,
+              stable.address,
+              synthetic.address,
+              3600,
+              await now()
+            );
+            await oracle.update();
+            await expect(oracle.update()).to.be.revertedWith(
+              "Debouncable: already called in this time slot"
+            );
+          });
+        });
+        describe("in less than `period` time", () => {
+          it("fails", async () => {
+            oracle = await Oracle.deploy(
+              factory.address,
+              stable.address,
+              synthetic.address,
+              3600,
+              await now()
+            );
+            await fastForwardAndMine(ethers.provider, 60);
+            await oracle.update();
+            await fastForwardAndMine(ethers.provider, 1800);
+            await expect(oracle.update()).to.be.revertedWith(
+              "Debouncable: already called in this time slot"
+            );
+          });
+        });
+        describe("in more than `period` time", () => {
+          it("fails", async () => {
+            oracle = await Oracle.deploy(
+              factory.address,
+              stable.address,
+              synthetic.address,
+              3600,
+              await now()
+            );
+            await fastForwardAndMine(ethers.provider, 60);
+            await oracle.update();
+            await fastForwardAndMine(ethers.provider, 3600);
+            await expect(oracle.update()).to.not.be.reverted;
+          });
+        });
       });
     });
   });
