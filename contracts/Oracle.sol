@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.6.12;
+pragma solidity =0.6.6;
 
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
@@ -8,6 +8,7 @@ import "@uniswap/v2-periphery/contracts/libraries/UniswapV2OracleLibrary.sol";
 import "@uniswap/v2-periphery/contracts/libraries/UniswapV2Library.sol";
 
 import "./time/Debouncable.sol";
+import "./time/Timeboundable.sol";
 
 /// Fixed window oracle that recomputes the average price for the entire period once every period
 /// @title Oracle
@@ -64,6 +65,7 @@ contract Oracle is Debouncable, Timeboundable {
             uint256 price1Cumulative,
             uint32 blockTimestamp
         ) = UniswapV2OracleLibrary.currentCumulativePrices(address(pair));
+        uint256 timeElapsed = block.timestamp - lastCalled;
         // overflow is desired, casting never truncates
         // cumulative price is in (uq112x112 price * seconds) units so we simply wrap it after division by time elapsed
         price0Average = FixedPoint.uq112x112(
@@ -81,7 +83,7 @@ contract Oracle is Debouncable, Timeboundable {
     /// Get the price of token.
     /// @param token The address of one of two tokens (the one to get the price for)
     /// @param amountIn The amount of token to estimate
-    /// @return The amount of other token equivalent
+    /// @return amountOut The amount of other token equivalent
     /// @dev This will always return 0 before update has been called successfully for the first time.
     function consult(address token, uint256 amountIn)
         external
