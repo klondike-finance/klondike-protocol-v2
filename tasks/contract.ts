@@ -3,6 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import "@nomiclabs/hardhat-ethers";
 import { Contract } from "ethers";
 import { getContractAddress } from "ethers/lib/utils";
+import { initRegistry, updateRegistry } from "./registry";
 
 task("contract:deploy", "Deploys a contract")
   .addParam("name", "The name of the contract", undefined, types.string)
@@ -17,6 +18,7 @@ export async function contractDeploy(
   ...args: Array<any>
 ): Promise<Contract> {
   console.log(`Deploying contract \`${name}\`...`);
+  initRegistry(hre);
   const [operator] = await hre.ethers.getSigners();
   const factory = (await hre.ethers.getContractFactory(name)).connect(operator);
   const tx = factory.getDeployTransaction(...args);
@@ -27,6 +29,7 @@ export async function contractDeploy(
   );
   await txResp.wait();
   console.log(`Successfully deployed at \`${address}\``);
+  updateRegistry(hre, name, { address, args });
 
   return await hre.ethers.getContractAt(name, address);
 }
