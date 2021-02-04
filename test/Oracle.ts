@@ -31,26 +31,27 @@ describe("Oracle", () => {
     return token;
   }
 
-  async function setupUniswap() {
+  async function setupUniswap(addLiquidity: boolean = true) {
     const [operator] = await ethers.getSigners();
     factory = await UniswapV2Factory.deploy(operator.address);
     router = await UniswapV2Router.deploy(factory.address, operator.address);
     stable = await deployToken(SyntheticToken, router, "WBTC", 8);
     synthetic = await deployToken(SyntheticToken, router, "KBTC", 18);
     pair = await ethers.getContractAt(
-      "UniswapV2Pair",
+      "IUniswapV2Pair",
       pairFor(factory.address, stable.address, synthetic.address)
     );
-    await router.addLiquidity(
-      stable.address,
-      synthetic.address,
-      BTC,
-      ETH,
-      BTC,
-      ETH,
-      operator.address,
-      (await now()) + 1000000
-    );
+    addLiquidity &&
+      (await router.addLiquidity(
+        stable.address,
+        synthetic.address,
+        BTC,
+        ETH,
+        BTC,
+        ETH,
+        operator.address,
+        (await now()) + 1000000
+      ));
   }
 
   before(async () => {
@@ -65,9 +66,6 @@ describe("Oracle", () => {
       UniswapV2RouterBuild.abi,
       UniswapV2RouterBuild.bytecode
     ).connect(operator);
-  });
-
-  beforeEach(async () => {
     await setupUniswap();
   });
 
@@ -106,6 +104,7 @@ describe("Oracle", () => {
       describe("when triggered for the second time", () => {
         describe("with constant price", () => {
           it("returns constant price", async () => {
+            await setupUniswap();
             oracle = await Oracle.deploy(
               factory.address,
               stable.address,
@@ -127,6 +126,7 @@ describe("Oracle", () => {
         });
         describe("with growing price", () => {
           it("returns increased price", async () => {
+            await setupUniswap();
             const [operator] = await ethers.getSigners();
             oracle = await Oracle.deploy(
               factory.address,
@@ -170,6 +170,7 @@ describe("Oracle", () => {
         });
         describe("with declining price", () => {
           it("returns decreased price", async () => {
+            await setupUniswap();
             const [operator] = await ethers.getSigners();
             oracle = await Oracle.deploy(
               factory.address,
@@ -242,7 +243,7 @@ describe("Oracle", () => {
           });
         });
         describe("in more than `period` time", () => {
-          it("fails", async () => {
+          it("succeeds", async () => {
             oracle = await Oracle.deploy(
               factory.address,
               stable.address,
