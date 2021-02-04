@@ -3,7 +3,7 @@ import { BigNumber, Contract, ContractFactory, Wallet } from "ethers";
 import { ethers } from "hardhat";
 import UniswapV2FactoryBuild from "@uniswap/v2-core/build/UniswapV2Factory.json";
 import UniswapV2RouterBuild from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
-import { BTC, ETH, fastForwardAndMine, now } from "./helpers/helpers";
+import { BTC, ETH, fastForwardAndMine, now, pairFor } from "./helpers/helpers";
 
 describe("Oracle", () => {
   let Oracle: ContractFactory;
@@ -12,10 +12,10 @@ describe("Oracle", () => {
   let SyntheticToken: ContractFactory;
   let oracle: Contract;
   let factory: Contract;
-  let weth: Contract;
   let stable: Contract;
   let synthetic: Contract;
   let router: Contract;
+  let pair: Contract;
 
   async function deployToken(
     tokenFactory: ContractFactory,
@@ -37,6 +37,10 @@ describe("Oracle", () => {
     router = await UniswapV2Router.deploy(factory.address, operator.address);
     stable = await deployToken(SyntheticToken, router, "WBTC", 8);
     synthetic = await deployToken(SyntheticToken, router, "KBTC", 18);
+    pair = await ethers.getContractAt(
+      "UniswapV2Pair",
+      pairFor(factory.address, stable.address, synthetic.address)
+    );
     await router.addLiquidity(
       stable.address,
       synthetic.address,
@@ -131,18 +135,70 @@ describe("Oracle", () => {
               3600,
               await now()
             );
-            await fastForwardAndMine(ethers.provider, 60);
-            await oracle.update();
-            router.swapExactTokensForTokens(
+            // the first trade gives some random starting point for oracle
+            await router.swapExactTokensForTokens(
               ETH.div(1000),
               BTC.div(1000).div(2),
               [synthetic.address, stable.address],
               operator.address,
               (await now()) + 1800
             );
-            await fastForwardAndMine(ethers.provider, 3600);
-            await oracle.update();
 
+            await oracle.update();
+            await fastForwardAndMine(ethers.provider, 100);
+            await router.swapExactTokensForTokens(
+              ETH.div(1000),
+              BTC.div(1000).div(2),
+              [synthetic.address, stable.address],
+              operator.address,
+              (await now()) + 1800
+            );
+
+            // const [reserveA, reserveB] = (await pair.getReserves()).slice(0, 2);
+            // const [synReserve, stableReserve] = reserveA.gt(reserveB)
+            //   ? [reserveA, reserveB]
+            //   : [reserveB, reserveA];
+            // const expectedBtcPrice = synReserve.mul(BTC).div(stableReserve);
+            await fastForwardAndMine(ethers.provider, 3500);
+            await oracle.update();
+            const btcPrice: BigNumber = await oracle.consult(
+              stable.address,
+              BTC
+            );
+            expect(btcPrice.gt(ETH)).to.be.true;
+          });
+        });
+        describe("with declining price", () => {
+          it("returns decreased price", async () => {
+            const [operator] = await ethers.getSigners();
+            oracle = await Oracle.deploy(
+              factory.address,
+              stable.address,
+              synthetic.address,
+              3600,
+              await now()
+            );
+            // the first trade gives some random starting point for oracle
+            await router.swapExactTokensForTokens(
+              ETH.div(1000),
+              BTC.div(1000).div(2),
+              [synthetic.address, stable.address],
+              operator.address,
+              (await now()) + 1800
+            );
+
+            await oracle.update();
+            await fastForwardAndMine(ethers.provider, 100);
+            await router.swapExactTokensForTokens(
+              BTC.div(1000).mul(2),
+              ETH.div(1000),
+              [stable.address, synthetic.address],
+              operator.address,
+              (await now()) + 1800
+            );
+
+            await fastForwardAndMine(ethers.provider, 3500);
+            await oracle.update();
             const btcPrice: BigNumber = await oracle.consult(
               stable.address,
               BTC
