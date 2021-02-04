@@ -142,8 +142,3 @@ describe("SyntheticToken", () => {
 
   mixinOperatorTests(deployToken);
 });
-
-// const amount = 12;
-// await expect(token.connect(owner).mint(randomAddress, amount))
-//   .to.emit(token, "Mint")
-//   .withArgs(randomAddress, amount);

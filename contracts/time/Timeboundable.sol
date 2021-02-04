@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.6.12;
+pragma solidity =0.6.6;
 
 /// Checks time bounds for contract
 abstract contract Timeboundable {
@@ -23,7 +23,7 @@ abstract contract Timeboundable {
         }
         uint256 f = _finish;
         if (f == 0) {
-            f = type(uint256).max;
+            f = uint256(-1);
         }
         start = s;
         finish = f;
