@@ -1,6 +1,6 @@
 # Klondike finance protocol
 
-[![Coverage Status](https://coveralls.io/repos/github/klondike-finance/klondike-protocol-v2/badge.svg?branch=feature/oracle)](https://coveralls.io/github/klondike-finance/klondike-protocol-v2?branch=feature/oracle)
+[![Coverage Status](https://coveralls.io/repos/github/klondike-finance/klondike-protocol-v2/badge.svg?branch=master)](https://coveralls.io/github/klondike-finance/klondike-protocol-v2?branch=master)
 
 ![](docs/hero.png)
 
