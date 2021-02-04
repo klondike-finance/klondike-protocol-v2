@@ -31,7 +31,7 @@ describe("Oracle", () => {
     return token;
   }
 
-  async function setupUniswap(addLiquidity: boolean = true) {
+  async function setupUniswap() {
     const [operator] = await ethers.getSigners();
     factory = await UniswapV2Factory.deploy(operator.address);
     router = await UniswapV2Router.deploy(factory.address, operator.address);
@@ -41,17 +41,16 @@ describe("Oracle", () => {
       "IUniswapV2Pair",
       pairFor(factory.address, stable.address, synthetic.address)
     );
-    addLiquidity &&
-      (await router.addLiquidity(
-        stable.address,
-        synthetic.address,
-        BTC,
-        ETH,
-        BTC,
-        ETH,
-        operator.address,
-        (await now()) + 1000000
-      ));
+    await router.addLiquidity(
+      stable.address,
+      synthetic.address,
+      BTC,
+      ETH,
+      BTC,
+      ETH,
+      operator.address,
+      (await now()) + 1000000
+    );
   }
 
   before(async () => {
@@ -67,6 +66,92 @@ describe("Oracle", () => {
       UniswapV2RouterBuild.bytecode
     ).connect(operator);
     await setupUniswap();
+  });
+
+  describe("#constructor", () => {
+    describe("when some liquidity in the pool", async () => {
+      it("succeeds", async () => {
+        await expect(
+          Oracle.deploy(
+            factory.address,
+            stable.address,
+            synthetic.address,
+            3600,
+            await now()
+          )
+        ).to.not.be.reverted;
+      });
+    });
+    describe("when zero liquidity in the pool", async () => {
+      it("fails", async () => {
+        const [operator] = await ethers.getSigners();
+        const factory1 = await UniswapV2Factory.deploy(operator.address);
+        const stable1 = await deployToken(SyntheticToken, router, "WBTC", 8);
+        const synthetic1 = await deployToken(
+          SyntheticToken,
+          router,
+          "KBTC",
+          18
+        );
+        await factory1.createPair(stable1.address, synthetic1.address);
+
+        await expect(
+          Oracle.deploy(
+            factory1.address,
+            stable1.address,
+            synthetic1.address,
+            3600,
+            await now()
+          )
+        ).to.be.revertedWith("Oracle: No reserves in the uniswap pool");
+      });
+    });
+  });
+
+  describe("#consult", () => {
+    describe("when token address is one of two oracle tokens", () => {
+      it("returns price", async () => {
+        await setupUniswap();
+        oracle = await Oracle.deploy(
+          factory.address,
+          stable.address,
+          synthetic.address,
+          3600,
+          await now()
+        );
+        await oracle.update();
+        await fastForwardAndMine(ethers.provider, 3600);
+        await oracle.update();
+
+        const btcPrice: BigNumber = await oracle.consult(stable.address, BTC);
+        expect(btcPrice).to.eq(ETH);
+        const ethPrice: BigNumber = await oracle.consult(
+          synthetic.address,
+          ETH
+        );
+        console.log(btcPrice.toString(), ethPrice.toString());
+        // TODO: check off by one
+        expect(ethPrice).to.eq(BTC.sub(1));
+      });
+    });
+    describe("when token address is invalid", () => {
+      it("fails", async () => {
+        oracle = await Oracle.deploy(
+          factory.address,
+          stable.address,
+          synthetic.address,
+          3600,
+          await now()
+        );
+        await oracle.update();
+        await fastForwardAndMine(ethers.provider, 3600);
+        await oracle.update();
+
+        await expect(
+          oracle.consult(ethers.constants.AddressZero, BTC)
+        ).to.be.revertedWith("Oracle: Invalid token address");
+      });
+    });
   });
 
   describe("#update", () => {
@@ -104,7 +189,6 @@ describe("Oracle", () => {
       describe("when triggered for the second time", () => {
         describe("with constant price", () => {
           it("returns constant price", async () => {
-            await setupUniswap();
             oracle = await Oracle.deploy(
               factory.address,
               stable.address,
@@ -121,12 +205,12 @@ describe("Oracle", () => {
               stable.address,
               BTC
             );
-            expect(btcPrice.eq(ETH)).to.be.true;
+            expect(btcPrice).to.eq(ETH);
+            await setupUniswap();
           });
         });
         describe("with growing price", () => {
           it("returns increased price", async () => {
-            await setupUniswap();
             const [operator] = await ethers.getSigners();
             oracle = await Oracle.deploy(
               factory.address,
@@ -166,11 +250,11 @@ describe("Oracle", () => {
               BTC
             );
             expect(btcPrice.gt(ETH)).to.be.true;
+            await setupUniswap();
           });
         });
         describe("with declining price", () => {
           it("returns decreased price", async () => {
-            await setupUniswap();
             const [operator] = await ethers.getSigners();
             oracle = await Oracle.deploy(
               factory.address,
@@ -205,6 +289,7 @@ describe("Oracle", () => {
               BTC
             );
             expect(btcPrice.lt(ETH)).to.be.true;
+            await setupUniswap();
           });
         });
       });
