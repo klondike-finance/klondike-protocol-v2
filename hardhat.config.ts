@@ -1,19 +1,28 @@
 import "@nomiclabs/hardhat-waffle";
 import "solidity-coverage";
-import { task, HardhatUserConfig } from "hardhat/config";
+import { HardhatUserConfig } from "hardhat/config";
+import { config as dotenv } from "dotenv";
+import "./tasks/oracle";
 
-// import ethers from "ethers";
-
-// This is a sample Hardhat task. To learn how to create your own go to
-// https://hardhat.org/guides/create-task.html
-task("accounts", "Prints the list of accounts", async () => {
-  // const accounts = await ethers.getSigners();
-  // for (const account of accounts) {
-  //   console.log(account.address);
-  // }
-});
+dotenv();
 
 const config: HardhatUserConfig = {
+  defaultNetwork: "hardhat",
+  networks: {
+    hardhat: {},
+    dev: {
+      url: "http://localhost:8545",
+    },
+    kovan: {
+      url: process.env["TEST_INFURA_ENDPOINT"] || "",
+      accounts: [process.env["TEST_OPERATOR_PK"] || ""],
+    },
+    mainnet: {
+      url: process.env["INFURA_ENDPOINT"] || "",
+      accounts: [process.env["OPERATOR_PK"] || ""],
+    },
+  },
+
   solidity: {
     compilers: [
       {

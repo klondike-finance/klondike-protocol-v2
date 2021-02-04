@@ -6,3 +6,4 @@ artifacts
 coverage
 yarn-error.log
 coverage.json
+.env
