@@ -1,7 +1,7 @@
 import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import "@nomiclabs/hardhat-ethers";
-import { Contract } from "ethers";
+import { Contract, Wallet } from "ethers";
 import { getContractAddress } from "ethers/lib/utils";
 import { initRegistry, updateRegistry } from "./registry";
 
@@ -30,11 +30,12 @@ export async function contractDeploy(
   ...args: Array<any>
 ): Promise<Contract> {
   console.log(
-    `Deploying contract \`${name}\` with name \`${registryName}\`...`
+    `Deploying contract \`${name}\` with name \`${registryName}\` and args: ${args}...`
   );
   const [operator] = await hre.ethers.getSigners();
   const factory = (await hre.ethers.getContractFactory(name)).connect(operator);
   const tx = factory.getDeployTransaction(...args);
+  console.log("Sending transaction to the pool...");
   const txResp = await operator.sendTransaction(tx);
   const address = getContractAddress(txResp).toLowerCase();
   console.log(

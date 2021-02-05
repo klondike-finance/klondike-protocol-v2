@@ -39,9 +39,9 @@ task("oracle:deploy", "Deploys an oracle")
     ) => {
       await oracleDeploy(
         hre,
-        factory,
         tokenA,
         tokenB,
+        factory,
         period,
         start,
         tokenAName,
