@@ -15,12 +15,18 @@ const config: HardhatUserConfig = {
       url: "http://localhost:8545",
     },
     kovan: {
-      url: process.env["TEST_INFURA_ENDPOINT"] || "",
-      accounts: [process.env["TEST_OPERATOR_PK"] || ""],
+      url: process.env["TEST_INFURA_ENDPOINT"] || "http://localhost:8545",
+      accounts: [
+        process.env["TEST_OPERATOR_PK"] ||
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+      ],
     },
     mainnet: {
-      url: process.env["INFURA_ENDPOINT"] || "",
-      accounts: [process.env["OPERATOR_PK"] || ""],
+      url: process.env["INFURA_ENDPOINT"] || "http://localhost:8545",
+      accounts: [
+        process.env["OPERATOR_PK"] ||
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+      ],
     },
   },
 
