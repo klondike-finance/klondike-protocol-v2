@@ -1,9 +1,11 @@
+import "@nomiclabs/hardhat-ethers";
+import "@nomiclabs/hardhat-etherscan";
 import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import "@nomiclabs/hardhat-ethers";
 import { Contract, Wallet } from "ethers";
 import { getContractAddress } from "ethers/lib/utils";
-import { initRegistry, updateRegistry } from "./registry";
+import { getRegistryContract, initRegistry, updateRegistry } from "./registry";
+import { writeFileSync } from "fs";
 
 task("contract:deploy", "Deploys a contract")
   .addParam(
@@ -21,6 +23,17 @@ task("contract:deploy", "Deploys a contract")
   .addVariadicPositionalParam("args", "Arguments for deploy")
   .setAction(async ({ name, registryName, args }, hre) => {
     await contractDeploy(hre, name, registryName, ...args);
+  });
+
+task("contract:verify", "Verifies contracts")
+  .addVariadicPositionalParam(
+    "namesOrAddresses",
+    "Names of the contract in registry or addresses in registry"
+  )
+  .setAction(async ({ namesOrAddresses }, hre) => {
+    for (const name of namesOrAddresses) {
+      await contractVerify(hre, name);
+    }
   });
 
 export async function contractDeploy(
@@ -48,22 +61,29 @@ export async function contractDeploy(
   return await hre.ethers.getContractAt(name, address);
 }
 
-// async function verify(hre: HardhatRuntimeEnvironment) {
-//   const constructorArgsPath = `${__dirname}/../tmp/verifyArgs${name}.js`;
-//   const { address, args = [] } = deployedContracts[name];
-//   console.log(
-//     `Verifying ${name} @ ${address} with args ${JSON.stringify(args)}`
-//   );
-//   writeFileSync(
-//     constructorArgsPath,
-//     `module.exports = ${JSON.stringify(args)}`
-//   );
-//   try {
-//     await hre.run("verify", {
-//       address,
-//       constructorArgs: constructorArgsPath,
-//     });
-//   } catch (e) {
-//     console.log(e);
-//   }
-// }
+async function contractVerify(
+  hre: HardhatRuntimeEnvironment,
+  contractNameOrAddress: string
+) {
+  const entry = await getRegistryContract(hre, contractNameOrAddress);
+  if (!entry) {
+    throw `Contract \`${contractNameOrAddress}\` not found in registry`;
+  }
+  console.log(
+    `Verifying contract \`${entry.name}\` with name \`${entry.registryName}\` at address \`${entry.address}\``
+  );
+  const argsContent = `module.exports = JSON.parse('${JSON.stringify(
+    entry.args
+  )}')`;
+  const constructorArgsPath = `/tmp/verifyArgs${entry.registryName}.js`;
+  writeFileSync(constructorArgsPath, argsContent);
+  try {
+    await hre.run("verify", {
+      address: entry.address,
+      constructorArgs: constructorArgsPath,
+    });
+  } catch (e) {
+    console.log(e);
+  }
+  console.log("Done");
+}

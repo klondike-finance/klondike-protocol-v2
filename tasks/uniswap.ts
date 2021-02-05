@@ -39,6 +39,22 @@ export async function getUniswapRouter(
   );
 }
 
+export async function approveUniswap(
+  hre: HardhatRuntimeEnvironment,
+  registryNameOrAddressToken: string
+) {
+  const tokenRegistry = getRegistryContract(hre, registryNameOrAddressToken);
+  console.log(`Approving token ${tokenRegistry.registryName} for Uniswap...`);
+  const token: Contract = await hre.ethers.getContractAt(
+    tokenRegistry.name,
+    tokenRegistry.address
+  );
+  const router = await getUniswapRouter(hre);
+
+  await token.approve(router.address, hre.ethers.constants.MaxUint256);
+  console.log("Done");
+}
+
 export async function addLiquidity(
   hre: HardhatRuntimeEnvironment,
   registryNameOrAddressA: string,
@@ -54,14 +70,17 @@ export async function addLiquidity(
   const tokenBAddress = (tokenB && tokenB.address) || registryNameOrAddressB;
   const tokenAName = (tokenA && tokenA.registryName) || registryNameOrAddressA;
   const tokenBName = (tokenB && tokenB.registryName) || registryNameOrAddressB;
-
   console.log(
-    `Adding liquidity to \`${tokenAName}\` - \`${tokenBName}\` UniPool...`
+    `Adding liquidity to \`${tokenAName}\` - \`${tokenBName}\` UniPool: ${amountA.toString()} - ${amountB.toString()}...`
   );
+  await approveUniswap(hre, registryNameOrAddressA);
+  await approveUniswap(hre, registryNameOrAddressB);
+
   const [operator] = await hre.ethers.getSigners();
   const to = receiver || operator.address;
 
   const router = await getUniswapRouter(hre, routerAddress);
+
   const tx = await router.populateTransaction.addLiquidity(
     tokenAAddress,
     tokenBAddress,
