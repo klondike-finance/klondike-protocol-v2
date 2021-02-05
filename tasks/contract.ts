@@ -36,7 +36,7 @@ export async function contractDeploy(
   const factory = (await hre.ethers.getContractFactory(name)).connect(operator);
   const tx = factory.getDeployTransaction(...args);
   const txResp = await operator.sendTransaction(tx);
-  const address = getContractAddress(txResp);
+  const address = getContractAddress(txResp).toLowerCase();
   console.log(
     `Sent tx \`${txResp.hash}\` to the pool. Waiting 1 confirmation...`
   );

@@ -52,7 +52,7 @@ export function getRegistryContract(
 ) {
   initRegistry(hre);
   if (registryNameOrAddress.startsWith("0x")) {
-    return REGISTRY.data[REGISTRY.index[registryNameOrAddress]];
+    return REGISTRY.data[REGISTRY.index[registryNameOrAddress.toLowerCase()]];
   }
   return REGISTRY.data[registryNameOrAddress];
 }
@@ -70,6 +70,7 @@ export function updateRegistry(
     hre.network.name,
     `${REGISTRY.timestamp}.json`
   );
+  value.address = value.address.toLowerCase();
   REGISTRY.data[key] = value;
   REGISTRY.index[REGISTRY.data[key].address] = key;
   writeFileSync(root, JSON.stringify(REGISTRY.data, null, 2));
