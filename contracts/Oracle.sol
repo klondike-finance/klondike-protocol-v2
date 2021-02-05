@@ -30,7 +30,7 @@ contract Oracle is Debouncable, Timeboundable {
     /// @param _factory UniswapV2 factory address.
     /// @param _tokenA 1st token address.
     /// @param _tokenB 2nd token address.
-    /// @param _period Perice average period in seconds.
+    /// @param _period Price average period in seconds.
     /// @param _start Start (block timestamp).
     constructor(
         address _factory,

@@ -1,10 +1,10 @@
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-etherscan";
+import "hardhat-gas-reporter";
 import "solidity-coverage";
 import { HardhatUserConfig } from "hardhat/config";
 import { config as dotenv } from "dotenv";
 import "./tasks/oracle";
-
 dotenv();
 
 const config: HardhatUserConfig = {
@@ -37,8 +37,9 @@ const config: HardhatUserConfig = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 200,
+            runs: 999999,
           },
+          evmVersion: "istanbul",
         },
       },
       {
@@ -46,8 +47,9 @@ const config: HardhatUserConfig = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 200,
+            runs: 999999,
           },
+          evmVersion: "istanbul",
         },
       },
     ],
