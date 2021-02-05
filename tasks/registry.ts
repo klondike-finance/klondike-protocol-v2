@@ -10,6 +10,7 @@ import { resolve } from "path";
 const REGISTRY = {
   path: "",
   data: {} as { [key: string]: any },
+  index: {} as { [key: string]: any },
   timestamp: new Date().toISOString(),
   initialized: false,
 };
@@ -39,8 +40,21 @@ export function initRegistry(hre: HardhatRuntimeEnvironment) {
     }
   }
   REGISTRY.data = JSON.parse(readFileSync(files[max]).toString());
+  for (const name in REGISTRY.data) {
+    REGISTRY.index[REGISTRY.data[name].address] = name;
+  }
   REGISTRY.initialized = true;
-  console.log(REGISTRY);
+}
+
+export function getRegistryContract(
+  hre: HardhatRuntimeEnvironment,
+  registryNameOrAddress: string
+) {
+  initRegistry(hre);
+  if (registryNameOrAddress.startsWith("0x")) {
+    return REGISTRY.data[REGISTRY.index[registryNameOrAddress]];
+  }
+  return REGISTRY.data[registryNameOrAddress];
 }
 
 export function updateRegistry(
@@ -48,6 +62,7 @@ export function updateRegistry(
   key: string,
   value: any
 ) {
+  initRegistry(hre);
   const root = resolve(
     __dirname,
     "..",
@@ -56,5 +71,6 @@ export function updateRegistry(
     `${REGISTRY.timestamp}.json`
   );
   REGISTRY.data[key] = value;
+  REGISTRY.index[REGISTRY.data[key].address] = key;
   writeFileSync(root, JSON.stringify(REGISTRY.data, null, 2));
 }

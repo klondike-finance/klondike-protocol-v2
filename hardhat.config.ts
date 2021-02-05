@@ -1,4 +1,5 @@
 import "@nomiclabs/hardhat-waffle";
+import "@nomiclabs/hardhat-etherscan";
 import "solidity-coverage";
 import { HardhatUserConfig } from "hardhat/config";
 import { config as dotenv } from "dotenv";
@@ -44,6 +45,9 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+  },
+  etherscan: {
+    apiKey: process.env["ETHERSCAN_API_KEY"],
   },
 };
 

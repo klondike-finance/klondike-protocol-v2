@@ -1,14 +1,12 @@
+import { getContractAddress } from "ethers/lib/utils";
 import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { contractDeploy } from "./contract";
-import { tokenDeploy } from "./token";
-import {
-  BTC,
-  ETH,
-  getUniswapRouter,
-  now,
-  UNISWAP_V2_FACTORY_ADDRESS,
-} from "./utils";
+import { getRegistryContract } from "./registry";
+import { mint, tokenDeploy } from "./token";
+import { addLiquidity } from "./uniswap";
+import { BTC, ETH } from "./utils";
+import { UNISWAP_V2_FACTORY_ADDRESS } from "./uniswap";
 
 task("oracle:deploy", "Deploys an oracle")
   .addParam("tokenA", "First token address in the pair")
@@ -26,9 +24,31 @@ task("oracle:deploy", "Deploys an oracle")
     types.int
   )
   .addParam("period", "Start date. Unix timestamp in seconds.", 3600, types.int)
-  .setAction(async ({ factory, tokenA, tokenB, period, start }, hre) => {
-    await oracleDeploy(hre, factory, tokenA, tokenB, period, start);
-  });
+  .addOptionalParam(
+    "tokenAName",
+    "Name of the token in registry. Needed to construct oracle name in registry."
+  )
+  .addOptionalParam(
+    "tokenBName",
+    "Name of the token in registry. Needed to construct oracle name in registry."
+  )
+  .setAction(
+    async (
+      { factory, tokenA, tokenB, period, start, tokenAName, tokenBName },
+      hre
+    ) => {
+      await oracleDeploy(
+        hre,
+        factory,
+        tokenA,
+        tokenB,
+        period,
+        start,
+        tokenAName,
+        tokenBName
+      );
+    }
+  );
 
 task(
   "oracle:deploy:mock",
@@ -43,11 +63,26 @@ export async function oracleDeploy(
   tokenB: string,
   factory: string = UNISWAP_V2_FACTORY_ADDRESS,
   period: number = 3600,
-  start: number = Math.floor(new Date().getTime() / 1000)
+  start: number = Math.floor(new Date().getTime() / 1000),
+  tokenAName?: string,
+  tokenBName?: string
 ) {
+  const aName =
+    tokenAName ||
+    (getRegistryContract(hre, tokenA) &&
+      getRegistryContract(hre, tokenA).registryName);
+  const bName =
+    tokenBName ||
+    (getRegistryContract(hre, tokenB) &&
+      getRegistryContract(hre, tokenB).registryName);
+  if (!aName && !bName) {
+    throw "Please specify token names";
+  }
+  const [an, bn] = aName > bName ? [bName, aName] : [aName, bName];
   return await contractDeploy(
     hre,
     "Oracle",
+    `${an}${bn}Oracle`,
     factory,
     tokenA,
     tokenB,
@@ -60,18 +95,8 @@ export async function oracleDeployMock(hre: HardhatRuntimeEnvironment) {
   const [operator] = await hre.ethers.getSigners();
   const tokenA = await tokenDeploy(hre, "Stable", "STB", 8);
   const tokenB = await tokenDeploy(hre, "Synthetic", "SYN", 18);
-  await tokenA.mint(operator, BTC.mul(100));
-  await tokenB.mint(operator, ETH.mul(100));
-  const router = await getUniswapRouter(hre);
-  await router.addLiquidity(
-    tokenA.address,
-    tokenB.address,
-    BTC,
-    ETH,
-    BTC,
-    ETH,
-    operator.address,
-    (await now(hre)) + 100
-  );
+  await mint(hre, tokenA.address, operator.address, BTC.mul(100));
+  await mint(hre, tokenB.address, operator.address, ETH.mul(100));
+  await addLiquidity(hre, tokenA.address, tokenB.address, BTC, ETH);
   return await oracleDeploy(hre, tokenA.address, tokenB.address);
 }

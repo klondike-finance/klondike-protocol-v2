@@ -6,19 +6,32 @@ import { getContractAddress } from "ethers/lib/utils";
 import { initRegistry, updateRegistry } from "./registry";
 
 task("contract:deploy", "Deploys a contract")
-  .addParam("name", "The name of the contract", undefined, types.string)
+  .addParam(
+    "name",
+    "The name of the contract (i.e. solidity name)",
+    undefined,
+    types.string
+  )
+  .addParam(
+    "registryName",
+    "The name of the contract in the contract registry (e.g. token name)",
+    undefined,
+    types.string
+  )
   .addVariadicPositionalParam("args", "Arguments for deploy")
-  .setAction(async ({ name, args }, hre) => {
-    await contractDeploy(hre, name, ...args);
+  .setAction(async ({ name, registryName, args }, hre) => {
+    await contractDeploy(hre, name, registryName, ...args);
   });
 
 export async function contractDeploy(
   hre: HardhatRuntimeEnvironment,
   name: string,
+  registryName: string,
   ...args: Array<any>
 ): Promise<Contract> {
-  console.log(`Deploying contract \`${name}\`...`);
-  initRegistry(hre);
+  console.log(
+    `Deploying contract \`${name}\` with name \`${registryName}\`...`
+  );
   const [operator] = await hre.ethers.getSigners();
   const factory = (await hre.ethers.getContractFactory(name)).connect(operator);
   const tx = factory.getDeployTransaction(...args);
@@ -29,7 +42,27 @@ export async function contractDeploy(
   );
   await txResp.wait();
   console.log(`Successfully deployed at \`${address}\``);
-  updateRegistry(hre, name, { address, args });
+  updateRegistry(hre, registryName, { registryName, name, address, args });
 
   return await hre.ethers.getContractAt(name, address);
 }
+
+// async function verify(hre: HardhatRuntimeEnvironment) {
+//   const constructorArgsPath = `${__dirname}/../tmp/verifyArgs${name}.js`;
+//   const { address, args = [] } = deployedContracts[name];
+//   console.log(
+//     `Verifying ${name} @ ${address} with args ${JSON.stringify(args)}`
+//   );
+//   writeFileSync(
+//     constructorArgsPath,
+//     `module.exports = ${JSON.stringify(args)}`
+//   );
+//   try {
+//     await hre.run("verify", {
+//       address,
+//       constructorArgs: constructorArgsPath,
+//     });
+//   } catch (e) {
+//     console.log(e);
+//   }
+// }
