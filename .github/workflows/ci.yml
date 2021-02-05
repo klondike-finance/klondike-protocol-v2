@@ -29,9 +29,6 @@ jobs:
       - name: yarn
         run: yarn
 
-      - name: test
-        run: yarn test
-
       - name: coverage
         run: yarn coverage
 

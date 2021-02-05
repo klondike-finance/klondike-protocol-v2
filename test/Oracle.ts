@@ -129,7 +129,6 @@ describe("Oracle", () => {
           synthetic.address,
           ETH
         );
-        console.log(btcPrice.toString(), ethPrice.toString());
         // TODO: check off by one
         expect(ethPrice).to.eq(BTC.sub(1));
       });

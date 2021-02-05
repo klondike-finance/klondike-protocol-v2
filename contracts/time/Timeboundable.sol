@@ -15,7 +15,7 @@ abstract contract Timeboundable {
         );
         require(
             (_finish == 0) || (_finish > _start),
-            "Timebound: _finish must be zero or greater than _start"
+            "Timebound: finish must be zero or greater than start"
         );
         uint256 s = _start;
         if (s == 0) {
