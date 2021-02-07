@@ -4,6 +4,7 @@ import { ethers } from "hardhat";
 import UniswapV2FactoryBuild from "@uniswap/v2-core/build/UniswapV2Factory.json";
 import UniswapV2RouterBuild from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
 import {
+  addUniswapPair,
   BTC,
   deployToken,
   deployUniswap,
@@ -41,13 +42,16 @@ describe("Oracle", () => {
   });
 
   async function setupUniswap() {
-    const {
-      factory: f,
-      router: r,
-      synthetic: s,
-      underlying: u,
-      pair: p,
-    } = await deployUniswap();
+    const { factory: f, router: r } = await deployUniswap();
+    const { underlying: u, synthetic: s, pair: p } = await addUniswapPair(
+      f,
+      r,
+      "WBTC",
+      8,
+      "KBTC",
+      18
+    );
+
     factory = f;
     router = r;
     underlying = u;

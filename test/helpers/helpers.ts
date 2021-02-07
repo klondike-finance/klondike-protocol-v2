@@ -50,9 +50,6 @@ export async function deployToken(
 
 export async function deployUniswap() {
   const [operator] = await ethers.getSigners();
-  const SyntheticTokenFactory = await ethers.getContractFactory(
-    "SyntheticToken"
-  );
   const UniswapV2Factory = new ContractFactory(
     UniswapV2FactoryBuild.abi,
     UniswapV2FactoryBuild.bytecode
@@ -67,17 +64,36 @@ export async function deployUniswap() {
     factory.address,
     operator.address
   );
+  return {
+    factory,
+    router,
+  };
+}
+
+export async function addUniswapPair(
+  factory: Contract,
+  router: Contract,
+  nameUnderlying: string,
+  decimalsUnderlying: number,
+  nameSynthetic: string,
+  decimalsSynthetic: number
+) {
+  const [operator] = await ethers.getSigners();
+  const SyntheticTokenFactory = await ethers.getContractFactory(
+    "SyntheticToken"
+  );
+
   const underlying = await deployToken(
     SyntheticTokenFactory,
     router,
-    "WBTC",
-    8
+    nameUnderlying,
+    decimalsUnderlying
   );
   const synthetic = await deployToken(
     SyntheticTokenFactory,
     router,
-    "KBTC",
-    18
+    nameSynthetic,
+    decimalsSynthetic
   );
   const pair = await ethers.getContractAt(
     "IUniswapV2Pair",
@@ -86,16 +102,14 @@ export async function deployUniswap() {
   await router.addLiquidity(
     underlying.address,
     synthetic.address,
-    BTC,
-    ETH,
-    BTC,
-    ETH,
+    BigNumber.from(10).pow(decimalsUnderlying),
+    BigNumber.from(10).pow(decimalsSynthetic),
+    BigNumber.from(10).pow(decimalsUnderlying),
+    BigNumber.from(10).pow(decimalsSynthetic),
     operator.address,
     (await now()) + 1000000
   );
   return {
-    factory,
-    router,
     underlying,
     synthetic,
     pair,
