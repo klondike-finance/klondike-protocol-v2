@@ -3,7 +3,15 @@ import { BigNumber, Contract, ContractFactory, Wallet } from "ethers";
 import { ethers } from "hardhat";
 import UniswapV2FactoryBuild from "@uniswap/v2-core/build/UniswapV2Factory.json";
 import UniswapV2RouterBuild from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
-import { BTC, ETH, fastForwardAndMine, now, pairFor } from "./helpers/helpers";
+import {
+  BTC,
+  deployToken,
+  deployUniswap,
+  ETH,
+  fastForwardAndMine,
+  now,
+  pairFor,
+} from "./helpers/helpers";
 
 describe("Oracle", () => {
   let Oracle: ContractFactory;
@@ -12,46 +20,10 @@ describe("Oracle", () => {
   let SyntheticToken: ContractFactory;
   let oracle: Contract;
   let factory: Contract;
-  let stable: Contract;
+  let underlying: Contract;
   let synthetic: Contract;
   let router: Contract;
   let pair: Contract;
-
-  async function deployToken(
-    tokenFactory: ContractFactory,
-    uniswapRouter: Contract,
-    name: string,
-    decimals: number
-  ): Promise<Contract> {
-    const token = await tokenFactory.deploy(name, name, decimals);
-    const [operator] = await ethers.getSigners();
-    const supply = BigNumber.from(10).pow(decimals + 3);
-    await token.mint(operator.address, supply);
-    await token.approve(uniswapRouter.address, supply);
-    return token;
-  }
-
-  async function setupUniswap() {
-    const [operator] = await ethers.getSigners();
-    factory = await UniswapV2Factory.deploy(operator.address);
-    router = await UniswapV2Router.deploy(factory.address, operator.address);
-    stable = await deployToken(SyntheticToken, router, "WBTC", 8);
-    synthetic = await deployToken(SyntheticToken, router, "KBTC", 18);
-    pair = await ethers.getContractAt(
-      "IUniswapV2Pair",
-      pairFor(factory.address, stable.address, synthetic.address)
-    );
-    await router.addLiquidity(
-      stable.address,
-      synthetic.address,
-      BTC,
-      ETH,
-      BTC,
-      ETH,
-      operator.address,
-      (await now()) + 1000000
-    );
-  }
 
   before(async () => {
     const [operator] = await ethers.getSigners();
@@ -68,13 +40,28 @@ describe("Oracle", () => {
     await setupUniswap();
   });
 
+  async function setupUniswap() {
+    const {
+      factory: f,
+      router: r,
+      synthetic: s,
+      underlying: u,
+      pair: p,
+    } = await deployUniswap();
+    factory = f;
+    router = r;
+    underlying = u;
+    synthetic = s;
+    pair = p;
+  }
+
   describe("#constructor", () => {
     describe("when some liquidity in the pool", async () => {
       it("succeeds", async () => {
         await expect(
           Oracle.deploy(
             factory.address,
-            stable.address,
+            underlying.address,
             synthetic.address,
             3600,
             await now()
@@ -114,7 +101,7 @@ describe("Oracle", () => {
         await setupUniswap();
         oracle = await Oracle.deploy(
           factory.address,
-          stable.address,
+          underlying.address,
           synthetic.address,
           3600,
           await now()
@@ -123,7 +110,10 @@ describe("Oracle", () => {
         await fastForwardAndMine(ethers.provider, 3600);
         await oracle.update();
 
-        const btcPrice: BigNumber = await oracle.consult(stable.address, BTC);
+        const btcPrice: BigNumber = await oracle.consult(
+          underlying.address,
+          BTC
+        );
         expect(btcPrice).to.eq(ETH);
         const ethPrice: BigNumber = await oracle.consult(
           synthetic.address,
@@ -137,7 +127,7 @@ describe("Oracle", () => {
       it("fails", async () => {
         oracle = await Oracle.deploy(
           factory.address,
-          stable.address,
+          underlying.address,
           synthetic.address,
           3600,
           await now()
@@ -158,7 +148,7 @@ describe("Oracle", () => {
       it("fails", async () => {
         oracle = await Oracle.deploy(
           factory.address,
-          stable.address,
+          underlying.address,
           synthetic.address,
           3600,
           (await now()) + 30
@@ -173,14 +163,14 @@ describe("Oracle", () => {
         it("returns some random average price", async () => {
           oracle = await Oracle.deploy(
             factory.address,
-            stable.address,
+            underlying.address,
             synthetic.address,
             3600,
             await now()
           );
           await fastForwardAndMine(ethers.provider, 60);
           await oracle.update();
-          const btcPrice = await oracle.consult(stable.address, BTC);
+          const btcPrice = await oracle.consult(underlying.address, BTC);
           expect(btcPrice.lte(ETH)).to.be.true;
           expect(btcPrice.gte(0)).to.be.true;
         });
@@ -190,7 +180,7 @@ describe("Oracle", () => {
           it("returns constant price", async () => {
             oracle = await Oracle.deploy(
               factory.address,
-              stable.address,
+              underlying.address,
               synthetic.address,
               3600,
               await now()
@@ -201,7 +191,7 @@ describe("Oracle", () => {
             await oracle.update();
 
             const btcPrice: BigNumber = await oracle.consult(
-              stable.address,
+              underlying.address,
               BTC
             );
             expect(btcPrice).to.eq(ETH);
@@ -213,7 +203,7 @@ describe("Oracle", () => {
             const [operator] = await ethers.getSigners();
             oracle = await Oracle.deploy(
               factory.address,
-              stable.address,
+              underlying.address,
               synthetic.address,
               3600,
               await now()
@@ -222,7 +212,7 @@ describe("Oracle", () => {
             await router.swapExactTokensForTokens(
               ETH.div(1000),
               BTC.div(1000).div(2),
-              [synthetic.address, stable.address],
+              [synthetic.address, underlying.address],
               operator.address,
               (await now()) + 1800
             );
@@ -232,7 +222,7 @@ describe("Oracle", () => {
             await router.swapExactTokensForTokens(
               ETH.div(1000),
               BTC.div(1000).div(2),
-              [synthetic.address, stable.address],
+              [synthetic.address, underlying.address],
               operator.address,
               (await now()) + 1800
             );
@@ -245,7 +235,7 @@ describe("Oracle", () => {
             await fastForwardAndMine(ethers.provider, 3500);
             await oracle.update();
             const btcPrice: BigNumber = await oracle.consult(
-              stable.address,
+              underlying.address,
               BTC
             );
             expect(btcPrice.gt(ETH)).to.be.true;
@@ -257,7 +247,7 @@ describe("Oracle", () => {
             const [operator] = await ethers.getSigners();
             oracle = await Oracle.deploy(
               factory.address,
-              stable.address,
+              underlying.address,
               synthetic.address,
               3600,
               await now()
@@ -266,7 +256,7 @@ describe("Oracle", () => {
             await router.swapExactTokensForTokens(
               ETH.div(1000),
               BTC.div(1000).div(2),
-              [synthetic.address, stable.address],
+              [synthetic.address, underlying.address],
               operator.address,
               (await now()) + 1800
             );
@@ -276,7 +266,7 @@ describe("Oracle", () => {
             await router.swapExactTokensForTokens(
               BTC.div(1000).mul(2),
               ETH.div(1000),
-              [stable.address, synthetic.address],
+              [underlying.address, synthetic.address],
               operator.address,
               (await now()) + 1800
             );
@@ -284,7 +274,7 @@ describe("Oracle", () => {
             await fastForwardAndMine(ethers.provider, 3500);
             await oracle.update();
             const btcPrice: BigNumber = await oracle.consult(
-              stable.address,
+              underlying.address,
               BTC
             );
             expect(btcPrice.lt(ETH)).to.be.true;
@@ -298,7 +288,7 @@ describe("Oracle", () => {
           it("fails", async () => {
             oracle = await Oracle.deploy(
               factory.address,
-              stable.address,
+              underlying.address,
               synthetic.address,
               3600,
               await now()
@@ -313,7 +303,7 @@ describe("Oracle", () => {
           it("fails", async () => {
             oracle = await Oracle.deploy(
               factory.address,
-              stable.address,
+              underlying.address,
               synthetic.address,
               3600,
               await now()
@@ -330,7 +320,7 @@ describe("Oracle", () => {
           it("succeeds", async () => {
             oracle = await Oracle.deploy(
               factory.address,
-              stable.address,
+              underlying.address,
               synthetic.address,
               3600,
               await now()

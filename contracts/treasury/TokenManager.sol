@@ -201,18 +201,18 @@ contract TokenManager is Operatable {
         );
     }
 
-    // ------- Internal, Operator ----------
+    // ------- Internal ----------
 
     /// Mints synthetic token to the recipient address
     /// @param syntheticTokenAddress The address of the synthetic token
     /// @param recipient The address of recipient
     /// @param amount The amount of tokens to mint
     /// @dev Fails if the token is not managed
-    function mint(
+    function _mint(
         address syntheticTokenAddress,
         address recipient,
         uint256 amount
-    ) internal managedToken(syntheticTokenAddress) onlyOperator {
+    ) internal managedToken(syntheticTokenAddress) {
         SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
         token.mint(recipient, amount);
     }
@@ -221,10 +221,9 @@ contract TokenManager is Operatable {
     /// @param syntheticTokenAddress The address of the synthetic token
     /// @param amount The amount of tokens to burn
     /// @dev Fails if the token is not managed
-    function burn(address syntheticTokenAddress, uint256 amount)
+    function _burn(address syntheticTokenAddress, uint256 amount)
         internal
         managedToken(syntheticTokenAddress)
-        onlyOperator
     {
         SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
         token.burn(amount);
@@ -237,11 +236,11 @@ contract TokenManager is Operatable {
     /// @dev The allowance for sender in address account must be
     /// strictly >= amount. Otherwise the function call will fail.
     /// Fails if the token is not managed.
-    function burnFrom(
+    function _burnFrom(
         address syntheticTokenAddress,
         address from,
         uint256 amount
-    ) internal managedToken(syntheticTokenAddress) onlyOperator {
+    ) internal managedToken(syntheticTokenAddress) {
         SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
         token.burnFrom(from, amount);
     }
