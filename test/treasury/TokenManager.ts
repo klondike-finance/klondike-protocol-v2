@@ -1,5 +1,5 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
-import { Contract, ContractFactory } from "ethers";
+import { BigNumber, Contract, ContractFactory } from "ethers";
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import {
@@ -169,6 +169,42 @@ describe("TokenManager", () => {
         );
         await expect(
           manager.underlyingDecimals(underlying.address)
+        ).to.be.revertedWith("TokenManager: Token is not managed");
+      });
+    });
+  });
+
+  describe("#averagePrice", () => {
+    describe("when Synthetic token is managed", () => {
+      it("returns oracle average price", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          underlying.address,
+          oracle.address
+        );
+        const managerPrice = await manager.averagePrice(
+          synthetic.address,
+          BigNumber.from(10).pow(18)
+        );
+        const oraclePrice = await oracle.consult(
+          synthetic.address,
+          BigNumber.from(10).pow(18)
+        );
+
+        expect(managerPrice).to.eq(oraclePrice);
+      });
+    });
+    describe("when Synthetic token is not managed", () => {
+      it("fails", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          underlying.address,
+          oracle.address
+        );
+        await expect(
+          manager.averagePrice(underlying.address, BigNumber.from(10).pow(18))
         ).to.be.revertedWith("TokenManager: Token is not managed");
       });
     });
