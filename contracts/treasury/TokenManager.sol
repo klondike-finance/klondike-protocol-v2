@@ -132,6 +132,10 @@ contract TokenManager is Operatable {
         address underlyingTokenAddress,
         address oracleAddress
     ) external onlyOperator {
+        require(
+            syntheticTokenAddress != underlyingTokenAddress,
+            "TokenManager: Synthetic token and Underlying tokens must be different"
+        );
         SyntheticToken syntheticToken = SyntheticToken(syntheticTokenAddress);
         ERC20 underlyingToken = ERC20(underlyingTokenAddress);
         IOracle oracle = IOracle(oracleAddress);
@@ -203,47 +207,49 @@ contract TokenManager is Operatable {
 
     // ------- Internal ----------
 
-    /// Mints synthetic token to the recipient address
-    /// @param syntheticTokenAddress The address of the synthetic token
-    /// @param recipient The address of recipient
-    /// @param amount The amount of tokens to mint
-    /// @dev Fails if the token is not managed
-    function _mint(
-        address syntheticTokenAddress,
-        address recipient,
-        uint256 amount
-    ) internal managedToken(syntheticTokenAddress) {
-        SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
-        token.mint(recipient, amount);
-    }
+    // Uncomment when used
 
-    /// Burns token from the caller
-    /// @param syntheticTokenAddress The address of the synthetic token
-    /// @param amount The amount of tokens to burn
-    /// @dev Fails if the token is not managed
-    function _burn(address syntheticTokenAddress, uint256 amount)
-        internal
-        managedToken(syntheticTokenAddress)
-    {
-        SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
-        token.burn(amount);
-    }
+    // /// Mints synthetic token to the recipient address
+    // /// @param syntheticTokenAddress The address of the synthetic token
+    // /// @param recipient The address of recipient
+    // /// @param amount The amount of tokens to mint
+    // /// @dev Fails if the token is not managed
+    // function _mint(
+    //     address syntheticTokenAddress,
+    //     address recipient,
+    //     uint256 amount
+    // ) internal managedToken(syntheticTokenAddress) {
+    //     SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
+    //     token.mint(recipient, amount);
+    // }
 
-    /// Burns token from address
-    /// @param syntheticTokenAddress The address of the synthetic token
-    /// @param from The account to burn from
-    /// @param amount The amount of tokens to burn
-    /// @dev The allowance for sender in address account must be
-    /// strictly >= amount. Otherwise the function call will fail.
-    /// Fails if the token is not managed.
-    function _burnFrom(
-        address syntheticTokenAddress,
-        address from,
-        uint256 amount
-    ) internal managedToken(syntheticTokenAddress) {
-        SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
-        token.burnFrom(from, amount);
-    }
+    // /// Burns token from the caller
+    // /// @param syntheticTokenAddress The address of the synthetic token
+    // /// @param amount The amount of tokens to burn
+    // /// @dev Fails if the token is not managed
+    // function _burn(address syntheticTokenAddress, uint256 amount)
+    //     internal
+    //     managedToken(syntheticTokenAddress)
+    // {
+    //     SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
+    //     token.burn(amount);
+    // }
+
+    // /// Burns token from address
+    // /// @param syntheticTokenAddress The address of the synthetic token
+    // /// @param from The account to burn from
+    // /// @param amount The amount of tokens to burn
+    // /// @dev The allowance for sender in address account must be
+    // /// strictly >= amount. Otherwise the function call will fail.
+    // /// Fails if the token is not managed.
+    // function _burnFrom(
+    //     address syntheticTokenAddress,
+    //     address from,
+    //     uint256 amount
+    // ) internal managedToken(syntheticTokenAddress) {
+    //     SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
+    //     token.burnFrom(from, amount);
+    // }
 
     /// Emitted each time the token becomes managed
     event TokenAdded(

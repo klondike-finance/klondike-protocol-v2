@@ -262,6 +262,20 @@ describe("TokenManager", () => {
         const currentPrice = reserveUnderlying.mul(ETH).div(reserveSynthetic);
         expect(managerPrice).to.eq(currentPrice);
       });
+
+      describe("when amount is 0", () => {
+        it("fails", async () => {
+          await addPair(8, 18);
+          await manager.addToken(
+            synthetic.address,
+            underlying.address,
+            oracle.address
+          );
+          await expect(
+            manager.currentPrice(synthetic.address, 0)
+          ).to.be.revertedWith("UniswapV2Library: INSUFFICIENT_AMOUNT");
+        });
+      });
     });
     describe("when Synthetic token is not managed", () => {
       it("fails", async () => {
