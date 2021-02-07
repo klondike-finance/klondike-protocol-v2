@@ -9,6 +9,7 @@ import "../interfaces/IOracle.sol";
 import "../SyntheticToken.sol";
 import "../access/Operatable.sol";
 
+/// TokenManager manages all tokens and their price data
 contract TokenManager is Operatable {
     struct TokenData {
         SyntheticToken syntheticToken;
@@ -18,21 +19,28 @@ contract TokenManager is Operatable {
         IUniswapV2Pair pair;
         IOracle oracle;
     }
+    /// Token data (key is synthetic token address)
     mapping(address => TokenData) public tokenIndex;
+    /// A set of managed synthetic token addresses
     address[] public tokens;
+    /// Uniswap factory address
     address public immutable uniswapFactory;
 
     // ------- Constructor ----------
 
+    /// Creates a new Token Manager
+    /// @param _uniswapFactory The address of the Uniswap Factory
     constructor(address _uniswapFactory) public {
         uniswapFactory = _uniswapFactory;
     }
 
     // ------- Modifiers ----------
 
+    /// Fails if a token is not currently managed by Token Manager
+    /// @param syntheticTokenAddress The address of the synthetic token
     modifier managedToken(address syntheticTokenAddress) {
         require(
-            isManagingToken(syntheticTokenAddress),
+            isManagedToken(syntheticTokenAddress),
             "TokenManager: Token is not managed"
         );
         _;
@@ -40,7 +48,9 @@ contract TokenManager is Operatable {
 
     // ------- View ----------
 
-    function isManagingToken(address syntheticTokenAddress)
+    /// Checks if the token is managed by Token Manager
+    /// @param syntheticTokenAddress The address of the synthetic token
+    function isManagedToken(address syntheticTokenAddress)
         public
         view
         returns (bool)
@@ -50,6 +60,9 @@ contract TokenManager is Operatable {
             address(0);
     }
 
+    /// The decimals of the synthetic token
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @dev Fails if the token is not managed
     function syntheticDecimals(address syntheticTokenAddress)
         public
         view
@@ -59,6 +72,9 @@ contract TokenManager is Operatable {
         return tokenIndex[syntheticTokenAddress].syntheticDecimals;
     }
 
+    /// The decimals of the underlying token
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @dev Fails if the token is not managed
     function underlyingDecimals(address syntheticTokenAddress)
         public
         view
@@ -68,6 +84,10 @@ contract TokenManager is Operatable {
         return tokenIndex[syntheticTokenAddress].underlyingDecimals;
     }
 
+    /// Average price of the synthetic token according to price oracle
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param syntheticTokenAmount The amount to be priced
+    /// @dev Fails if the token is not managed
     function averagePrice(
         address syntheticTokenAddress,
         uint256 syntheticTokenAmount
@@ -76,6 +96,10 @@ contract TokenManager is Operatable {
         return oracle.consult(syntheticTokenAddress, syntheticTokenAmount);
     }
 
+    /// Current price of the synthetic token according to Uniswap
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param syntheticTokenAmount The amount to be priced
+    /// @dev Fails if the token is not managed
     function currentPrice(
         address syntheticTokenAddress,
         uint256 syntheticTokenAmount
@@ -98,6 +122,11 @@ contract TokenManager is Operatable {
 
     // ------- External, Operator ----------
 
+    /// Adds token to managed tokens
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param underlyingTokenAddress The address of the underlying token
+    /// @param oracleAddress The address of the price oracle for the pair
+    /// @dev Requires the operator and the owner of the synthetic token to be set to TokenManager address before calling
     function addToken(
         address syntheticTokenAddress,
         address underlyingTokenAddress,
@@ -142,64 +171,89 @@ contract TokenManager is Operatable {
         );
     }
 
-    function deleteToken(address tokenAddress, address newOperator)
+    /// Removes token from managed, transfers its operator and owner to target address
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param newOperator The operator and owner of the token will be transferred to this address.
+    /// @dev Fails if the token is not managed
+    function deleteToken(address syntheticTokenAddress, address newOperator)
         external
+        managedToken(syntheticTokenAddress)
         onlyOperator
     {
         address[] storage newTokens;
         TokenData memory deletedData;
         for (uint256 i = 0; i < tokens.length; i++) {
-            if (tokens[i] != tokenAddress) {
+            if (tokens[i] != syntheticTokenAddress) {
                 newTokens.push(tokens[i]);
             } else {
                 deletedData = tokenIndex[tokens[i]];
             }
         }
-        delete tokenIndex[tokenAddress];
+        delete tokenIndex[syntheticTokenAddress];
         tokens = newTokens;
         deletedData.syntheticToken.transferOperator(newOperator);
         deletedData.syntheticToken.transferOwnership(newOperator);
         emit TokenDeleted(
-            tokenAddress,
+            syntheticTokenAddress,
             address(deletedData.underlyingToken),
             address(deletedData.oracle),
             address(deletedData.pair)
         );
     }
 
+    // ------- Internal, Operator ----------
+
+    /// Mints synthetic token to the recipient address
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param recipient The address of recipient
+    /// @param amount The amount of tokens to mint
+    /// @dev Fails if the token is not managed
     function mint(
         address syntheticTokenAddress,
-        address to,
-        uint256 value
-    ) external managedToken(syntheticTokenAddress) onlyOperator {
+        address recipient,
+        uint256 amount
+    ) internal managedToken(syntheticTokenAddress) onlyOperator {
         SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
-        token.mint(to, value);
+        token.mint(recipient, amount);
     }
 
-    function burn(address syntheticTokenAddress, uint256 value)
-        external
+    /// Burns token from the caller
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param amount The amount of tokens to burn
+    /// @dev Fails if the token is not managed
+    function burn(address syntheticTokenAddress, uint256 amount)
+        internal
         managedToken(syntheticTokenAddress)
         onlyOperator
     {
         SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
-        token.burn(value);
+        token.burn(amount);
     }
 
+    /// Burns token from address
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param from The account to burn from
+    /// @param amount The amount of tokens to burn
+    /// @dev The allowance for sender in address account must be
+    /// strictly >= amount. Otherwise the function call will fail.
+    /// Fails if the token is not managed.
     function burnFrom(
         address syntheticTokenAddress,
         address from,
-        uint256 value
-    ) external managedToken(syntheticTokenAddress) onlyOperator {
+        uint256 amount
+    ) internal managedToken(syntheticTokenAddress) onlyOperator {
         SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
-        token.burnFrom(from, value);
+        token.burnFrom(from, amount);
     }
 
+    /// Emitted each time the token becomes managed
     event TokenAdded(
         address indexed syntheticTokenAddress,
         address indexed underlyingTokenAddress,
         address oracleAddress,
         address pairAddress
     );
+    /// Emitted each time the token becomes unmanaged
     event TokenDeleted(
         address indexed syntheticTokenAddress,
         address indexed underlyingTokenAddress,

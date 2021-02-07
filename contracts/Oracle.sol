@@ -17,9 +17,9 @@ import "./interfaces/IOracle.sol";
 contract Oracle is Debouncable, Timeboundable, IOracle {
     using FixedPoint for *;
 
-    IUniswapV2Pair public immutable pair;
-    address public immutable token0;
-    address public immutable token1;
+    IUniswapV2Pair public immutable override pair;
+    address public immutable override token0;
+    address public immutable override token1;
 
     uint256 public price0CumulativeLast;
     uint256 public price1CumulativeLast;
