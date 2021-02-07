@@ -136,6 +136,10 @@ contract TokenManager is Operatable {
             syntheticTokenAddress != underlyingTokenAddress,
             "TokenManager: Synthetic token and Underlying tokens must be different"
         );
+        require(
+            !isManagedToken(syntheticTokenAddress),
+            "TokenManager: Token is already managed"
+        );
         SyntheticToken syntheticToken = SyntheticToken(syntheticTokenAddress);
         ERC20 underlyingToken = ERC20(underlyingTokenAddress);
         IOracle oracle = IOracle(oracleAddress);

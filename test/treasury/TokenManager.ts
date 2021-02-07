@@ -290,5 +290,114 @@ describe("TokenManager", () => {
         ).to.be.revertedWith("TokenManager: Token is not managed");
       });
     });
+
+    describe("#addToken", () => {
+      describe("when tokens are different and oracle tracks the pair", () => {
+        it("adds the token pair", async () => {
+          await addPair(8, 18);
+          await expect(
+            manager.addToken(
+              synthetic.address,
+              underlying.address,
+              oracle.address
+            )
+          ).to.not.be.reverted;
+          expect(await manager.isManagedToken(synthetic.address)).to.eq(true);
+          expect(await manager.tokens(0)).to.eq(synthetic.address);
+          await expect(manager.tokens(1)).to.be.reverted;
+
+          const oldSynth = synthetic;
+
+          await addPair(8, 18);
+          await expect(
+            manager.addToken(
+              synthetic.address,
+              underlying.address,
+              oracle.address
+            )
+          ).to.not.be.reverted;
+          expect(await manager.isManagedToken(synthetic.address)).to.eq(true);
+          expect(await manager.tokens(0)).to.eq(oldSynth.address);
+          expect(await manager.tokens(1)).to.eq(synthetic.address);
+          await expect(manager.tokens(2)).to.be.reverted;
+        });
+      });
+      describe("when tokens are the same", () => {
+        it("fails", async () => {
+          await addPair(8, 18);
+
+          await expect(
+            manager.addToken(
+              synthetic.address,
+              synthetic.address,
+              oracle.address
+            )
+          ).to.be.revertedWith(
+            "TokenManager: Synthetic token and Underlying tokens must be different"
+          );
+        });
+      });
+      describe("when oracle doesn't conform to IOracle interface", () => {
+        it("fails", async () => {
+          await addPair(8, 18);
+
+          await expect(
+            manager.addToken(
+              synthetic.address,
+              underlying.address,
+              synthetic.address
+            )
+          ).to.be.revertedWith(
+            "function selector was not recognized and there's no fallback function"
+          );
+        });
+      });
+      describe("when oracle doesn't match tokens", () => {
+        it("fails", async () => {
+          await addPair(8, 18);
+          const oldOracle = oracle;
+          await addPair(8, 18);
+          await expect(
+            manager.addToken(
+              synthetic.address,
+              underlying.address,
+              oldOracle.address
+            )
+          ).to.be.revertedWith(
+            "TokenManager: Tokens and Oracle tokens are different"
+          );
+        });
+      });
+      describe("when synthetic token operator is not TokenManager", () => {
+        it("fails", async () => {
+          const { underlying: u, synthetic: s, pair } = await addUniswapPair(
+            factory,
+            router,
+            "WBTC",
+            8,
+            "KBTC",
+            18
+          );
+          underlying = u;
+          synthetic = s;
+          oracle = await Oracle.deploy(
+            factory.address,
+            underlying.address,
+            synthetic.address,
+            3600,
+            await now()
+          );
+          await expect(
+            manager.addToken(
+              synthetic.address,
+              underlying.address,
+              oracle.address
+            )
+          ).to.be.revertedWith(
+            "TokenManager: Token operator and owner must be set to TokenManager before adding a token"
+          );
+        });
+      });
+    });
   });
 });
