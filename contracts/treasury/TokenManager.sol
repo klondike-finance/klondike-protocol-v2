@@ -188,24 +188,23 @@ contract TokenManager is Operatable {
         managedToken(syntheticTokenAddress)
         onlyOperator
     {
-        address[] storage newTokens;
-        TokenData memory deletedData;
+        uint256 pos;
         for (uint256 i = 0; i < tokens.length; i++) {
-            if (tokens[i] != syntheticTokenAddress) {
-                newTokens.push(tokens[i]);
-            } else {
-                deletedData = tokenIndex[tokens[i]];
+            if (tokens[i] == syntheticTokenAddress) {
+                pos = i;
             }
         }
+        TokenData memory data = tokenIndex[tokens[pos]];
         delete tokenIndex[syntheticTokenAddress];
-        tokens = newTokens;
-        deletedData.syntheticToken.transferOperator(newOperator);
-        deletedData.syntheticToken.transferOwnership(newOperator);
+        delete tokens[pos];
+        data.syntheticToken.transferOperator(newOperator);
+        data.syntheticToken.transferOwnership(newOperator);
+
         emit TokenDeleted(
             syntheticTokenAddress,
-            address(deletedData.underlyingToken),
-            address(deletedData.oracle),
-            address(deletedData.pair)
+            address(data.underlyingToken),
+            address(data.oracle),
+            address(data.pair)
         );
     }
 

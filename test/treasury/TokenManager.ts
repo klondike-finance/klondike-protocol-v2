@@ -301,7 +301,16 @@ describe("TokenManager", () => {
               underlying.address,
               oracle.address
             )
-          ).to.not.be.reverted;
+          )
+            .to.emit(manager, "TokenAdded")
+            .withArgs(
+              ethers.utils.getAddress(synthetic.address),
+              ethers.utils.getAddress(underlying.address),
+              ethers.utils.getAddress(oracle.address),
+              ethers.utils.getAddress(
+                pairFor(factory.address, synthetic.address, underlying.address)
+              )
+            );
           expect(await manager.isManagedToken(synthetic.address)).to.eq(true);
           expect(await manager.tokens(0)).to.eq(synthetic.address);
           await expect(manager.tokens(1)).to.be.reverted;
@@ -337,6 +346,24 @@ describe("TokenManager", () => {
           );
         });
       });
+      describe("when token already exists", () => {
+        it("fails", async () => {
+          await addPair(8, 18);
+          await manager.addToken(
+            synthetic.address,
+            underlying.address,
+            oracle.address
+          );
+          await expect(
+            manager.addToken(
+              synthetic.address,
+              underlying.address,
+              oracle.address
+            )
+          ).to.be.revertedWith("TokenManager: Token is already managed");
+        });
+      });
+
       describe("when oracle doesn't conform to IOracle interface", () => {
         it("fails", async () => {
           await addPair(8, 18);
@@ -396,6 +423,69 @@ describe("TokenManager", () => {
           ).to.be.revertedWith(
             "TokenManager: Token operator and owner must be set to TokenManager before adding a token"
           );
+        });
+      });
+      describe("when caller is not operator", () => {
+        it("fails", async () => {
+          const [op, other] = await ethers.getSigners();
+          await addPair(8, 18);
+          await expect(
+            manager
+              .connect(other)
+              .addToken(synthetic.address, underlying.address, oracle.address)
+          ).to.be.revertedWith("Only operator can call this method");
+        });
+      });
+    });
+    describe("#deleteToken", () => {
+      describe("when Synthetic token is managed", () => {
+        it("is deleted and operator is transferred to target", async () => {
+          await addPair(8, 18);
+          await manager.addToken(
+            synthetic.address,
+            underlying.address,
+            oracle.address
+          );
+          const s1 = synthetic;
+          const o1 = oracle;
+          const u1 = underlying;
+          await addPair(8, 18);
+          await manager.addToken(
+            synthetic.address,
+            underlying.address,
+            oracle.address
+          );
+          const s2 = synthetic;
+          await expect(manager.deleteToken(s1.address, op.address))
+            .to.emit(manager, "TokenDeleted")
+            .withArgs(
+              ethers.utils.getAddress(s1.address),
+              ethers.utils.getAddress(u1.address),
+              ethers.utils.getAddress(o1.address),
+              ethers.utils.getAddress(
+                pairFor(factory.address, s1.address, u1.address)
+              )
+            );
+          expect(await manager.isManagedToken(s1.address)).to.eq(false);
+          expect(await manager.isManagedToken(s2.address)).to.eq(true);
+          expect(await manager.tokens(0)).to.eq(ethers.constants.AddressZero);
+          expect(await manager.tokens(1)).to.eq(s2.address);
+          expect(await s1.operator()).to.eq(op.address);
+          expect(await s1.owner()).to.eq(op.address);
+        });
+      });
+      describe("when caller is not operator", () => {
+        it("fails", async () => {
+          const [op, other] = await ethers.getSigners();
+          await addPair(8, 18);
+          await manager.addToken(
+            synthetic.address,
+            underlying.address,
+            oracle.address
+          );
+          await expect(
+            manager.connect(other).deleteToken(synthetic.address, op.address)
+          ).to.be.revertedWith("Only operator can call this method");
         });
       });
     });
