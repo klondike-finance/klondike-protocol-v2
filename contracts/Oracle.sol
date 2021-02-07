@@ -9,14 +9,15 @@ import "@uniswap/v2-periphery/contracts/libraries/UniswapV2Library.sol";
 
 import "./time/Debouncable.sol";
 import "./time/Timeboundable.sol";
+import "./interfaces/IOracle.sol";
 
 /// Fixed window oracle that recomputes the average price for the entire period once every period
 /// @title Oracle
 /// @dev note that the price average is only guaranteed to be over at least 1 period, but may be over a longer period
-contract Oracle is Debouncable, Timeboundable {
+contract Oracle is Debouncable, Timeboundable, IOracle {
     using FixedPoint for *;
 
-    IUniswapV2Pair immutable pair;
+    IUniswapV2Pair public immutable pair;
     address public immutable token0;
     address public immutable token1;
 
@@ -59,7 +60,7 @@ contract Oracle is Debouncable, Timeboundable {
 
     /// Updates oracle price
     /// @dev Works only once in a period, other times reverts
-    function update() external debounce() inTimeBounds() {
+    function update() external override debounce() inTimeBounds() {
         (
             uint256 price0Cumulative,
             uint256 price1Cumulative,
@@ -94,6 +95,7 @@ contract Oracle is Debouncable, Timeboundable {
     function consult(address token, uint256 amountIn)
         external
         view
+        override
         inTimeBounds()
         returns (uint256 amountOut)
     {
