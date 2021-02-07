@@ -42,7 +42,7 @@ export async function deployToken(
 ): Promise<Contract> {
   const token = await tokenFactory.deploy(name, name, decimals);
   const [operator] = await ethers.getSigners();
-  const supply = BigNumber.from(10).pow(decimals + 3);
+  const supply = BigNumber.from(10).pow(decimals + 6);
   await token.mint(operator.address, supply);
   await token.approve(uniswapRouter.address, supply);
   return token;
@@ -102,10 +102,10 @@ export async function addUniswapPair(
   await router.addLiquidity(
     underlying.address,
     synthetic.address,
-    BigNumber.from(10).pow(decimalsUnderlying),
-    BigNumber.from(10).pow(decimalsSynthetic),
-    BigNumber.from(10).pow(decimalsUnderlying),
-    BigNumber.from(10).pow(decimalsSynthetic),
+    BigNumber.from(10).pow(decimalsUnderlying + 1),
+    BigNumber.from(10).pow(decimalsSynthetic + 1),
+    BigNumber.from(10).pow(decimalsUnderlying + 1),
+    BigNumber.from(10).pow(decimalsSynthetic + 1),
     operator.address,
     (await now()) + 1000000
   );

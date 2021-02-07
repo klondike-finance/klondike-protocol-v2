@@ -68,7 +68,7 @@ describe("TokenManager", () => {
   });
 
   describe("#isManagedToken", () => {
-    describe("when Synthetic token is managed by the Token Manager", () => {
+    describe("when Synthetic token is managed", () => {
       it("returns true", async () => {
         await addPair(8, 18);
         expect(
@@ -86,7 +86,7 @@ describe("TokenManager", () => {
         ).to.eq(true);
       });
     });
-    describe("when Synthetic token is not managed by the Token Manager", () => {
+    describe("when Synthetic token is not managed", () => {
       it("returns false", async () => {
         await addPair(8, 18);
         expect(
@@ -102,6 +102,74 @@ describe("TokenManager", () => {
           await manager.isManagedToken(underlying.address),
           "Expected to manage synthetic token"
         ).to.eq(false);
+      });
+    });
+  });
+
+  describe("#syntheticDecimals", () => {
+    describe("when Synthetic token is managed", () => {
+      it("returns number of decimals for synthetic token", async () => {
+        await addPair(8, 25);
+        await manager.addToken(
+          synthetic.address,
+          underlying.address,
+          oracle.address
+        );
+        expect(await manager.syntheticDecimals(synthetic.address)).to.eq(25);
+        await addPair(6, 0);
+        await manager.addToken(
+          synthetic.address,
+          underlying.address,
+          oracle.address
+        );
+        expect(await manager.syntheticDecimals(synthetic.address)).to.eq(0);
+      });
+    });
+    describe("when Synthetic token is not managed", () => {
+      it("fails", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          underlying.address,
+          oracle.address
+        );
+        await expect(
+          manager.syntheticDecimals(underlying.address)
+        ).to.be.revertedWith("TokenManager: Token is not managed");
+      });
+    });
+  });
+
+  describe("#underlyingDecimals", () => {
+    describe("when Synthetic token is managed", () => {
+      it("returns number of decimals for underlying token", async () => {
+        await addPair(8, 25);
+        await manager.addToken(
+          synthetic.address,
+          underlying.address,
+          oracle.address
+        );
+        expect(await manager.underlyingDecimals(synthetic.address)).to.eq(8);
+        await addPair(6, 0);
+        await manager.addToken(
+          synthetic.address,
+          underlying.address,
+          oracle.address
+        );
+        expect(await manager.underlyingDecimals(synthetic.address)).to.eq(6);
+      });
+    });
+    describe("when Synthetic token is not managed", () => {
+      it("fails", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          underlying.address,
+          oracle.address
+        );
+        await expect(
+          manager.underlyingDecimals(underlying.address)
+        ).to.be.revertedWith("TokenManager: Token is not managed");
       });
     });
   });
