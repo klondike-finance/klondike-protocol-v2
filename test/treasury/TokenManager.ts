@@ -7,7 +7,10 @@ import {
   deployToken,
   deployUniswap,
   now,
+  fastForwardAndMine,
+  pairFor,
 } from "../helpers/helpers";
+import { BTC, ETH } from "../../tasks/utils";
 
 describe("TokenManager", () => {
   let TokenManager: ContractFactory;
@@ -59,6 +62,29 @@ describe("TokenManager", () => {
     await underlying.transferOwnership(manager.address);
     await synthetic.transferOperator(manager.address);
     await synthetic.transferOwnership(manager.address);
+  }
+
+  async function doSomeTrading() {
+    await oracle.update();
+    await fastForwardAndMine(ethers.provider, 100);
+    await router.swapExactTokensForTokens(
+      ETH.div(1000),
+      BTC.div(1000).div(2),
+      [synthetic.address, underlying.address],
+      op.address,
+      (await now()) + 1800
+    );
+
+    await fastForwardAndMine(ethers.provider, 100);
+    await router.swapExactTokensForTokens(
+      ETH.div(1000).div(2),
+      BTC.div(1000).div(5),
+      [synthetic.address, underlying.address],
+      op.address,
+      (await now()) + 1800
+    );
+    await fastForwardAndMine(ethers.provider, 3400);
+    await oracle.update();
   }
 
   describe("#constructor", () => {
@@ -183,6 +209,7 @@ describe("TokenManager", () => {
           underlying.address,
           oracle.address
         );
+        await doSomeTrading();
         const managerPrice = await manager.averagePrice(
           synthetic.address,
           BigNumber.from(10).pow(18)
@@ -205,6 +232,47 @@ describe("TokenManager", () => {
         );
         await expect(
           manager.averagePrice(underlying.address, BigNumber.from(10).pow(18))
+        ).to.be.revertedWith("TokenManager: Token is not managed");
+      });
+    });
+  });
+
+  describe("#currentPrice", () => {
+    describe("when Synthetic token is managed", () => {
+      it("returns oracle average price", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          underlying.address,
+          oracle.address
+        );
+        await doSomeTrading();
+        const managerPrice = await manager.currentPrice(synthetic.address, ETH);
+        const pairAddress = pairFor(
+          factory.address,
+          synthetic.address,
+          underlying.address
+        );
+        const pair = await ethers.getContractAt("IUniswapV2Pair", pairAddress);
+        const [reserve0, reserve1] = await pair.getReserves();
+        const [reserveUnderlying, reserveSynthetic] =
+          synthetic.address < underlying.address
+            ? [reserve1, reserve0]
+            : [reserve0, reserve1];
+        const currentPrice = reserveUnderlying.mul(ETH).div(reserveSynthetic);
+        expect(managerPrice).to.eq(currentPrice);
+      });
+    });
+    describe("when Synthetic token is not managed", () => {
+      it("fails", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          underlying.address,
+          oracle.address
+        );
+        await expect(
+          manager.currentPrice(underlying.address, BigNumber.from(10).pow(18))
         ).to.be.revertedWith("TokenManager: Token is not managed");
       });
     });
