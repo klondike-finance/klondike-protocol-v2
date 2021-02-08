@@ -14,6 +14,8 @@ contract TokenManager is Operatable {
     struct TokenData {
         SyntheticToken syntheticToken;
         uint8 syntheticDecimals;
+        SyntheticToken bondToken;
+        uint8 bondDecimals;
         ERC20 underlyingToken;
         uint8 underlyingDecimals;
         IUniswapV2Pair pair;
@@ -74,6 +76,19 @@ contract TokenManager is Operatable {
         return tokenIndex[syntheticTokenAddress].syntheticDecimals;
     }
 
+    /// The decimals of the bond token
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @return The number of decimals for the bond token
+    /// @dev Fails if the token is not managed
+    function bondDecimals(address syntheticTokenAddress)
+        public
+        view
+        managedToken(syntheticTokenAddress)
+        returns (uint8)
+    {
+        return tokenIndex[syntheticTokenAddress].bondDecimals;
+    }
+
     /// The decimals of the underlying token
     /// @param syntheticTokenAddress The address of the synthetic token
     /// @return The number of decimals for the underlying token
@@ -129,11 +144,13 @@ contract TokenManager is Operatable {
 
     /// Adds token to managed tokens
     /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param bondTokenAddress The address of the bond token
     /// @param underlyingTokenAddress The address of the underlying token
     /// @param oracleAddress The address of the price oracle for the pair
     /// @dev Requires the operator and the owner of the synthetic token to be set to TokenManager address before calling
     function addToken(
         address syntheticTokenAddress,
+        address bondTokenAddress,
         address underlyingTokenAddress,
         address oracleAddress
     ) external onlyOperator {
@@ -146,6 +163,7 @@ contract TokenManager is Operatable {
             "TokenManager: Token is already managed"
         );
         SyntheticToken syntheticToken = SyntheticToken(syntheticTokenAddress);
+        SyntheticToken bondToken = SyntheticToken(bondTokenAddress);
         ERC20 underlyingToken = ERC20(underlyingTokenAddress);
         IOracle oracle = IOracle(oracleAddress);
         IUniswapV2Pair pair =
@@ -159,8 +177,14 @@ contract TokenManager is Operatable {
         require(
             (syntheticToken.operator() == address(this)) &&
                 (syntheticToken.owner() == address(this)),
-            "TokenManager: Token operator and owner must be set to TokenManager before adding a token"
+            "TokenManager: Token operator and owner of the synthetic token must be set to TokenManager before adding a token"
         );
+        require(
+            (bondToken.operator() == address(this)) &&
+                (bondToken.owner() == address(this)),
+            "TokenManager: Token operator and owner of the bond token must be set to TokenManager before adding a token"
+        );
+
         require(
             address(oracle.pair()) == address(pair),
             "TokenManager: Tokens and Oracle tokens are different"
@@ -169,6 +193,8 @@ contract TokenManager is Operatable {
             TokenData(
                 syntheticToken,
                 syntheticToken.decimals(),
+                bondToken,
+                bondToken.decimals(),
                 underlyingToken,
                 underlyingToken.decimals(),
                 pair,
@@ -222,7 +248,7 @@ contract TokenManager is Operatable {
     // /// @param recipient The address of recipient
     // /// @param amount The amount of tokens to mint
     // /// @dev Fails if the token is not managed
-    // function _mint(
+    // function _mintSynthetic(
     //     address syntheticTokenAddress,
     //     address recipient,
     //     uint256 amount
@@ -235,7 +261,7 @@ contract TokenManager is Operatable {
     // /// @param syntheticTokenAddress The address of the synthetic token
     // /// @param amount The amount of tokens to burn
     // /// @dev Fails if the token is not managed
-    // function _burn(address syntheticTokenAddress, uint256 amount)
+    // function _burnSynthetic(address syntheticTokenAddress, uint256 amount)
     //     internal
     //     managedToken(syntheticTokenAddress)
     // {
@@ -250,7 +276,7 @@ contract TokenManager is Operatable {
     // /// @dev The allowance for sender in address account must be
     // /// strictly >= amount. Otherwise the function call will fail.
     // /// Fails if the token is not managed.
-    // function _burnFrom(
+    // function _burnSyntheticFrom(
     //     address syntheticTokenAddress,
     //     address from,
     //     uint256 amount

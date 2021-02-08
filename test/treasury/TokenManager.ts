@@ -23,6 +23,7 @@ describe("TokenManager", () => {
   let oracle: Contract;
   let underlying: Contract;
   let synthetic: Contract;
+  let bond: Contract;
   before(async () => {
     const [operator] = await ethers.getSigners();
     op = operator;
@@ -49,6 +50,7 @@ describe("TokenManager", () => {
       "KBTC",
       syntheticDecimals
     );
+    bond = await deployToken(SyntheticToken, router, "KBond", 15);
     underlying = u;
     synthetic = s;
     oracle = await Oracle.deploy(
@@ -62,6 +64,8 @@ describe("TokenManager", () => {
     await underlying.transferOwnership(manager.address);
     await synthetic.transferOperator(manager.address);
     await synthetic.transferOwnership(manager.address);
+    await bond.transferOperator(manager.address);
+    await bond.transferOwnership(manager.address);
   }
 
   async function doSomeTrading() {
@@ -103,6 +107,7 @@ describe("TokenManager", () => {
         ).to.eq(false);
         await manager.addToken(
           synthetic.address,
+          bond.address,
           underlying.address,
           oracle.address
         );
@@ -121,6 +126,7 @@ describe("TokenManager", () => {
         ).to.eq(false);
         await manager.addToken(
           synthetic.address,
+          bond.address,
           underlying.address,
           oracle.address
         );
@@ -138,6 +144,7 @@ describe("TokenManager", () => {
         await addPair(8, 25);
         await manager.addToken(
           synthetic.address,
+          bond.address,
           underlying.address,
           oracle.address
         );
@@ -145,6 +152,7 @@ describe("TokenManager", () => {
         await addPair(6, 0);
         await manager.addToken(
           synthetic.address,
+          bond.address,
           underlying.address,
           oracle.address
         );
@@ -156,6 +164,7 @@ describe("TokenManager", () => {
         await addPair(8, 18);
         await manager.addToken(
           synthetic.address,
+          bond.address,
           underlying.address,
           oracle.address
         );
@@ -172,6 +181,7 @@ describe("TokenManager", () => {
         await addPair(8, 25);
         await manager.addToken(
           synthetic.address,
+          bond.address,
           underlying.address,
           oracle.address
         );
@@ -179,6 +189,7 @@ describe("TokenManager", () => {
         await addPair(6, 0);
         await manager.addToken(
           synthetic.address,
+          bond.address,
           underlying.address,
           oracle.address
         );
@@ -190,6 +201,7 @@ describe("TokenManager", () => {
         await addPair(8, 18);
         await manager.addToken(
           synthetic.address,
+          bond.address,
           underlying.address,
           oracle.address
         );
@@ -206,6 +218,7 @@ describe("TokenManager", () => {
         await addPair(8, 18);
         await manager.addToken(
           synthetic.address,
+          bond.address,
           underlying.address,
           oracle.address
         );
@@ -227,6 +240,7 @@ describe("TokenManager", () => {
         await addPair(8, 18);
         await manager.addToken(
           synthetic.address,
+          bond.address,
           underlying.address,
           oracle.address
         );
@@ -243,6 +257,7 @@ describe("TokenManager", () => {
         await addPair(8, 18);
         await manager.addToken(
           synthetic.address,
+          bond.address,
           underlying.address,
           oracle.address
         );
@@ -268,6 +283,7 @@ describe("TokenManager", () => {
           await addPair(8, 18);
           await manager.addToken(
             synthetic.address,
+            bond.address,
             underlying.address,
             oracle.address
           );
@@ -282,6 +298,7 @@ describe("TokenManager", () => {
         await addPair(8, 18);
         await manager.addToken(
           synthetic.address,
+          bond.address,
           underlying.address,
           oracle.address
         );
@@ -298,6 +315,7 @@ describe("TokenManager", () => {
           await expect(
             manager.addToken(
               synthetic.address,
+              bond.address,
               underlying.address,
               oracle.address
             )
@@ -321,6 +339,7 @@ describe("TokenManager", () => {
           await expect(
             manager.addToken(
               synthetic.address,
+              bond.address,
               underlying.address,
               oracle.address
             )
@@ -338,6 +357,7 @@ describe("TokenManager", () => {
           await expect(
             manager.addToken(
               synthetic.address,
+              bond.address,
               synthetic.address,
               oracle.address
             )
@@ -351,12 +371,14 @@ describe("TokenManager", () => {
           await addPair(8, 18);
           await manager.addToken(
             synthetic.address,
+            bond.address,
             underlying.address,
             oracle.address
           );
           await expect(
             manager.addToken(
               synthetic.address,
+              bond.address,
               underlying.address,
               oracle.address
             )
@@ -371,6 +393,7 @@ describe("TokenManager", () => {
           await expect(
             manager.addToken(
               synthetic.address,
+              bond.address,
               underlying.address,
               synthetic.address
             )
@@ -387,6 +410,7 @@ describe("TokenManager", () => {
           await expect(
             manager.addToken(
               synthetic.address,
+              bond.address,
               underlying.address,
               oldOracle.address
             )
@@ -407,6 +431,9 @@ describe("TokenManager", () => {
           );
           underlying = u;
           synthetic = s;
+          bond = await deployToken(SyntheticToken, router, "KBond", 15);
+          await bond.transferOperator(manager.address);
+          await bond.transferOwnership(manager.address);
           oracle = await Oracle.deploy(
             factory.address,
             underlying.address,
@@ -417,11 +444,12 @@ describe("TokenManager", () => {
           await expect(
             manager.addToken(
               synthetic.address,
+              bond.address,
               underlying.address,
               oracle.address
             )
           ).to.be.revertedWith(
-            "TokenManager: Token operator and owner must be set to TokenManager before adding a token"
+            "TokenManager: Token operator and owner of the synthetic token must be set to TokenManager before adding a token"
           );
         });
       });
@@ -432,7 +460,12 @@ describe("TokenManager", () => {
           await expect(
             manager
               .connect(other)
-              .addToken(synthetic.address, underlying.address, oracle.address)
+              .addToken(
+                synthetic.address,
+                bond.address,
+                underlying.address,
+                oracle.address
+              )
           ).to.be.revertedWith("Only operator can call this method");
         });
       });
@@ -443,6 +476,7 @@ describe("TokenManager", () => {
           await addPair(8, 18);
           await manager.addToken(
             synthetic.address,
+            bond.address,
             underlying.address,
             oracle.address
           );
@@ -452,6 +486,7 @@ describe("TokenManager", () => {
           await addPair(8, 18);
           await manager.addToken(
             synthetic.address,
+            bond.address,
             underlying.address,
             oracle.address
           );
@@ -480,6 +515,7 @@ describe("TokenManager", () => {
           await addPair(8, 18);
           await manager.addToken(
             synthetic.address,
+            bond.address,
             underlying.address,
             oracle.address
           );
