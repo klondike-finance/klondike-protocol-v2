@@ -118,7 +118,9 @@ export async function addUniswapPair(
 
 export function pairFor(factory: string, token0: string, token1: string) {
   const [tokenA, tokenB] =
-    token0 < token1 ? [token0, token1] : [token1, token0];
+    token0.toLowerCase() < token1.toLowerCase()
+      ? [token0, token1]
+      : [token1, token0];
   return (
     "0x" +
     keccak256(

@@ -162,13 +162,19 @@ contract BondManager is ReentrancyGuardable, TokenManager {
     function _addBondToken(
         address syntheticTokenAddress,
         address bondTokenAddress
-    ) internal override {
+    ) internal virtual override {
         super._addBondToken(syntheticTokenAddress, bondTokenAddress);
         SyntheticToken bondToken = SyntheticToken(bondTokenAddress);
+        require(
+            (bondToken.operator() == address(this)) &&
+                (bondToken.owner() == address(this)),
+            "BondManager: Token operator and owner of the bond token must be set to TokenManager before adding a token"
+        );
         bondIndex[syntheticTokenAddress] = BondData(
             bondToken,
             bondToken.decimals()
         );
+        emit BondAdded(bondTokenAddress);
     }
 
     /// Triggered what deleteToken is called in TokenManager
@@ -177,12 +183,13 @@ contract BondManager is ReentrancyGuardable, TokenManager {
     function _deleteBondToken(
         address syntheticTokenAddress,
         address newOperator
-    ) internal override {
+    ) internal virtual override {
         super._deleteBondToken(syntheticTokenAddress, newOperator);
         SyntheticToken bondToken = bondIndex[syntheticTokenAddress].bondToken;
         bondToken.transferOperator(newOperator);
         bondToken.transferOwnership(newOperator);
         delete bondIndex[syntheticTokenAddress];
+        emit BondDeleted(address(bondToken));
     }
 
     /// Emitted each time the token becomes managed
