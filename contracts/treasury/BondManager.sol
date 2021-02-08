@@ -2,11 +2,11 @@
 pragma solidity =0.6.6;
 
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/Math.sol";
 import "./TokenManager.sol";
-import "./ProxyTokens.sol";
 import "../access/ReentrancyGuardable.sol";
 
-contract BondManager is ProxyTokens, ReentrancyGuardable, TokenManager {
+contract BondManager is ReentrancyGuardable, TokenManager {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -40,6 +40,7 @@ contract BondManager is ProxyTokens, ReentrancyGuardable, TokenManager {
     function bondPriceUndPerUnitSyn(address syntheticTokenAddress)
         internal
         view
+        managedToken(syntheticTokenAddress)
         returns (uint256)
     {
         uint256 avgPriceUndPerUnitSyn =
@@ -52,16 +53,18 @@ contract BondManager is ProxyTokens, ReentrancyGuardable, TokenManager {
                 syntheticTokenAddress,
                 _oneSyntheticUnit(syntheticTokenAddress)
             );
-        return
-            avgPriceUndPerUnitSyn < curPriceUndPerUnitSyn
-                ? curPriceUndPerUnitSyn
-                : avgPriceUndPerUnitSyn;
+        return Math.max(avgPriceUndPerUnitSyn, curPriceUndPerUnitSyn);
     }
 
     function quoteBuyBond(
         address syntheticTokenAddress,
         uint256 amountOfSynthetic
-    ) public view returns (uint256 amountOfBonds) {
+    )
+        public
+        view
+        managedToken(syntheticTokenAddress)
+        returns (uint256 amountOfBonds)
+    {
         uint256 bondPrice = bondPriceUndPerUnitSyn(syntheticTokenAddress);
         require(
             bondPrice < _oneUnderlyingUnit(syntheticTokenAddress),
@@ -76,7 +79,9 @@ contract BondManager is ProxyTokens, ReentrancyGuardable, TokenManager {
 
     function buyBond(address syntheticTokenAddress, uint256 amountOfSynthetic)
         public
+        managedToken(syntheticTokenAddress)
         onePerBlock
+        updateOracle(syntheticTokenAddress)
     {
         uint256 amountOfBonds =
             quoteBuyBond(syntheticTokenAddress, amountOfSynthetic);
@@ -88,16 +93,22 @@ contract BondManager is ProxyTokens, ReentrancyGuardable, TokenManager {
         bondToken.mint(msg.sender, amountOfBonds);
     }
 
-    function sellBond(address syntheticTokenAddress, uint256 amount)
-        public
-        onePerBlock
-    {
-        withdrawInnerToken(syntheticTokenAddress, amount);
-        SyntheticToken bondToken = bondIndex[syntheticTokenAddress].bondToken;
-        bondToken.burnFrom(msg.sender, amount);
-
+    function sellBond(
+        address syntheticTokenAddress,
+        uint256 amountIn,
+        uint256 minAmountOut
+    ) public managedToken(syntheticTokenAddress) onePerBlock {
         SyntheticToken syntheticToken =
             tokenIndex[syntheticTokenAddress].syntheticToken;
+        SyntheticToken bondToken = bondIndex[syntheticTokenAddress].bondToken;
+        uint256 amount =
+            Math.min(syntheticToken.balanceOf(address(this)), amountIn);
+        require(
+            amount >= minAmountOut,
+            "BondManager: Less than minAmountOut bonds could be sold"
+        );
+        require(amount > 0, "BondManager: Only zero bonds could be sold now");
+        bondToken.burnFrom(msg.sender, amount);
         syntheticToken.transfer(msg.sender, amount);
     }
 
@@ -125,9 +136,6 @@ contract BondManager is ProxyTokens, ReentrancyGuardable, TokenManager {
             bondToken,
             bondToken.decimals()
         );
-        innerProxyTokens[syntheticTokenAddress] = SyntheticToken(
-            syntheticTokenAddress
-        );
     }
 
     function _deleteBondToken(
@@ -135,7 +143,6 @@ contract BondManager is ProxyTokens, ReentrancyGuardable, TokenManager {
         address newOperator
     ) internal override {
         super._deleteBondToken(syntheticTokenAddress, newOperator);
-        delete innerProxyTokens[syntheticTokenAddress];
         delete bondIndex[syntheticTokenAddress];
     }
 }

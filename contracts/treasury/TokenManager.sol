@@ -46,6 +46,15 @@ contract TokenManager is Operatable {
         _;
     }
 
+    /// Update oracle price
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @dev This modifier must always come with managedToken and oncePerBlock
+    modifier updateOracle(address syntheticTokenAddress) {
+        IOracle oracle = tokenIndex[syntheticTokenAddress].oracle;
+        oracle.update();
+        _;
+    }
+
     // ------- View ----------
 
     /// Checks if the token is managed by Token Manager
