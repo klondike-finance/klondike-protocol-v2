@@ -212,6 +212,7 @@ contract TokenManager is Operatable {
         managedToken(syntheticTokenAddress)
         onlyOperator
     {
+        _deleteBondToken(syntheticTokenAddress, newOperator);
         uint256 pos;
         for (uint256 i = 0; i < tokens.length; i++) {
             if (tokens[i] == syntheticTokenAddress) {
@@ -219,15 +220,14 @@ contract TokenManager is Operatable {
             }
         }
         TokenData memory data = tokenIndex[tokens[pos]];
-        delete tokenIndex[syntheticTokenAddress];
-        delete tokens[pos];
         data.syntheticToken.transfer(
             newOperator,
             data.syntheticToken.balanceOf(address(this))
         );
         data.syntheticToken.transferOperator(newOperator);
         data.syntheticToken.transferOwnership(newOperator);
-        _deleteBondToken(syntheticTokenAddress, newOperator);
+        delete tokenIndex[syntheticTokenAddress];
+        delete tokens[pos];
         emit TokenDeleted(
             syntheticTokenAddress,
             address(data.underlyingToken),

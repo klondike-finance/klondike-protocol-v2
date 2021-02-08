@@ -189,11 +189,11 @@ contract BondManager is ReentrancyGuardable, TokenManager {
         bondToken.transferOperator(newOperator);
         bondToken.transferOwnership(newOperator);
         delete bondIndex[syntheticTokenAddress];
-        emit BondDeleted(address(bondToken));
+        emit BondDeleted(address(bondToken), newOperator);
     }
 
     /// Emitted each time the token becomes managed
     event BondAdded(address indexed bondTokenAddress);
     /// Emitted each time the token becomes unmanaged
-    event BondDeleted(address oracleAddress);
+    event BondDeleted(address indexed bondAddress, address indexed newOperator);
 }
