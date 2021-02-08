@@ -50,6 +50,7 @@ contract TokenManager is Operatable {
 
     /// Checks if the token is managed by Token Manager
     /// @param syntheticTokenAddress The address of the synthetic token
+    /// @return True if token is managed
     function isManagedToken(address syntheticTokenAddress)
         public
         view
@@ -62,6 +63,7 @@ contract TokenManager is Operatable {
 
     /// The decimals of the synthetic token
     /// @param syntheticTokenAddress The address of the synthetic token
+    /// @return The number of decimals for the synthetic token
     /// @dev Fails if the token is not managed
     function syntheticDecimals(address syntheticTokenAddress)
         public
@@ -74,6 +76,7 @@ contract TokenManager is Operatable {
 
     /// The decimals of the underlying token
     /// @param syntheticTokenAddress The address of the synthetic token
+    /// @return The number of decimals for the underlying token
     /// @dev Fails if the token is not managed
     function underlyingDecimals(address syntheticTokenAddress)
         public
@@ -87,6 +90,7 @@ contract TokenManager is Operatable {
     /// Average price of the synthetic token according to price oracle
     /// @param syntheticTokenAddress The address of the synthetic token
     /// @param syntheticTokenAmount The amount to be priced
+    /// @return The equivalent amount of the underlying token required to buy syntheticTokenAmount (average)
     /// @dev Fails if the token is not managed
     function averagePrice(
         address syntheticTokenAddress,
@@ -99,6 +103,7 @@ contract TokenManager is Operatable {
     /// Current price of the synthetic token according to Uniswap
     /// @param syntheticTokenAddress The address of the synthetic token
     /// @param syntheticTokenAmount The amount to be priced
+    /// @return The equivalent amount of the underlying token required to buy syntheticTokenAmount
     /// @dev Fails if the token is not managed
     function currentPrice(
         address syntheticTokenAddress,

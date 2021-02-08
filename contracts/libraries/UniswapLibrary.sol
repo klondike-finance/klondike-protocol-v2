@@ -12,6 +12,7 @@ library UniswapLibrary {
     /// @param factory Uniswap factory address
     /// @param tokenA One token in the pair
     /// @param tokenB The other token in the pair
+    /// @return pair Address of the Uniswap pair
     function pairFor(
         address factory,
         address tokenA,
@@ -33,6 +34,9 @@ library UniswapLibrary {
     }
 
     // returns sorted token addresses, used to handle return values from pairs sorted in this order
+    /// @param tokenA The address of tokenA
+    /// @param tokenB The address of tokenB
+    /// @return token0 token1 Sorted asc addresses of tokens
     function sortTokens(address tokenA, address tokenB)
         internal
         pure
@@ -45,7 +49,11 @@ library UniswapLibrary {
         require(token0 != address(0), "UniswapV2Library: ZERO_ADDRESS");
     }
 
-    // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
+    /// Given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
+    /// @param amountA The amount of tokenA
+    /// @param reserveA The reserver of token A
+    /// @param reserveB The reserver of token B
+    /// @return amountB Equivalent amount of token B
     function quote(
         uint256 amountA,
         uint256 reserveA,
@@ -59,7 +67,10 @@ library UniswapLibrary {
         amountB = amountA.mul(reserveB) / reserveA;
     }
 
-    // fetches and sorts the reserves for a pair
+    /// Fetches and sorts the reserves for a pair
+    /// @param factory Uniswap factory address
+    /// @param tokenA One token in the pair
+    /// @param tokenB The other token in the pair
     function getReserves(
         address factory,
         address tokenA,
