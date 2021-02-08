@@ -241,6 +241,42 @@ contract TokenManager is Operatable {
 
     // ------- Internal ----------
 
+    /// Get one synthetic unit
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @return one unit of the synthetic asset
+    function _oneSyntheticUnit(address syntheticTokenAddress)
+        internal
+        view
+        managedToken(syntheticTokenAddress)
+        returns (uint256)
+    {
+        return uint256(10)**syntheticDecimals(syntheticTokenAddress);
+    }
+
+    /// Get one bond unit
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @return one unit of the bond asset
+    function _oneBondUnit(address syntheticTokenAddress)
+        internal
+        view
+        managedToken(syntheticTokenAddress)
+        returns (uint256)
+    {
+        return uint256(10)**bondDecimals(syntheticTokenAddress);
+    }
+
+    /// Get one underlying unit
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @return one unit of the underlying asset
+    function _oneUnderlyingUnit(address syntheticTokenAddress)
+        internal
+        view
+        managedToken(syntheticTokenAddress)
+        returns (uint256)
+    {
+        return uint256(10)**underlyingDecimals(syntheticTokenAddress);
+    }
+
     // Uncomment when used
 
     // /// Mints synthetic token to the recipient address
