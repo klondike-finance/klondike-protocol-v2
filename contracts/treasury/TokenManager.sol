@@ -221,6 +221,10 @@ contract TokenManager is Operatable {
         TokenData memory data = tokenIndex[tokens[pos]];
         delete tokenIndex[syntheticTokenAddress];
         delete tokens[pos];
+        data.syntheticToken.transfer(
+            newOperator,
+            data.syntheticToken.balanceOf(address(this))
+        );
         data.syntheticToken.transferOperator(newOperator);
         data.syntheticToken.transferOwnership(newOperator);
         _deleteBondToken(syntheticTokenAddress, newOperator);
@@ -258,59 +262,19 @@ contract TokenManager is Operatable {
         return uint256(10)**underlyingDecimals(syntheticTokenAddress);
     }
 
+    /// Overrided in BondManager
     function _addBondToken(
         address syntheticTokenAddress,
         address bondTokenAddress
     ) internal virtual {}
 
+    /// Overrided in BondManager
     function _deleteBondToken(
         address syntheticTokenAddress,
         address newOperator
     ) internal virtual {}
 
-    // Uncomment when used
-
-    // /// Mints synthetic token to the recipient address
-    // /// @param syntheticTokenAddress The address of the synthetic token
-    // /// @param recipient The address of recipient
-    // /// @param amount The amount of tokens to mint
-    // /// @dev Fails if the token is not managed
-    // function _mintSynthetic(
-    //     address syntheticTokenAddress,
-    //     address recipient,
-    //     uint256 amount
-    // ) internal managedToken(syntheticTokenAddress) {
-    //     SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
-    //     token.mint(recipient, amount);
-    // }
-
-    // /// Burns token from the caller
-    // /// @param syntheticTokenAddress The address of the synthetic token
-    // /// @param amount The amount of tokens to burn
-    // /// @dev Fails if the token is not managed
-    // function _burnSynthetic(address syntheticTokenAddress, uint256 amount)
-    //     internal
-    //     managedToken(syntheticTokenAddress)
-    // {
-    //     SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
-    //     token.burn(amount);
-    // }
-
-    // /// Burns token from address
-    // /// @param syntheticTokenAddress The address of the synthetic token
-    // /// @param from The account to burn from
-    // /// @param amount The amount of tokens to burn
-    // /// @dev The allowance for sender in address account must be
-    // /// strictly >= amount. Otherwise the function call will fail.
-    // /// Fails if the token is not managed.
-    // function _burnSyntheticFrom(
-    //     address syntheticTokenAddress,
-    //     address from,
-    //     uint256 amount
-    // ) internal managedToken(syntheticTokenAddress) {
-    //     SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
-    //     token.burnFrom(from, amount);
-    // }
+    // ------- Events ----------
 
     /// Emitted each time the token becomes managed
     event TokenAdded(

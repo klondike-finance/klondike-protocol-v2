@@ -37,8 +37,13 @@ contract BondManager is ReentrancyGuardable, TokenManager {
         return bondIndex[syntheticTokenAddress].bondDecimals;
     }
 
+    /// This is the price of synthetic in underlying (und / syn)
+    /// but corrected for bond mechanics, i.e. max of oracle / current uniswap price
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @return The price of one unit (e.g. BTC, ETH, etc.) syn token in underlying token (e.g. sat, wei, etc)
+    /// @dev Fails if the token is not managed
     function bondPriceUndPerUnitSyn(address syntheticTokenAddress)
-        internal
+        public
         view
         managedToken(syntheticTokenAddress)
         returns (uint256)
@@ -56,6 +61,11 @@ contract BondManager is ReentrancyGuardable, TokenManager {
         return Math.max(avgPriceUndPerUnitSyn, curPriceUndPerUnitSyn);
     }
 
+    /// How many bonds you can buy with this amount of synthetic
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param amountOfSynthetic Amount of synthetic to sell
+    /// @return amountOfBonds The number of bonds that could be bought
+    /// @dev Use the returned value as the input for minAmountBondsOut in `buyBonds`
     function quoteBuyBond(
         address syntheticTokenAddress,
         uint256 amountOfSynthetic
@@ -77,35 +87,55 @@ contract BondManager is ReentrancyGuardable, TokenManager {
 
     // ------- Public ----------
 
-    function buyBond(address syntheticTokenAddress, uint256 amountOfSynthetic)
+    /// Buy bonds with synthetic
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param amountOfSyntheticIn Amount of synthetic to sell
+    /// @param minAmountBondsOut Minimum amount of bonds out
+    /// @dev Fails if the token is not managed
+    function buyBond(
+        address syntheticTokenAddress,
+        uint256 amountOfSyntheticIn,
+        uint256 minAmountBondsOut
+    )
         public
         managedToken(syntheticTokenAddress)
         onePerBlock
         updateOracle(syntheticTokenAddress)
     {
         uint256 amountOfBonds =
-            quoteBuyBond(syntheticTokenAddress, amountOfSynthetic);
+            quoteBuyBond(syntheticTokenAddress, amountOfSyntheticIn);
+        require(
+            amountOfBonds >= minAmountBondsOut,
+            "BondManager: number of bonds is less than minAmountBondsOut"
+        );
         SyntheticToken syntheticToken =
             tokenIndex[syntheticTokenAddress].syntheticToken;
-        syntheticToken.burnFrom(msg.sender, amountOfSynthetic);
+        syntheticToken.burnFrom(msg.sender, amountOfSyntheticIn);
 
         SyntheticToken bondToken = bondIndex[syntheticTokenAddress].bondToken;
         bondToken.mint(msg.sender, amountOfBonds);
     }
 
+    /// Sell bonds for synthetic 1-to-1
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param amountOfBondsIn Amount of bonds to sell
+    /// @param minAmountOfSyntheticOut Minimum amount of synthetics out
+    /// @dev Fails if the token is not managed. Could be paritally executed
+    /// or not executed at all if the BondManager balance of synthetic is less
+    /// than amountOfSyntheticIn. The balance of synthetic is increased during positive rebases.
     function sellBond(
         address syntheticTokenAddress,
-        uint256 amountIn,
-        uint256 minAmountOut
+        uint256 amountOfBondsIn,
+        uint256 minAmountOfSyntheticOut
     ) public managedToken(syntheticTokenAddress) onePerBlock {
         SyntheticToken syntheticToken =
             tokenIndex[syntheticTokenAddress].syntheticToken;
         SyntheticToken bondToken = bondIndex[syntheticTokenAddress].bondToken;
         uint256 amount =
-            Math.min(syntheticToken.balanceOf(address(this)), amountIn);
+            Math.min(syntheticToken.balanceOf(address(this)), amountOfBondsIn);
         require(
-            amount >= minAmountOut,
-            "BondManager: Less than minAmountOut bonds could be sold"
+            amount >= minAmountOfSyntheticOut,
+            "BondManager: Less than minAmountOfSyntheticOut bonds could be sold"
         );
         require(amount > 0, "BondManager: Only zero bonds could be sold now");
         bondToken.burnFrom(msg.sender, amount);
@@ -126,6 +156,9 @@ contract BondManager is ReentrancyGuardable, TokenManager {
         return uint256(10)**bondDecimals(syntheticTokenAddress);
     }
 
+    /// Triggered what addToken is called in TokenManager
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param bondTokenAddress The address of the bond token
     function _addBondToken(
         address syntheticTokenAddress,
         address bondTokenAddress
@@ -138,11 +171,22 @@ contract BondManager is ReentrancyGuardable, TokenManager {
         );
     }
 
+    /// Triggered what deleteToken is called in TokenManager
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param newOperator New operator for the bond token
     function _deleteBondToken(
         address syntheticTokenAddress,
         address newOperator
     ) internal override {
         super._deleteBondToken(syntheticTokenAddress, newOperator);
+        SyntheticToken bondToken = bondIndex[syntheticTokenAddress].bondToken;
+        bondToken.transferOperator(newOperator);
+        bondToken.transferOwnership(newOperator);
         delete bondIndex[syntheticTokenAddress];
     }
+
+    /// Emitted each time the token becomes managed
+    event BondAdded(address indexed bondTokenAddress);
+    /// Emitted each time the token becomes unmanaged
+    event BondDeleted(address oracleAddress);
 }
