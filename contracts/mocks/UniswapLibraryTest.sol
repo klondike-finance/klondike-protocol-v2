@@ -8,16 +8,16 @@ contract UniswapLibraryTest {
         address factory,
         address tokenA,
         address tokenB
-    ) internal pure returns (address pair) {
+    ) public pure returns (address pair) {
         return UniswapLibrary.pairFor(factory, tokenA, tokenB);
     }
 
     function sortTokens(address tokenA, address tokenB)
-        internal
+        public
         pure
         returns (address token0, address token1)
     {
-        return UniswapLibrary.sortTokens(token0, token1);
+        (token0, token1) = UniswapLibrary.sortTokens(tokenA, tokenB);
     }
 
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
@@ -25,12 +25,20 @@ contract UniswapLibraryTest {
         uint256 amountA,
         uint256 reserveA,
         uint256 reserveB
-    ) internal pure returns (uint256 amountB) {}
+    ) public pure returns (uint256 amountB) {
+        amountB = UniswapLibrary.quote(amountA, reserveA, reserveB);
+    }
 
     // fetches and sorts the reserves for a pair
     function getReserves(
         address factory,
         address tokenA,
         address tokenB
-    ) internal view returns (uint256 reserveA, uint256 reserveB) {}
+    ) public view returns (uint256 reserveA, uint256 reserveB) {
+        (reserveA, reserveB) = UniswapLibrary.getReserves(
+            factory,
+            tokenA,
+            tokenB
+        );
+    }
 }
