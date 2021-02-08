@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.6.6;
 
+/// TODO: pause, setOracle
+
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "./TokenManager.sol";
@@ -66,7 +68,7 @@ contract BondManager is ReentrancyGuardable, TokenManager {
     /// @param amountOfSynthetic Amount of synthetic to sell
     /// @return amountOfBonds The number of bonds that could be bought
     /// @dev Use the returned value as the input for minAmountBondsOut in `buyBonds`
-    function quoteBuyBond(
+    function quoteBonds(
         address syntheticTokenAddress,
         uint256 amountOfSynthetic
     )
@@ -103,7 +105,7 @@ contract BondManager is ReentrancyGuardable, TokenManager {
         updateOracle(syntheticTokenAddress)
     {
         uint256 amountOfBonds =
-            quoteBuyBond(syntheticTokenAddress, amountOfSyntheticIn);
+            quoteBonds(syntheticTokenAddress, amountOfSyntheticIn);
         require(
             amountOfBonds >= minAmountBondsOut,
             "BondManager: number of bonds is less than minAmountBondsOut"

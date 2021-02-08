@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { assert } from "console";
-import { Contract, ContractFactory } from "ethers";
+import { BigNumber, Contract, ContractFactory } from "ethers";
 import { ethers } from "hardhat";
 import { UNISWAP_V2_FACTORY_ADDRESS } from "../../tasks/uniswap";
 import {
@@ -11,6 +11,7 @@ import {
   now,
   pairFor,
   BTC,
+  fastForwardAndMine,
 } from "../helpers/helpers";
 
 describe("BondManager", () => {
@@ -152,6 +153,125 @@ describe("BondManager", () => {
         await expect(
           manager.connect(other).deleteToken(synthetic.address, other.address)
         ).to.be.revertedWith("Only operator can call this method");
+      });
+    });
+  });
+
+  describe("#bondDecimals", () => {
+    it("returns decimals of the bond", async () => {
+      expect(await manager.bondDecimals(synthetic.address)).to.eq(
+        BOND_DECIMALS
+      );
+    });
+    describe("when token is not managed", () => {
+      it("fails", async () => {
+        await expect(
+          manager.bondDecimals(underlying.address)
+        ).to.be.revertedWith("Token is not managed");
+      });
+    });
+  });
+
+  describe("#bondPriceUndPerUnitSyn", () => {
+    it("returns price of one unit of bonds", async () => {
+      expect(await manager.bondPriceUndPerUnitSyn(synthetic.address)).to.eq(
+        10 ** UNDERLYING_DECIMALS
+      );
+      // do some 10 random trades
+      for (let i = 0; i < 10; i++) {
+        fastForwardAndMine(ethers.provider, 1800);
+        const seed = Math.random();
+        const synthAmount = BigNumber.from(10)
+          .pow(SYNTHETIC_DECIMALS)
+          .mul(Math.floor(seed * 10000))
+          .div(10000);
+        const undAmount = BigNumber.from(10)
+          .pow(UNDERLYING_DECIMALS)
+          .mul(Math.floor(seed * 10000))
+          .div(10000);
+        if (seed > 0.5) {
+          await router.swapExactTokensForTokens(
+            synthAmount,
+            0,
+            [synthetic.address, underlying.address],
+            op.address,
+            (await now()) + 1800
+          );
+        } else {
+          await router.swapExactTokensForTokens(
+            undAmount,
+            0,
+            [underlying.address, synthetic.address],
+            op.address,
+            (await now()) + 1800
+          );
+        }
+        fastForwardAndMine(ethers.provider, 1800);
+        await oracle.update();
+        const oraclePrice = await oracle.consult(
+          synthetic.address,
+          BigNumber.from(10).pow(SYNTHETIC_DECIMALS)
+        );
+        const currentPrice = await manager.currentPrice(
+          synthetic.address,
+          BigNumber.from(10).pow(SYNTHETIC_DECIMALS)
+        );
+        expect(await manager.bondPriceUndPerUnitSyn(synthetic.address)).to.eq(
+          oraclePrice.gte(currentPrice) ? oraclePrice : currentPrice
+        );
+      }
+    });
+    describe("when token is not managed", () => {
+      it("fails", async () => {
+        await expect(
+          manager.bondPriceUndPerUnitSyn(underlying.address)
+        ).to.be.revertedWith("Token is not managed");
+      });
+    });
+  });
+
+  describe("#quoteBuyBond", () => {
+    it("returns price of bonds for a specific amount of synthetic tokens", async () => {
+      const unitPrice = await manager.bondPriceUndPerUnitSyn(synthetic.address);
+      const price = unitPrice.toNumber() / 10 ** UNDERLYING_DECIMALS;
+      const amount = 123;
+      expect(
+        Math.abs(
+          (await manager.quoteBonds(synthetic.address, amount)).toNumber() -
+            amount / price
+        )
+      ).to.lte(1);
+    });
+    describe("when price is greater than 1", () => {
+      it("fails", async () => {
+        await setupUniswap();
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        await router.swapExactTokensForTokens(
+          BigNumber.from(10).pow(UNDERLYING_DECIMALS),
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await oracle.update();
+        await fastForwardAndMine(ethers.provider, 1000);
+        await expect(
+          manager.quoteBonds(synthetic.address, 123)
+        ).to.be.revertedWith(
+          "BondManager: Synthetic price is not eligible for bond emission"
+        );
+      });
+    });
+    describe("when token is not managed", () => {
+      it("fails", async () => {
+        await expect(
+          manager.quoteBonds(underlying.address, 1)
+        ).to.be.revertedWith("Token is not managed");
       });
     });
   });
