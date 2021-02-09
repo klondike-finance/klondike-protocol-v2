@@ -81,6 +81,12 @@ describe("BondManager", () => {
     await synthetic.transferOwnership(tokenManager.address);
     await bond.transferOperator(manager.address);
     await bond.transferOwnership(manager.address);
+    await tokenManager.addToken(
+      synthetic.address,
+      bond.address,
+      underlying.address,
+      oracle.address
+    );
   }
 
   describe("#constructor", () => {
@@ -89,21 +95,25 @@ describe("BondManager", () => {
     });
   });
 
-  describe("#addToken", () => {
+  describe("#addBondToken", () => {
     beforeEach(async () => {
       await setupUniswap();
     });
 
     describe("when synthetic token operator is TokenManager", () => {
-      it("in additinal to TokenManager#addToken it also adds bond token", async () => {
-        await expect(
-          tokenManager.addToken(
-            synthetic.address,
-            bond.address,
-            underlying.address,
-            oracle.address
-          )
-        )
+      it("adds bond token", async () => {
+        const manager = await BondManager.deploy();
+        await manager.setTokenManager(op.address);
+        const bond = await deployToken(
+          SyntheticToken,
+          router,
+          "KBOND",
+          BOND_DECIMALS
+        );
+        await bond.transferOperator(manager.address);
+        await bond.transferOwnership(manager.address);
+
+        await expect(manager.addBondToken(synthetic.address, bond.address))
           .to.emit(manager, "BondAdded")
           .withArgs(bond.address);
         expect(await manager.bondDecimals(synthetic.address)).to.eq(
@@ -111,8 +121,11 @@ describe("BondManager", () => {
         );
       });
     });
-    describe("when bond operator is not BondManager", () => {
+    describe("when bond token operator is not BondManager", () => {
       it("fails", async () => {
+        const manager = await BondManager.deploy();
+        await manager.setTokenManager(op.address);
+
         const b = await deployToken(
           SyntheticToken,
           router,
@@ -120,70 +133,40 @@ describe("BondManager", () => {
           BOND_DECIMALS
         );
         await expect(
-          tokenManager.addToken(
-            synthetic.address,
-            b.address,
-            underlying.address,
-            oracle.address
-          )
+          manager.addBondToken(synthetic.address, b.address)
         ).to.be.revertedWith(
           "BondManager: Token operator and owner of the bond token must be set to TokenManager before adding a token"
         );
         await b.transferOperator(manager.address);
         await expect(
-          tokenManager.addToken(
-            synthetic.address,
-            b.address,
-            underlying.address,
-            oracle.address
-          )
+          manager.addBondToken(synthetic.address, b.address)
         ).to.be.revertedWith(
           "BondManager: Token operator and owner of the bond token must be set to TokenManager before adding a token"
         );
         await b.transferOwnership(manager.address);
-        await expect(
-          tokenManager.addToken(
-            synthetic.address,
-            b.address,
-            underlying.address,
-            oracle.address
-          )
-        ).to.not.be.reverted;
+        await expect(manager.addBondToken(synthetic.address, b.address)).to.not
+          .be.reverted;
       });
     });
-    describe("when synthetic token operator is not TokenManager", () => {
+    describe("when called not by TokenManager", () => {
       it("fails", async () => {
-        const [op, other] = await ethers.getSigners();
+        const manager = await BondManager.deploy();
         await expect(
-          tokenManager
-            .connect(other)
-            .addToken(
-              synthetic.address,
-              bond.address,
-              underlying.address,
-              oracle.address
-            )
-        ).to.be.revertedWith("Only operator can call this method");
+          manager.addBondToken(synthetic.address, bond.address)
+        ).to.be.revertedWith(
+          "BondManager: Only TokenManager can call this function"
+        );
       });
     });
   });
 
-  describe("#deleteToken", () => {
-    beforeEach(async () => {
-      await setupUniswap();
-      await tokenManager.addToken(
-        synthetic.address,
-        bond.address,
-        underlying.address,
-        oracle.address
-      );
-      await manager.connect(op);
-    });
-
+  describe("#deleteBondToken", () => {
     describe("when synthetic token operator is TokenManager", () => {
       it("it deletes bond token", async () => {
+        await setupUniswap();
         const [_, other] = await ethers.getSigners();
-        await expect(tokenManager.deleteToken(synthetic.address, other.address))
+        await manager.setTokenManager(op.address);
+        await expect(manager.deleteBondToken(synthetic.address, other.address))
           .to.emit(manager, "BondDeleted")
           .withArgs(bond.address, other.address);
         await expect(
@@ -195,28 +178,32 @@ describe("BondManager", () => {
         expect(await synthetic.balanceOf(other.address)).to.eq(
           INITIAL_MANAGER_BALANCE
         );
+        await manager.setTokenManager(tokenManager.address);
       });
     });
-    describe("when synthetic token operator is not TokenManager", () => {
+    describe("when called not by TokenManager", () => {
       it("fails", async () => {
+        await setupUniswap();
         const [_, other] = await ethers.getSigners();
         await expect(
-          tokenManager
-            .connect(other)
-            .deleteToken(synthetic.address, other.address)
-        ).to.be.revertedWith("Only operator can call this method");
+          manager.deleteBondToken(synthetic.address, other.address)
+        ).to.be.revertedWith(
+          "BondManager: Only TokenManager can call this function"
+        );
       });
     });
   });
 
   describe("#bondDecimals", () => {
     it("returns decimals of the bond", async () => {
+      await setupUniswap();
       expect(await manager.bondDecimals(synthetic.address)).to.eq(
         BOND_DECIMALS
       );
     });
     describe("when token is not managed", () => {
       it("fails", async () => {
+        await setupUniswap();
         await expect(
           manager.bondDecimals(underlying.address)
         ).to.be.revertedWith("Token is not managed");
@@ -226,6 +213,7 @@ describe("BondManager", () => {
 
   describe("#bondPriceUndPerUnitSyn", () => {
     it("returns price of one unit of bonds", async () => {
+      await setupUniswap();
       expect(await manager.bondPriceUndPerUnitSyn(synthetic.address)).to.eq(
         10 ** UNDERLYING_DECIMALS
       );
@@ -285,12 +273,6 @@ describe("BondManager", () => {
   describe("#quoteBuyBond", () => {
     it("returns price of bonds for a specific amount of synthetic tokens", async () => {
       await setupUniswap();
-      await tokenManager.addToken(
-        synthetic.address,
-        bond.address,
-        underlying.address,
-        oracle.address
-      );
       await router.swapExactTokensForTokens(
         BigNumber.from(10).pow(SYNTHETIC_DECIMALS),
         0,
@@ -312,12 +294,6 @@ describe("BondManager", () => {
     describe("when price is greater than 1", () => {
       it("fails", async () => {
         await setupUniswap();
-        await tokenManager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
         await router.swapExactTokensForTokens(
           BigNumber.from(10).pow(UNDERLYING_DECIMALS),
           0,
@@ -347,12 +323,6 @@ describe("BondManager", () => {
     describe("when price is below 1, synthetics are approved to manager, minAmountBondsOut is good, buyBonds is not paused", () => {
       it("burns the underlying and mints a bond", async () => {
         await setupUniswap();
-        await tokenManager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
         await router.swapExactTokensForTokens(
           BigNumber.from(10).pow(SYNTHETIC_DECIMALS),
           0,
@@ -378,12 +348,6 @@ describe("BondManager", () => {
     describe("when bonds are paused", () => {
       it("fails", async () => {
         await setupUniswap();
-        await tokenManager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
         await router.swapExactTokensForTokens(
           BigNumber.from(10).pow(SYNTHETIC_DECIMALS),
           0,
@@ -408,12 +372,6 @@ describe("BondManager", () => {
     describe("when synthetics are not approved in full to manager", () => {
       it("fails", async () => {
         await setupUniswap();
-        await tokenManager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
         await router.swapExactTokensForTokens(
           BigNumber.from(10).pow(SYNTHETIC_DECIMALS),
           0,
@@ -432,12 +390,6 @@ describe("BondManager", () => {
     describe("when price is above 1", () => {
       it("fails", async () => {
         await setupUniswap();
-        await tokenManager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
         await router.swapExactTokensForTokens(
           123,
           0,
@@ -458,12 +410,6 @@ describe("BondManager", () => {
     describe("when minAmountOut is greater than the actual amount", () => {
       it("fails", async () => {
         await setupUniswap();
-        await tokenManager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
         await router.swapExactTokensForTokens(
           BigNumber.from(10).pow(SYNTHETIC_DECIMALS),
           0,
@@ -488,12 +434,6 @@ describe("BondManager", () => {
     describe("when there's enough BondManager balance, bonds are approved", () => {
       it("burns the bonds and transfers synthetic", async () => {
         await setupUniswap();
-        await tokenManager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
         const amount = 12345;
         await bond.approve(manager.address, amount);
         await expect(manager.sellBonds(synthetic.address, amount, amount))
@@ -507,12 +447,6 @@ describe("BondManager", () => {
     describe("when there's not enough balace", () => {
       it("fails", async () => {
         await setupUniswap();
-        await tokenManager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
         const managerBalance = await synthetic.balanceOf(manager.address);
         const opBalance = await bond.balanceOf(op.address);
         assert(managerBalance < opBalance);
@@ -532,12 +466,6 @@ describe("BondManager", () => {
     describe("when bonds are not approved", () => {
       it("fails", async () => {
         await setupUniswap();
-        await tokenManager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
         const amount = 12345;
         await bond.approve(manager.address, amount - 1);
         await expect(
