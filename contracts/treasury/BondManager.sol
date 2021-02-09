@@ -1,8 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.6.6;
 
-/// TODO: setOracle + pauseBondForToken
-
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "./TokenManager.sol";
