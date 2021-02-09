@@ -16,9 +16,13 @@ describe("TokenManager", () => {
   let TokenManager: ContractFactory;
   let SyntheticToken: ContractFactory;
   let Oracle: ContractFactory;
+  let BondManagerMock: ContractFactory;
+  let EmissionManagerMock: ContractFactory;
   let factory: Contract;
   let router: Contract;
   let manager: Contract;
+  let bondManager: Contract;
+  let emissionManager: Contract;
   let op: SignerWithAddress;
   let oracle: Contract;
   let underlying: Contract;
@@ -30,12 +34,20 @@ describe("TokenManager", () => {
     TokenManager = await ethers.getContractFactory("TokenManager");
     SyntheticToken = await ethers.getContractFactory("SyntheticToken");
     Oracle = await ethers.getContractFactory("Oracle");
+    BondManagerMock = await ethers.getContractFactory("BondManagerMock");
+    EmissionManagerMock = await ethers.getContractFactory(
+      "EmissionManagerMock"
+    );
     const { factory: f, router: r } = await deployUniswap();
     factory = f;
     router = r;
   });
   beforeEach(async () => {
     manager = await TokenManager.deploy(factory.address);
+    bondManager = await BondManagerMock.deploy();
+    emissionManager = await EmissionManagerMock.deploy();
+    await manager.setBondManager(bondManager.address);
+    await manager.setEmissionManager(emissionManager.address);
   });
 
   async function addPair(
