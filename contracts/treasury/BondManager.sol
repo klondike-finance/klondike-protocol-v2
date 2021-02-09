@@ -222,6 +222,11 @@ contract BondManager is IBondManager, ReentrancyGuardable, Operatable {
             msg.sender == address(tokenManager),
             "BondManager: Only TokenManager can call this function"
         );
+        SyntheticToken syntheticToken = SyntheticToken(syntheticTokenAddress);
+        syntheticToken.transfer(
+            newOperator,
+            syntheticToken.balanceOf(address(this))
+        );
         SyntheticToken bondToken = bondIndex[syntheticTokenAddress].bondToken;
         bondToken.transferOperator(newOperator);
         bondToken.transferOwnership(newOperator);

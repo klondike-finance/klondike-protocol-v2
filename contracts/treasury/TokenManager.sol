@@ -281,10 +281,6 @@ contract TokenManager is ITokenManager, Operatable {
             }
         }
         TokenData memory data = tokenIndex[tokens[pos]];
-        data.syntheticToken.transfer(
-            newOperator,
-            data.syntheticToken.balanceOf(address(this))
-        );
         data.syntheticToken.transferOperator(newOperator);
         data.syntheticToken.transferOwnership(newOperator);
         delete tokenIndex[syntheticTokenAddress];
@@ -305,13 +301,11 @@ contract TokenManager is ITokenManager, Operatable {
         address syntheticTokenAddress,
         address owner,
         uint256 amount
-    )
-        public
-        override
-        onlyOperator
-        managedToken(syntheticTokenAddress)
-        initialized
-    {
+    ) public override managedToken(syntheticTokenAddress) initialized {
+        require(
+            msg.sender == address(bondManager),
+            "TokenManager: Only BondManager can call this function"
+        );
         SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
         token.burnFrom(owner, amount);
     }
