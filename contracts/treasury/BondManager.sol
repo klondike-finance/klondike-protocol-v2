@@ -94,14 +94,14 @@ contract BondManager is ReentrancyGuardable, TokenManager {
     /// @param amountOfSyntheticIn Amount of synthetic to sell
     /// @param minAmountBondsOut Minimum amount of bonds out
     /// @dev Fails if the token is not managed
-    function buyBond(
+    function buyBonds(
         address syntheticTokenAddress,
         uint256 amountOfSyntheticIn,
         uint256 minAmountBondsOut
     )
         public
-        managedToken(syntheticTokenAddress)
         onePerBlock
+        managedToken(syntheticTokenAddress)
         updateOracle(syntheticTokenAddress)
     {
         uint256 amountOfBonds =
@@ -125,7 +125,7 @@ contract BondManager is ReentrancyGuardable, TokenManager {
     /// @dev Fails if the token is not managed. Could be paritally executed
     /// or not executed at all if the BondManager balance of synthetic is less
     /// than amountOfSyntheticIn. The balance of synthetic is increased during positive rebases.
-    function sellBond(
+    function sellBonds(
         address syntheticTokenAddress,
         uint256 amountOfBondsIn,
         uint256 minAmountOfSyntheticOut

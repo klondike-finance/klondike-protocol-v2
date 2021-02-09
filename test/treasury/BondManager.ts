@@ -232,6 +232,21 @@ describe("BondManager", () => {
 
   describe("#quoteBuyBond", () => {
     it("returns price of bonds for a specific amount of synthetic tokens", async () => {
+      await setupUniswap();
+      await manager.addToken(
+        synthetic.address,
+        bond.address,
+        underlying.address,
+        oracle.address
+      );
+      await router.swapExactTokensForTokens(
+        BigNumber.from(10).pow(SYNTHETIC_DECIMALS),
+        0,
+        [synthetic.address, underlying.address],
+        op.address,
+        (await now()) + 1800
+      );
+
       const unitPrice = await manager.bondPriceUndPerUnitSyn(synthetic.address);
       const price = unitPrice.toNumber() / 10 ** UNDERLYING_DECIMALS;
       const amount = 123;
@@ -272,6 +287,118 @@ describe("BondManager", () => {
         await expect(
           manager.quoteBonds(underlying.address, 1)
         ).to.be.revertedWith("Token is not managed");
+      });
+    });
+  });
+
+  describe("#buyBond", () => {
+    describe("when price is below 1, synthetics are approved to manager, minAmountBondsOut is good", () => {
+      it("it burns the underlying and mints a bond", async () => {
+        await setupUniswap();
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        await router.swapExactTokensForTokens(
+          BigNumber.from(10).pow(SYNTHETIC_DECIMALS),
+          0,
+          [synthetic.address, underlying.address],
+          op.address,
+          (await now()) + 1800
+        );
+
+        const amount = 12345;
+        await synthetic.approve(manager.address, amount);
+        await bond.transfer(
+          "0x0000000000000000000000000000000000000001",
+          bond.balanceOf(op.address)
+        );
+        const bondAmount = await manager.quoteBonds(synthetic.address, amount);
+        await expect(manager.buyBonds(synthetic.address, amount, bondAmount))
+          .to.emit(synthetic, "Transfer")
+          .withArgs(op.address, ethers.constants.AddressZero, amount)
+          .and.to.emit(bond, "Transfer")
+          .withArgs(ethers.constants.AddressZero, op.address, bondAmount);
+        expect(await bond.balanceOf(op.address)).to.eq(bondAmount);
+      });
+    });
+    describe("when synthetics are not approved in full to manager", () => {
+      it("fails", async () => {
+        await setupUniswap();
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        await router.swapExactTokensForTokens(
+          BigNumber.from(10).pow(SYNTHETIC_DECIMALS),
+          0,
+          [synthetic.address, underlying.address],
+          op.address,
+          (await now()) + 1800
+        );
+
+        const amount = 12345;
+        await synthetic.approve(manager.address, amount - 1);
+        await expect(
+          manager.buyBonds(synthetic.address, amount, 0)
+        ).to.be.revertedWith("ERC20: burn amount exceeds allowance");
+      });
+    });
+    describe("when price is above 1", () => {
+      it("fails", async () => {
+        await setupUniswap();
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        await router.swapExactTokensForTokens(
+          123,
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+
+        const amount = 12345;
+        await synthetic.approve(manager.address, amount);
+        await expect(
+          manager.buyBonds(synthetic.address, amount, 0)
+        ).to.be.revertedWith(
+          "BondManager: Synthetic price is not eligible for bond emission"
+        );
+      });
+    });
+    describe("when minAmountOut is greater than the actual amount", () => {
+      it("fails", async () => {
+        await setupUniswap();
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        await router.swapExactTokensForTokens(
+          BigNumber.from(10).pow(SYNTHETIC_DECIMALS),
+          0,
+          [synthetic.address, underlying.address],
+          op.address,
+          (await now()) + 1800
+        );
+
+        const amount = 12345;
+        await synthetic.approve(manager.address, amount);
+        const bondAmount = await manager.quoteBonds(synthetic.address, amount);
+        await expect(
+          manager.buyBonds(synthetic.address, amount, bondAmount + 1)
+        ).to.be.revertedWith(
+          "BondManager: number of bonds is less than minAmountBondsOut"
+        );
       });
     });
   });

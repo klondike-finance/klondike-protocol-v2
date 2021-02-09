@@ -213,43 +213,6 @@ describe("TokenManager", () => {
     });
   });
 
-  describe("#bondDecimals", () => {
-    describe("when Synthetic token is managed", () => {
-      it("returns number of decimals for the bond token", async () => {
-        await addPair(8, 25, 34);
-        await manager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
-        expect(await manager.bondDecimals(synthetic.address)).to.eq(34);
-        await addPair(6, 2, 1);
-        await manager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
-        expect(await manager.bondDecimals(synthetic.address)).to.eq(1);
-      });
-    });
-    describe("when Synthetic token is not managed", () => {
-      it("fails", async () => {
-        await addPair(8, 18);
-        await manager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
-        await expect(
-          manager.bondDecimals(underlying.address)
-        ).to.be.revertedWith("TokenManager: Token is not managed");
-      });
-    });
-  });
-
   describe("#averagePrice", () => {
     describe("when Synthetic token is managed", () => {
       it("returns oracle average price", async () => {
@@ -291,7 +254,7 @@ describe("TokenManager", () => {
 
   describe("#currentPrice", () => {
     describe("when Synthetic token is managed", () => {
-      it("returns oracle average price", async () => {
+      it("returns current uniswap price", async () => {
         await addPair(8, 18);
         await manager.addToken(
           synthetic.address,
@@ -309,7 +272,7 @@ describe("TokenManager", () => {
         const pair = await ethers.getContractAt("IUniswapV2Pair", pairAddress);
         const [reserve0, reserve1] = await pair.getReserves();
         const [reserveUnderlying, reserveSynthetic] =
-          synthetic.address < underlying.address
+          synthetic.address.toLowerCase() < underlying.address.toLowerCase()
             ? [reserve1, reserve0]
             : [reserve0, reserve1];
         const currentPrice = reserveUnderlying.mul(ETH).div(reserveSynthetic);
