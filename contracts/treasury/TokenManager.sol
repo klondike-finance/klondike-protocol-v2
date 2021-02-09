@@ -54,12 +54,8 @@ contract TokenManager is ITokenManager, Operatable {
 
     modifier initialized() {
         require(
-            address(bondManager) != address(0),
-            "TokenManager: BondManager is not initialized"
-        );
-        require(
-            address(emissionManager) != address(0),
-            "TokenManager: EmissionManager is not initialized"
+            isInitialized(),
+            "TokenManager: BondManager or EmissionManager is not initialized"
         );
         _;
     }
@@ -77,6 +73,13 @@ contract TokenManager is ITokenManager, Operatable {
         return
             address(tokenIndex[syntheticTokenAddress].syntheticToken) !=
             address(0);
+    }
+
+    /// Checks if prerequisites for starting using TokenManager are fulfilled
+    function isInitialized() public view returns (bool) {
+        return
+            (address(bondManager) != address(0)) &&
+            (address(emissionManager) != address(0));
     }
 
     /// The decimals of the synthetic token

@@ -367,6 +367,22 @@ describe("TokenManager", () => {
           await expect(manager.tokens(2)).to.be.reverted;
         });
       });
+      describe("when BondManager is not initialized", () => {
+        it("fails", async () => {
+          await addPair(8, 18);
+          await manager.setBondManager(ethers.constants.AddressZero);
+          await expect(
+            manager.addToken(
+              synthetic.address,
+              bond.address,
+              underlying.address,
+              oracle.address
+            )
+          ).to.be.revertedWith(
+            "TokenManager: BondManager or EmissionManager is not initialized"
+          );
+        });
+      });
       describe("when tokens are the same", () => {
         it("fails", async () => {
           await addPair(8, 18);
@@ -557,6 +573,229 @@ describe("TokenManager", () => {
             manager.connect(other).deleteToken(synthetic.address, op.address)
           ).to.be.revertedWith("Only operator can call this method");
         });
+      });
+    });
+  });
+
+  describe("#isInitialized", () => {
+    describe("when BondManager and TokenManager are set", () => {
+      it("returns true", async () => {
+        const manager = await TokenManager.deploy(factory.address);
+        await manager.setBondManager(bondManager.address);
+        await manager.setEmissionManager(emissionManager.address);
+        expect(await manager.isInitialized()).to.eq(true);
+      });
+    });
+    describe("when either BondManager or TokenManager not set", () => {
+      it("returns false", async () => {
+        let manager = await TokenManager.deploy(factory.address);
+        expect(await manager.isInitialized()).to.eq(false);
+
+        manager = await TokenManager.deploy(factory.address);
+        await manager.setBondManager(bondManager.address);
+        expect(await manager.isInitialized()).to.eq(false);
+
+        manager = await TokenManager.deploy(factory.address);
+        await manager.setEmissionManager(emissionManager.address);
+        expect(await manager.isInitialized()).to.eq(false);
+      });
+    });
+  });
+
+  describe("#setBondManager", () => {
+    describe("when called by Operator", () => {
+      it("updates BondManager", async () => {
+        const manager = await TokenManager.deploy(factory.address);
+        expect(await manager.bondManager()).to.eq(ethers.constants.AddressZero);
+        await manager.setBondManager(bondManager.address);
+        expect(await manager.bondManager()).to.eq(bondManager.address);
+      });
+    });
+    describe("when called by not Operator", () => {
+      it("fails", async () => {
+        const [_, other] = await ethers.getSigners();
+        const manager = await TokenManager.deploy(factory.address);
+        await expect(
+          manager.connect(other).setBondManager(bondManager.address)
+        ).to.be.revertedWith("Only operator can call this method");
+      });
+    });
+  });
+
+  describe("#setEmissionManager", () => {
+    describe("when called by Operator", () => {
+      it("updates EmissionManager", async () => {
+        const manager = await TokenManager.deploy(factory.address);
+        expect(await manager.emissionManager()).to.eq(
+          ethers.constants.AddressZero
+        );
+        await manager.setEmissionManager(emissionManager.address);
+        expect(await manager.emissionManager()).to.eq(emissionManager.address);
+      });
+    });
+    describe("when called by not Operator", () => {
+      it("fails", async () => {
+        const [_, other] = await ethers.getSigners();
+        const manager = await TokenManager.deploy(factory.address);
+        await expect(
+          manager.connect(other).setEmissionManager(emissionManager.address)
+        ).to.be.revertedWith("Only operator can call this method");
+      });
+    });
+  });
+
+  describe("#setOracle", () => {
+    describe("when synthetic token is managed, oracle manages correct pair of tokens, called by Operator", () => {
+      it("updates the oracle", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const oracle2 = await Oracle.deploy(
+          factory.address,
+          underlying.address,
+          synthetic.address,
+          3600,
+          await now()
+        );
+        await manager.setOracle(synthetic.address, oracle2.address);
+        expect((await manager.tokenIndex(synthetic.address)).oracle).to.eq(
+          oracle2.address
+        );
+      });
+    });
+    describe("when oracle's tokens differ", () => {
+      it("fails", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const synOld = synthetic;
+        await addPair(8, 18);
+        const oracle2 = await Oracle.deploy(
+          factory.address,
+          underlying.address,
+          synthetic.address,
+          3600,
+          await now()
+        );
+        await expect(
+          manager.setOracle(synOld.address, oracle2.address)
+        ).to.be.revertedWith(
+          "TokenManager: Tokens and Oracle tokens are different"
+        );
+      });
+    });
+    describe("token is not managed", () => {
+      it("fails", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const oracle2 = await Oracle.deploy(
+          factory.address,
+          underlying.address,
+          synthetic.address,
+          3600,
+          await now()
+        );
+        await expect(
+          manager.setOracle(underlying.address, oracle2.address)
+        ).to.be.revertedWith("TokenManager: Token is not managed");
+      });
+    });
+
+    describe("when called not by Operator", () => {
+      it("fails", async () => {
+        const [_, other] = await ethers.getSigners();
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const oracle2 = await Oracle.deploy(
+          factory.address,
+          underlying.address,
+          synthetic.address,
+          3600,
+          await now()
+        );
+
+        await expect(
+          manager.connect(other).setOracle(synthetic.address, oracle2.address)
+        ).to.be.revertedWith("Only operator can call this method");
+      });
+    });
+  });
+
+  describe("#burnSyntheticFrom", () => {
+    describe("when called by BondManager and token is approved to TokenManager", () => {
+      it("burns syntetic token", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        await manager.setBondManager(op.address);
+        const balance = await synthetic.balanceOf(op.address);
+        const amount = 12345;
+        await synthetic.approve(manager.address, amount);
+        await expect(
+          manager.burnSyntheticFrom(synthetic.address, op.address, amount)
+        )
+          .to.emit(synthetic, "Transfer")
+          .withArgs(op.address, ethers.constants.AddressZero, amount);
+        expect(await synthetic.balanceOf(op.address)).to.eq(
+          balance.sub(amount)
+        );
+      });
+    });
+    describe("when token in not approved in full", () => {
+      it("fails", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        await manager.setBondManager(op.address);
+        const amount = 12345;
+        await synthetic.approve(manager.address, amount - 1);
+        await expect(
+          manager.burnSyntheticFrom(synthetic.address, op.address, amount)
+        ).to.be.revertedWith("ERC20: burn amount exceeds allowance");
+      });
+    });
+    describe("when called not by BondManager", () => {
+      it("fails", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const amount = 12345;
+        await synthetic.approve(manager.address, amount);
+        await expect(
+          manager.burnSyntheticFrom(synthetic.address, op.address, amount)
+        ).to.be.revertedWith(
+          "TokenManager: Only BondManager can call this function"
+        );
       });
     });
   });
