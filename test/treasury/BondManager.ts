@@ -332,7 +332,7 @@ describe("BondManager", () => {
   });
 
   describe("#buyBonds", () => {
-    describe("when price is below 1, synthetics are approved to manager, minAmountBondsOut is good", () => {
+    describe("when price is below 1, synthetics are approved to manager, minAmountBondsOut is good, buyBonds is not paused", () => {
       it("it burns the underlying and mints a bond", async () => {
         await setupUniswap();
         await manager.addToken(
@@ -361,6 +361,36 @@ describe("BondManager", () => {
         expect(await bond.balanceOf(op.address)).to.eq(
           initialBalance.add(bondAmount)
         );
+      });
+    });
+    describe("when bonds are paused", () => {
+      it("fails", async () => {
+        await setupUniswap();
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        await router.swapExactTokensForTokens(
+          BigNumber.from(10).pow(SYNTHETIC_DECIMALS),
+          0,
+          [synthetic.address, underlying.address],
+          op.address,
+          (await now()) + 1800
+        );
+
+        const amount = 12345;
+        await synthetic.approve(manager.address, amount);
+        const initialBalance = await bond.balanceOf(op.address);
+        const bondAmount = await manager.quoteBonds(synthetic.address, amount);
+        await manager.setPauseBuyBonds(true);
+        await expect(
+          manager.buyBonds(synthetic.address, amount, bondAmount)
+        ).to.be.revertedWith(
+          "BondManager: Buying bonds is temporarily suspended"
+        );
+        await manager.setPauseBuyBonds(false);
       });
     });
     describe("when synthetics are not approved in full to manager", () => {
@@ -501,6 +531,25 @@ describe("BondManager", () => {
         await expect(
           manager.sellBonds(synthetic.address, amount, amount)
         ).to.be.revertedWith("ERC20: burn amount exceeds allowance");
+      });
+    });
+  });
+
+  describe("#setPauseBuyBonds", () => {
+    describe("when called by the Operator", () => {
+      it("sets pause on selling bonds", async () => {
+        const m = await BondManager.deploy(factory.address);
+        expect(await m.pauseBuyBonds()).to.eq(false);
+        await m.setPauseBuyBonds(true);
+        expect(await m.pauseBuyBonds()).to.eq(true);
+      });
+    });
+    describe("when called not by the Operator", () => {
+      it("fails", async () => {
+        const [_, other] = await ethers.getSigners();
+        await expect(
+          manager.connect(other).setPauseBuyBonds(true)
+        ).to.be.revertedWith("Only operator can call this method");
       });
     });
   });

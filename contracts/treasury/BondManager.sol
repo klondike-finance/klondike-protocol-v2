@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.6.6;
 
-/// TODO: pause, setOracle
+/// TODO: setOracle
 
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
@@ -19,6 +19,9 @@ contract BondManager is ReentrancyGuardable, TokenManager {
 
     /// Bond data (key is synthetic token address)
     mapping(address => BondData) public bondIndex;
+
+    /// Pauses buying bonds
+    bool public pauseBuyBonds = false;
 
     /// Creates a new Bond Manager
     /// @param _uniswapFactory The address of the Uniswap Factory
@@ -104,6 +107,10 @@ contract BondManager is ReentrancyGuardable, TokenManager {
         managedToken(syntheticTokenAddress)
         updateOracle(syntheticTokenAddress)
     {
+        require(
+            !pauseBuyBonds,
+            "BondManager: Buying bonds is temporarily suspended"
+        );
         uint256 amountOfBonds =
             quoteBonds(syntheticTokenAddress, amountOfSyntheticIn);
         require(
@@ -142,6 +149,12 @@ contract BondManager is ReentrancyGuardable, TokenManager {
         );
         bondToken.burnFrom(msg.sender, amount);
         syntheticToken.transfer(msg.sender, amount);
+    }
+
+    // ------- Public, Operator ----------
+
+    function setPauseBuyBonds(bool pause) public onlyOperator {
+        pauseBuyBonds = pause;
     }
 
     // ------- Internal ----------
