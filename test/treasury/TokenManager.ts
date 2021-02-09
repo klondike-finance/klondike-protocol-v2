@@ -41,8 +41,9 @@ describe("TokenManager", () => {
   async function addPair(
     underlyingDecimals: number,
     syntheticDecimals: number,
-    bondDecimals: number = 15
+    bondDecimals?: number
   ) {
+    const bondDecs = bondDecimals || syntheticDecimals;
     const { underlying: u, synthetic: s, pair } = await addUniswapPair(
       factory,
       router,
@@ -51,7 +52,7 @@ describe("TokenManager", () => {
       "KBTC",
       syntheticDecimals
     );
-    bond = await deployToken(SyntheticToken, router, "KBond", bondDecimals);
+    bond = await deployToken(SyntheticToken, router, "KBond", bondDecs);
     underlying = u;
     synthetic = s;
     oracle = await Oracle.deploy(
@@ -213,43 +214,6 @@ describe("TokenManager", () => {
     });
   });
 
-  describe("#bondDecimals", () => {
-    describe("when Synthetic token is managed", () => {
-      it("returns number of decimals for the bond token", async () => {
-        await addPair(8, 25, 34);
-        await manager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
-        expect(await manager.bondDecimals(synthetic.address)).to.eq(34);
-        await addPair(6, 2, 1);
-        await manager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
-        expect(await manager.bondDecimals(synthetic.address)).to.eq(1);
-      });
-    });
-    describe("when Synthetic token is not managed", () => {
-      it("fails", async () => {
-        await addPair(8, 18);
-        await manager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
-        await expect(
-          manager.bondDecimals(underlying.address)
-        ).to.be.revertedWith("TokenManager: Token is not managed");
-      });
-    });
-  });
-
   describe("#averagePrice", () => {
     describe("when Synthetic token is managed", () => {
       it("returns oracle average price", async () => {
@@ -291,7 +255,7 @@ describe("TokenManager", () => {
 
   describe("#currentPrice", () => {
     describe("when Synthetic token is managed", () => {
-      it("returns oracle average price", async () => {
+      it("returns current uniswap price", async () => {
         await addPair(8, 18);
         await manager.addToken(
           synthetic.address,
@@ -309,7 +273,7 @@ describe("TokenManager", () => {
         const pair = await ethers.getContractAt("IUniswapV2Pair", pairAddress);
         const [reserve0, reserve1] = await pair.getReserves();
         const [reserveUnderlying, reserveSynthetic] =
-          synthetic.address < underlying.address
+          synthetic.address.toLowerCase() < underlying.address.toLowerCase()
             ? [reserve1, reserve0]
             : [reserve0, reserve1];
         const currentPrice = reserveUnderlying.mul(ETH).div(reserveSynthetic);
@@ -404,6 +368,23 @@ describe("TokenManager", () => {
           );
         });
       });
+      describe("when synthetic decimals doesn't equal to bond decimals", () => {
+        it("fails", async () => {
+          await addPair(8, 18, 15);
+
+          await expect(
+            manager.addToken(
+              synthetic.address,
+              bond.address,
+              underlying.address,
+              oracle.address
+            )
+          ).to.be.revertedWith(
+            "TokenManager: Synthetic and Bond tokens must have the same number of decimals"
+          );
+        });
+      });
+
       describe("when token already exists", () => {
         it("fails", async () => {
           await addPair(8, 18);
@@ -469,7 +450,7 @@ describe("TokenManager", () => {
           );
           underlying = u;
           synthetic = s;
-          bond = await deployToken(SyntheticToken, router, "KBond", 15);
+          bond = await deployToken(SyntheticToken, router, "KBond", 18);
           await bond.transferOperator(manager.address);
           await bond.transferOwnership(manager.address);
           oracle = await Oracle.deploy(
@@ -489,44 +470,6 @@ describe("TokenManager", () => {
           ).to.be.revertedWith(
             "TokenManager: Token operator and owner of the synthetic token must be set to TokenManager before adding a token"
           );
-        });
-        describe("when bond token operator is not TokenManager", () => {
-          it("fails", async () => {
-            await addPair(8, 18);
-            const { underlying: u, synthetic: s, pair } = await addUniswapPair(
-              factory,
-              router,
-              "WBTC",
-              8,
-              "KBTC",
-              18
-            );
-            underlying = u;
-            synthetic = s;
-            await underlying.transferOperator(manager.address);
-            await underlying.transferOwnership(manager.address);
-            await synthetic.transferOperator(manager.address);
-            await synthetic.transferOwnership(manager.address);
-
-            bond = await deployToken(SyntheticToken, router, "KBond", 15);
-            oracle = await Oracle.deploy(
-              factory.address,
-              underlying.address,
-              synthetic.address,
-              3600,
-              await now()
-            );
-            await expect(
-              manager.addToken(
-                synthetic.address,
-                bond.address,
-                underlying.address,
-                oracle.address
-              )
-            ).to.be.revertedWith(
-              "TokenManager: Token operator and owner of the bond token must be set to TokenManager before adding a token"
-            );
-          });
         });
       });
       describe("when caller is not operator", () => {

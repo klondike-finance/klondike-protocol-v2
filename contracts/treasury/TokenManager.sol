@@ -14,8 +14,6 @@ contract TokenManager is Operatable {
     struct TokenData {
         SyntheticToken syntheticToken;
         uint8 syntheticDecimals;
-        SyntheticToken bondToken;
-        uint8 bondDecimals;
         ERC20 underlyingToken;
         uint8 underlyingDecimals;
         IUniswapV2Pair pair;
@@ -48,6 +46,15 @@ contract TokenManager is Operatable {
         _;
     }
 
+    /// Update oracle price
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @dev This modifier must always come with managedToken and oncePerBlock
+    modifier updateOracle(address syntheticTokenAddress) {
+        IOracle oracle = tokenIndex[syntheticTokenAddress].oracle;
+        oracle.update();
+        _;
+    }
+
     // ------- View ----------
 
     /// Checks if the token is managed by Token Manager
@@ -74,19 +81,6 @@ contract TokenManager is Operatable {
         returns (uint8)
     {
         return tokenIndex[syntheticTokenAddress].syntheticDecimals;
-    }
-
-    /// The decimals of the bond token
-    /// @param syntheticTokenAddress The address of the synthetic token
-    /// @return The number of decimals for the bond token
-    /// @dev Fails if the token is not managed
-    function bondDecimals(address syntheticTokenAddress)
-        public
-        view
-        managedToken(syntheticTokenAddress)
-        returns (uint8)
-    {
-        return tokenIndex[syntheticTokenAddress].bondDecimals;
     }
 
     /// The decimals of the underlying token
@@ -175,14 +169,13 @@ contract TokenManager is Operatable {
                 )
             );
         require(
+            syntheticToken.decimals() == bondToken.decimals(),
+            "TokenManager: Synthetic and Bond tokens must have the same number of decimals"
+        );
+        require(
             (syntheticToken.operator() == address(this)) &&
                 (syntheticToken.owner() == address(this)),
             "TokenManager: Token operator and owner of the synthetic token must be set to TokenManager before adding a token"
-        );
-        require(
-            (bondToken.operator() == address(this)) &&
-                (bondToken.owner() == address(this)),
-            "TokenManager: Token operator and owner of the bond token must be set to TokenManager before adding a token"
         );
 
         require(
@@ -193,8 +186,6 @@ contract TokenManager is Operatable {
             TokenData(
                 syntheticToken,
                 syntheticToken.decimals(),
-                bondToken,
-                bondToken.decimals(),
                 underlyingToken,
                 underlyingToken.decimals(),
                 pair,
@@ -202,6 +193,7 @@ contract TokenManager is Operatable {
             );
         tokenIndex[syntheticTokenAddress] = tokenData;
         tokens.push(syntheticTokenAddress);
+        _addBondToken(syntheticTokenAddress, bondTokenAddress);
         emit TokenAdded(
             syntheticTokenAddress,
             underlyingTokenAddress,
@@ -219,6 +211,7 @@ contract TokenManager is Operatable {
         managedToken(syntheticTokenAddress)
         onlyOperator
     {
+        _deleteBondToken(syntheticTokenAddress, newOperator);
         uint256 pos;
         for (uint256 i = 0; i < tokens.length; i++) {
             if (tokens[i] == syntheticTokenAddress) {
@@ -226,11 +219,14 @@ contract TokenManager is Operatable {
             }
         }
         TokenData memory data = tokenIndex[tokens[pos]];
-        delete tokenIndex[syntheticTokenAddress];
-        delete tokens[pos];
+        data.syntheticToken.transfer(
+            newOperator,
+            data.syntheticToken.balanceOf(address(this))
+        );
         data.syntheticToken.transferOperator(newOperator);
         data.syntheticToken.transferOwnership(newOperator);
-
+        delete tokenIndex[syntheticTokenAddress];
+        delete tokens[pos];
         emit TokenDeleted(
             syntheticTokenAddress,
             address(data.underlyingToken),
@@ -241,49 +237,37 @@ contract TokenManager is Operatable {
 
     // ------- Internal ----------
 
-    // Uncomment when used
+    /// Get one synthetic unit
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @return one unit of the synthetic asset
+    function _oneSyntheticUnit(address syntheticTokenAddress)
+        internal
+        view
+        managedToken(syntheticTokenAddress)
+        returns (uint256)
+    {
+        return uint256(10)**syntheticDecimals(syntheticTokenAddress);
+    }
 
-    // /// Mints synthetic token to the recipient address
-    // /// @param syntheticTokenAddress The address of the synthetic token
-    // /// @param recipient The address of recipient
-    // /// @param amount The amount of tokens to mint
-    // /// @dev Fails if the token is not managed
-    // function _mintSynthetic(
-    //     address syntheticTokenAddress,
-    //     address recipient,
-    //     uint256 amount
-    // ) internal managedToken(syntheticTokenAddress) {
-    //     SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
-    //     token.mint(recipient, amount);
-    // }
+    /// Get one underlying unit
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @return one unit of the underlying asset
+    function _oneUnderlyingUnit(address syntheticTokenAddress)
+        internal
+        view
+        managedToken(syntheticTokenAddress)
+        returns (uint256)
+    {
+        return uint256(10)**underlyingDecimals(syntheticTokenAddress);
+    }
 
-    // /// Burns token from the caller
-    // /// @param syntheticTokenAddress The address of the synthetic token
-    // /// @param amount The amount of tokens to burn
-    // /// @dev Fails if the token is not managed
-    // function _burnSynthetic(address syntheticTokenAddress, uint256 amount)
-    //     internal
-    //     managedToken(syntheticTokenAddress)
-    // {
-    //     SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
-    //     token.burn(amount);
-    // }
+    /// Overrided in BondManager
+    function _addBondToken(address, address) internal virtual {}
 
-    // /// Burns token from address
-    // /// @param syntheticTokenAddress The address of the synthetic token
-    // /// @param from The account to burn from
-    // /// @param amount The amount of tokens to burn
-    // /// @dev The allowance for sender in address account must be
-    // /// strictly >= amount. Otherwise the function call will fail.
-    // /// Fails if the token is not managed.
-    // function _burnSyntheticFrom(
-    //     address syntheticTokenAddress,
-    //     address from,
-    //     uint256 amount
-    // ) internal managedToken(syntheticTokenAddress) {
-    //     SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
-    //     token.burnFrom(from, amount);
-    // }
+    /// Overrided in BondManager
+    function _deleteBondToken(address, address) internal virtual {}
+
+    // ------- Events ----------
 
     /// Emitted each time the token becomes managed
     event TokenAdded(
