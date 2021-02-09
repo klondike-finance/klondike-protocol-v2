@@ -177,11 +177,6 @@ contract TokenManager is Operatable {
                 (syntheticToken.owner() == address(this)),
             "TokenManager: Token operator and owner of the synthetic token must be set to TokenManager before adding a token"
         );
-        require(
-            (bondToken.operator() == address(this)) &&
-                (bondToken.owner() == address(this)),
-            "TokenManager: Token operator and owner of the bond token must be set to TokenManager before adding a token"
-        );
 
         require(
             address(oracle.pair()) == address(pair),

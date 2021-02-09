@@ -368,6 +368,23 @@ describe("TokenManager", () => {
           );
         });
       });
+      describe("when synthetic decimals doesn't equal to bond decimals", () => {
+        it("fails", async () => {
+          await addPair(8, 18, 15);
+
+          await expect(
+            manager.addToken(
+              synthetic.address,
+              bond.address,
+              underlying.address,
+              oracle.address
+            )
+          ).to.be.revertedWith(
+            "TokenManager: Synthetic and Bond tokens must have the same number of decimals"
+          );
+        });
+      });
+
       describe("when token already exists", () => {
         it("fails", async () => {
           await addPair(8, 18);
@@ -453,44 +470,6 @@ describe("TokenManager", () => {
           ).to.be.revertedWith(
             "TokenManager: Token operator and owner of the synthetic token must be set to TokenManager before adding a token"
           );
-        });
-        describe("when bond token operator is not TokenManager", () => {
-          it("fails", async () => {
-            await addPair(8, 18);
-            const { underlying: u, synthetic: s, pair } = await addUniswapPair(
-              factory,
-              router,
-              "WBTC",
-              8,
-              "KBTC",
-              18
-            );
-            underlying = u;
-            synthetic = s;
-            await underlying.transferOperator(manager.address);
-            await underlying.transferOwnership(manager.address);
-            await synthetic.transferOperator(manager.address);
-            await synthetic.transferOwnership(manager.address);
-
-            bond = await deployToken(SyntheticToken, router, "KBond", 18);
-            oracle = await Oracle.deploy(
-              factory.address,
-              underlying.address,
-              synthetic.address,
-              3600,
-              await now()
-            );
-            await expect(
-              manager.addToken(
-                synthetic.address,
-                bond.address,
-                underlying.address,
-                oracle.address
-              )
-            ).to.be.revertedWith(
-              "TokenManager: Token operator and owner of the bond token must be set to TokenManager before adding a token"
-            );
-          });
         });
       });
       describe("when caller is not operator", () => {

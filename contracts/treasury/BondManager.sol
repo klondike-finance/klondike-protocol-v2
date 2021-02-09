@@ -125,6 +125,7 @@ contract BondManager is ReentrancyGuardable, TokenManager {
     /// @dev Fails if the token is not managed. Could be paritally executed
     /// or not executed at all if the BondManager balance of synthetic is less
     /// than amountOfSyntheticIn. The balance of synthetic is increased during positive rebases.
+    /// Use minAmountOfSyntheticOut to regulate partial fulfillments.
     function sellBonds(
         address syntheticTokenAddress,
         uint256 amountOfBondsIn,
@@ -139,24 +140,11 @@ contract BondManager is ReentrancyGuardable, TokenManager {
             amount >= minAmountOfSyntheticOut,
             "BondManager: Less than minAmountOfSyntheticOut bonds could be sold"
         );
-        require(amount > 0, "BondManager: No bonds could be sold now");
         bondToken.burnFrom(msg.sender, amount);
         syntheticToken.transfer(msg.sender, amount);
     }
 
     // ------- Internal ----------
-
-    /// Get one bond unit
-    /// @param syntheticTokenAddress The address of the synthetic token
-    /// @return one unit of the bond asset
-    function _oneBondUnit(address syntheticTokenAddress)
-        internal
-        view
-        managedToken(syntheticTokenAddress)
-        returns (uint256)
-    {
-        return uint256(10)**bondDecimals(syntheticTokenAddress);
-    }
 
     /// Triggered what addToken is called in TokenManager
     /// @param syntheticTokenAddress The address of the synthetic token
