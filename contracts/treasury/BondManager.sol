@@ -1,14 +1,14 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.6.6;
 
-/// TODO: setOracle
-
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "./TokenManager.sol";
 import "../access/ReentrancyGuardable.sol";
+import "../interfaces/IBondManager.sol";
+import "../interfaces/ITokenManager.sol";
 
-contract BondManager is ReentrancyGuardable, TokenManager {
+contract BondManager is IBondManager, ReentrancyGuardable, Operatable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -23,11 +23,34 @@ contract BondManager is ReentrancyGuardable, TokenManager {
     /// Pauses buying bonds
     bool public pauseBuyBonds = false;
 
+    /// TokenManager reference
+    ITokenManager public tokenManager;
+
     /// Creates a new Bond Manager
-    /// @param _uniswapFactory The address of the Uniswap Factory
-    constructor(address _uniswapFactory) public TokenManager(_uniswapFactory) {}
+    constructor() public {}
+
+    // ------- Modifiers ------------
+
+    /// Fails if a token is not currently managed by Token Manager
+    /// @param syntheticTokenAddress The address of the synthetic token
+    modifier managedToken(address syntheticTokenAddress) {
+        require(
+            isManagedToken(syntheticTokenAddress),
+            "TokenManager: Token is not managed"
+        );
+        _;
+    }
 
     // ------- Public view ----------
+
+    function isManagedToken(address syntheticTokenAddress)
+        public
+        view
+        returns (bool)
+    {
+        return
+            address(bondIndex[syntheticTokenAddress].bondToken) != address(0);
+    }
 
     /// The decimals of the bond token
     /// @param syntheticTokenAddress The address of the synthetic token
@@ -54,14 +77,14 @@ contract BondManager is ReentrancyGuardable, TokenManager {
         returns (uint256)
     {
         uint256 avgPriceUndPerUnitSyn =
-            averagePrice(
+            tokenManager.averagePrice(
                 syntheticTokenAddress,
-                _oneSyntheticUnit(syntheticTokenAddress)
+                tokenManager.oneSyntheticUnit(syntheticTokenAddress)
             );
         uint256 curPriceUndPerUnitSyn =
-            currentPrice(
+            tokenManager.currentPrice(
                 syntheticTokenAddress,
-                _oneSyntheticUnit(syntheticTokenAddress)
+                tokenManager.oneSyntheticUnit(syntheticTokenAddress)
             );
         return Math.max(avgPriceUndPerUnitSyn, curPriceUndPerUnitSyn);
     }
@@ -80,14 +103,14 @@ contract BondManager is ReentrancyGuardable, TokenManager {
         managedToken(syntheticTokenAddress)
         returns (uint256 amountOfBonds)
     {
+        uint256 underlyingUnit =
+            tokenManager.oneUnderlyingUnit(syntheticTokenAddress);
         uint256 bondPrice = bondPriceUndPerUnitSyn(syntheticTokenAddress);
         require(
-            bondPrice < _oneUnderlyingUnit(syntheticTokenAddress),
+            bondPrice < underlyingUnit,
             "BondManager: Synthetic price is not eligible for bond emission"
         );
-        amountOfBonds = amountOfSynthetic
-            .mul(_oneUnderlyingUnit(syntheticTokenAddress))
-            .div(bondPrice);
+        amountOfBonds = amountOfSynthetic.mul(underlyingUnit).div(bondPrice);
     }
 
     // ------- Public ----------
@@ -101,12 +124,8 @@ contract BondManager is ReentrancyGuardable, TokenManager {
         address syntheticTokenAddress,
         uint256 amountOfSyntheticIn,
         uint256 minAmountBondsOut
-    )
-        public
-        onePerBlock
-        managedToken(syntheticTokenAddress)
-        updateOracle(syntheticTokenAddress)
-    {
+    ) public onePerBlock managedToken(syntheticTokenAddress) {
+        tokenManager.updateOracle(syntheticTokenAddress);
         require(
             !pauseBuyBonds,
             "BondManager: Buying bonds is temporarily suspended"
@@ -117,9 +136,11 @@ contract BondManager is ReentrancyGuardable, TokenManager {
             amountOfBonds >= minAmountBondsOut,
             "BondManager: number of bonds is less than minAmountBondsOut"
         );
-        SyntheticToken syntheticToken =
-            tokenIndex[syntheticTokenAddress].syntheticToken;
-        syntheticToken.burnFrom(msg.sender, amountOfSyntheticIn);
+        tokenManager.burnSyntheticFrom(
+            syntheticTokenAddress,
+            msg.sender,
+            amountOfSyntheticIn
+        );
 
         SyntheticToken bondToken = bondIndex[syntheticTokenAddress].bondToken;
         bondToken.mint(msg.sender, amountOfBonds);
@@ -138,8 +159,7 @@ contract BondManager is ReentrancyGuardable, TokenManager {
         uint256 amountOfBondsIn,
         uint256 minAmountOfSyntheticOut
     ) public managedToken(syntheticTokenAddress) onePerBlock {
-        SyntheticToken syntheticToken =
-            tokenIndex[syntheticTokenAddress].syntheticToken;
+        SyntheticToken syntheticToken = SyntheticToken(syntheticTokenAddress); // trusted address since this is a managedToken
         SyntheticToken bondToken = bondIndex[syntheticTokenAddress].bondToken;
         uint256 amount =
             Math.min(syntheticToken.balanceOf(address(this)), amountOfBondsIn);
@@ -153,20 +173,31 @@ contract BondManager is ReentrancyGuardable, TokenManager {
 
     // ------- Public, Operator ----------
 
+    /// Sets the pause to buying bonds
+    /// @param pause True if bonds buying should be stopped.
     function setPauseBuyBonds(bool pause) public onlyOperator {
         pauseBuyBonds = pause;
     }
 
+    /// Sets the TokenManager
+    /// @param _tokenManager The address of the new TokenManager
+    function setTokenManager(address _tokenManager) public onlyOperator {
+        tokenManager = ITokenManager(_tokenManager);
+    }
+
     // ------- Internal ----------
 
-    /// Triggered what addToken is called in TokenManager
+    /// Called when new token is added in TokenManager
     /// @param syntheticTokenAddress The address of the synthetic token
     /// @param bondTokenAddress The address of the bond token
-    function _addBondToken(
+    function addBondToken(
         address syntheticTokenAddress,
         address bondTokenAddress
-    ) internal virtual override {
-        super._addBondToken(syntheticTokenAddress, bondTokenAddress);
+    ) public override {
+        require(
+            msg.sender == address(tokenManager),
+            "BondManager: Only TokenManager can call this function"
+        );
         SyntheticToken bondToken = SyntheticToken(bondTokenAddress);
         require(
             (bondToken.operator() == address(this)) &&
@@ -180,18 +211,27 @@ contract BondManager is ReentrancyGuardable, TokenManager {
         emit BondAdded(bondTokenAddress);
     }
 
-    /// Triggered what deleteToken is called in TokenManager
+    /// Called when token is deleted in TokenManager
     /// @param syntheticTokenAddress The address of the synthetic token
     /// @param newOperator New operator for the bond token
-    function _deleteBondToken(
-        address syntheticTokenAddress,
-        address newOperator
-    ) internal virtual override {
-        super._deleteBondToken(syntheticTokenAddress, newOperator);
+    function deleteBondToken(address syntheticTokenAddress, address newOperator)
+        public
+        override
+    {
+        require(
+            msg.sender == address(tokenManager),
+            "BondManager: Only TokenManager can call this function"
+        );
+        SyntheticToken syntheticToken = SyntheticToken(syntheticTokenAddress);
+        syntheticToken.transfer(
+            newOperator,
+            syntheticToken.balanceOf(address(this))
+        );
         SyntheticToken bondToken = bondIndex[syntheticTokenAddress].bondToken;
         bondToken.transferOperator(newOperator);
         bondToken.transferOwnership(newOperator);
         delete bondIndex[syntheticTokenAddress];
+        assert(!isManagedToken(syntheticTokenAddress));
         emit BondDeleted(address(bondToken), newOperator);
     }
 

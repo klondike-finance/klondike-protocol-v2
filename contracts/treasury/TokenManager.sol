@@ -6,11 +6,14 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 import "../libraries/UniswapLibrary.sol";
 import "../interfaces/IOracle.sol";
+import "../interfaces/ITokenManager.sol";
+import "../interfaces/IBondManager.sol";
+import "../interfaces/IEmissionManager.sol";
 import "../SyntheticToken.sol";
 import "../access/Operatable.sol";
 
 /// TokenManager manages all tokens and their price data
-contract TokenManager is Operatable {
+contract TokenManager is ITokenManager, Operatable {
     struct TokenData {
         SyntheticToken syntheticToken;
         uint8 syntheticDecimals;
@@ -25,6 +28,9 @@ contract TokenManager is Operatable {
     address[] public tokens;
     /// Uniswap factory address
     address public immutable uniswapFactory;
+
+    IBondManager public bondManager;
+    IEmissionManager public emissionManager;
 
     // ------- Constructor ----------
 
@@ -46,12 +52,11 @@ contract TokenManager is Operatable {
         _;
     }
 
-    /// Update oracle price
-    /// @param syntheticTokenAddress The address of the synthetic token
-    /// @dev This modifier must always come with managedToken and oncePerBlock
-    modifier updateOracle(address syntheticTokenAddress) {
-        IOracle oracle = tokenIndex[syntheticTokenAddress].oracle;
-        oracle.update();
+    modifier initialized() {
+        require(
+            isInitialized(),
+            "TokenManager: BondManager or EmissionManager is not initialized"
+        );
         _;
     }
 
@@ -68,6 +73,13 @@ contract TokenManager is Operatable {
         return
             address(tokenIndex[syntheticTokenAddress].syntheticToken) !=
             address(0);
+    }
+
+    /// Checks if prerequisites for starting using TokenManager are fulfilled
+    function isInitialized() public view returns (bool) {
+        return
+            (address(bondManager) != address(0)) &&
+            (address(emissionManager) != address(0));
     }
 
     /// The decimals of the synthetic token
@@ -104,7 +116,13 @@ contract TokenManager is Operatable {
     function averagePrice(
         address syntheticTokenAddress,
         uint256 syntheticTokenAmount
-    ) public view managedToken(syntheticTokenAddress) returns (uint256) {
+    )
+        public
+        view
+        override
+        managedToken(syntheticTokenAddress)
+        returns (uint256)
+    {
         IOracle oracle = tokenIndex[syntheticTokenAddress].oracle;
         return oracle.consult(syntheticTokenAddress, syntheticTokenAmount);
     }
@@ -117,7 +135,13 @@ contract TokenManager is Operatable {
     function currentPrice(
         address syntheticTokenAddress,
         uint256 syntheticTokenAmount
-    ) public view managedToken(syntheticTokenAddress) returns (uint256) {
+    )
+        public
+        view
+        override
+        managedToken(syntheticTokenAddress)
+        returns (uint256)
+    {
         address underlyingTokenAddress =
             address(tokenIndex[syntheticTokenAddress].underlyingToken);
         (uint256 syntheticReserve, uint256 undelyingReserve) =
@@ -134,6 +158,46 @@ contract TokenManager is Operatable {
             );
     }
 
+    /// Get one synthetic unit
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @return one unit of the synthetic asset
+    function oneSyntheticUnit(address syntheticTokenAddress)
+        public
+        view
+        override
+        managedToken(syntheticTokenAddress)
+        returns (uint256)
+    {
+        return uint256(10)**syntheticDecimals(syntheticTokenAddress);
+    }
+
+    /// Get one underlying unit
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @return one unit of the underlying asset
+    function oneUnderlyingUnit(address syntheticTokenAddress)
+        public
+        view
+        override
+        managedToken(syntheticTokenAddress)
+        returns (uint256)
+    {
+        return uint256(10)**underlyingDecimals(syntheticTokenAddress);
+    }
+
+    // ------- External --------------------
+
+    /// Update oracle price
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @dev This modifier must always come with managedToken and oncePerBlock
+    function updateOracle(address syntheticTokenAddress)
+        public
+        override
+        managedToken(syntheticTokenAddress)
+    {
+        IOracle oracle = tokenIndex[syntheticTokenAddress].oracle;
+        oracle.update();
+    }
+
     // ------- External, Operator ----------
 
     /// Adds token to managed tokens
@@ -147,7 +211,7 @@ contract TokenManager is Operatable {
         address bondTokenAddress,
         address underlyingTokenAddress,
         address oracleAddress
-    ) external onlyOperator {
+    ) external onlyOperator initialized {
         require(
             syntheticTokenAddress != underlyingTokenAddress,
             "TokenManager: Synthetic token and Underlying tokens must be different"
@@ -193,7 +257,7 @@ contract TokenManager is Operatable {
             );
         tokenIndex[syntheticTokenAddress] = tokenData;
         tokens.push(syntheticTokenAddress);
-        _addBondToken(syntheticTokenAddress, bondTokenAddress);
+        bondManager.addBondToken(syntheticTokenAddress, bondTokenAddress);
         emit TokenAdded(
             syntheticTokenAddress,
             underlyingTokenAddress,
@@ -210,8 +274,9 @@ contract TokenManager is Operatable {
         external
         managedToken(syntheticTokenAddress)
         onlyOperator
+        initialized
     {
-        _deleteBondToken(syntheticTokenAddress, newOperator);
+        bondManager.deleteBondToken(syntheticTokenAddress, newOperator);
         uint256 pos;
         for (uint256 i = 0; i < tokens.length; i++) {
             if (tokens[i] == syntheticTokenAddress) {
@@ -219,10 +284,6 @@ contract TokenManager is Operatable {
             }
         }
         TokenData memory data = tokenIndex[tokens[pos]];
-        data.syntheticToken.transfer(
-            newOperator,
-            data.syntheticToken.balanceOf(address(this))
-        );
         data.syntheticToken.transferOperator(newOperator);
         data.syntheticToken.transferOwnership(newOperator);
         delete tokenIndex[syntheticTokenAddress];
@@ -235,37 +296,50 @@ contract TokenManager is Operatable {
         );
     }
 
-    // ------- Internal ----------
-
-    /// Get one synthetic unit
+    /// Burns synthetic token from the owner
     /// @param syntheticTokenAddress The address of the synthetic token
-    /// @return one unit of the synthetic asset
-    function _oneSyntheticUnit(address syntheticTokenAddress)
-        internal
-        view
-        managedToken(syntheticTokenAddress)
-        returns (uint256)
-    {
-        return uint256(10)**syntheticDecimals(syntheticTokenAddress);
+    /// @param owner Owner of the tokens to burn
+    /// @param amount Amount to burn
+    function burnSyntheticFrom(
+        address syntheticTokenAddress,
+        address owner,
+        uint256 amount
+    ) public override managedToken(syntheticTokenAddress) initialized {
+        require(
+            msg.sender == address(bondManager),
+            "TokenManager: Only BondManager can call this function"
+        );
+        SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
+        token.burnFrom(owner, amount);
     }
 
-    /// Get one underlying unit
-    /// @param syntheticTokenAddress The address of the synthetic token
-    /// @return one unit of the underlying asset
-    function _oneUnderlyingUnit(address syntheticTokenAddress)
-        internal
-        view
-        managedToken(syntheticTokenAddress)
-        returns (uint256)
-    {
-        return uint256(10)**underlyingDecimals(syntheticTokenAddress);
+    /// Updates bond manager address
+    /// @param _bondManager new bond manager
+    function setBondManager(address _bondManager) public onlyOperator {
+        bondManager = IBondManager(_bondManager);
     }
 
-    /// Overrided in BondManager
-    function _addBondToken(address, address) internal virtual {}
+    /// Updates emission manager address
+    /// @param _emissionManager new emission manager
+    function setEmissionManager(address _emissionManager) public onlyOperator {
+        emissionManager = IEmissionManager(_emissionManager);
+    }
 
-    /// Overrided in BondManager
-    function _deleteBondToken(address, address) internal virtual {}
+    /// Updates oracle for synthetic token address
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param oracleAddress new oracle address
+    function setOracle(address syntheticTokenAddress, address oracleAddress)
+        public
+        onlyOperator
+        managedToken(syntheticTokenAddress)
+    {
+        IOracle oracle = IOracle(oracleAddress);
+        require(
+            oracle.pair() == tokenIndex[syntheticTokenAddress].pair,
+            "TokenManager: Tokens and Oracle tokens are different"
+        );
+        tokenIndex[syntheticTokenAddress].oracle = oracle;
+    }
 
     // ------- Events ----------
 
