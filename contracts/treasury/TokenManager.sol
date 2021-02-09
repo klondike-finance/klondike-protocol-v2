@@ -169,6 +169,10 @@ contract TokenManager is Operatable {
                 )
             );
         require(
+            syntheticToken.decimals() == bondToken.decimals(),
+            "TokenManager: Synthetic and Bond tokens must have the same number of decimals"
+        );
+        require(
             (syntheticToken.operator() == address(this)) &&
                 (syntheticToken.owner() == address(this)),
             "TokenManager: Token operator and owner of the synthetic token must be set to TokenManager before adding a token"

@@ -29,7 +29,7 @@ describe("BondManager", () => {
   let op: SignerWithAddress;
   const SYNTHETIC_DECIMALS = 13;
   const UNDERLYING_DECIMALS = 10;
-  const BOND_DECIMALS = 17;
+  const BOND_DECIMALS = 13;
   const INITIAL_MANAGER_BALANCE = BTC.mul(10);
   before(async () => {
     BondManager = await ethers.getContractFactory("BondManager");
@@ -291,7 +291,7 @@ describe("BondManager", () => {
     });
   });
 
-  describe("#buyBond", () => {
+  describe("#buyBonds", () => {
     describe("when price is below 1, synthetics are approved to manager, minAmountBondsOut is good", () => {
       it("it burns the underlying and mints a bond", async () => {
         await setupUniswap();
@@ -311,17 +311,16 @@ describe("BondManager", () => {
 
         const amount = 12345;
         await synthetic.approve(manager.address, amount);
-        await bond.transfer(
-          "0x0000000000000000000000000000000000000001",
-          bond.balanceOf(op.address)
-        );
+        const initialBalance = await bond.balanceOf(op.address);
         const bondAmount = await manager.quoteBonds(synthetic.address, amount);
         await expect(manager.buyBonds(synthetic.address, amount, bondAmount))
           .to.emit(synthetic, "Transfer")
           .withArgs(op.address, ethers.constants.AddressZero, amount)
           .and.to.emit(bond, "Transfer")
           .withArgs(ethers.constants.AddressZero, op.address, bondAmount);
-        expect(await bond.balanceOf(op.address)).to.eq(bondAmount);
+        expect(await bond.balanceOf(op.address)).to.eq(
+          initialBalance.add(bondAmount)
+        );
       });
     });
     describe("when synthetics are not approved in full to manager", () => {
@@ -399,6 +398,69 @@ describe("BondManager", () => {
         ).to.be.revertedWith(
           "BondManager: number of bonds is less than minAmountBondsOut"
         );
+      });
+    });
+  });
+
+  describe("#sellBonds", () => {
+    describe("when there's enough BondManager balance, bonds are approved", () => {
+      it("burns the bonds and transfers synthetic", async () => {
+        await setupUniswap();
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const amount = 12345;
+        await bond.approve(manager.address, amount);
+        await expect(manager.sellBonds(synthetic.address, amount, amount))
+          .to.emit(bond, "Transfer")
+          .withArgs(op.address, ethers.constants.AddressZero, amount)
+          .and.to.emit(synthetic, "Transfer")
+          .withArgs(manager.address, op.address, amount);
+      });
+    });
+
+    describe("when there's not enough balace", () => {
+      it("fails", async () => {
+        await setupUniswap();
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const managerBalance = await synthetic.balanceOf(manager.address);
+        const opBalance = await bond.balanceOf(op.address);
+        assert(managerBalance < opBalance);
+        await bond.approve(manager.address, managerBalance + 1);
+        await expect(
+          manager.sellBonds(
+            synthetic.address,
+            managerBalance + 1,
+            managerBalance + 1
+          )
+        ).to.be.revertedWith(
+          "BondManager: Less than minAmountOfSyntheticOut bonds could be sold"
+        );
+      });
+    });
+
+    describe("when bonds are not approved", () => {
+      it("fails", async () => {
+        await setupUniswap();
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const amount = 12345;
+        await bond.approve(manager.address, amount - 1);
+        await expect(
+          manager.sellBonds(synthetic.address, amount, amount)
+        ).to.be.revertedWith("ERC20: burn amount exceeds allowance");
       });
     });
   });

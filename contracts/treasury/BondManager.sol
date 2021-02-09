@@ -139,7 +139,7 @@ contract BondManager is ReentrancyGuardable, TokenManager {
             amount >= minAmountOfSyntheticOut,
             "BondManager: Less than minAmountOfSyntheticOut bonds could be sold"
         );
-        require(amount > 0, "BondManager: Only zero bonds could be sold now");
+        require(amount > 0, "BondManager: No bonds could be sold now");
         bondToken.burnFrom(msg.sender, amount);
         syntheticToken.transfer(msg.sender, amount);
     }
