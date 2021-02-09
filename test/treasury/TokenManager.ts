@@ -41,8 +41,9 @@ describe("TokenManager", () => {
   async function addPair(
     underlyingDecimals: number,
     syntheticDecimals: number,
-    bondDecimals: number = 15
+    bondDecimals?: number
   ) {
+    const bondDecs = bondDecimals || syntheticDecimals;
     const { underlying: u, synthetic: s, pair } = await addUniswapPair(
       factory,
       router,
@@ -51,7 +52,7 @@ describe("TokenManager", () => {
       "KBTC",
       syntheticDecimals
     );
-    bond = await deployToken(SyntheticToken, router, "KBond", bondDecimals);
+    bond = await deployToken(SyntheticToken, router, "KBond", bondDecs);
     underlying = u;
     synthetic = s;
     oracle = await Oracle.deploy(

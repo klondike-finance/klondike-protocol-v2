@@ -267,16 +267,10 @@ contract TokenManager is Operatable {
     }
 
     /// Overrided in BondManager
-    function _addBondToken(
-        address syntheticTokenAddress,
-        address bondTokenAddress
-    ) internal virtual {}
+    function _addBondToken(address, address) internal virtual {}
 
     /// Overrided in BondManager
-    function _deleteBondToken(
-        address syntheticTokenAddress,
-        address newOperator
-    ) internal virtual {}
+    function _deleteBondToken(address, address) internal virtual {}
 
     // ------- Events ----------
 
