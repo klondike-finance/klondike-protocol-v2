@@ -433,7 +433,7 @@ describe("TokenManager", () => {
           );
           underlying = u;
           synthetic = s;
-          bond = await deployToken(SyntheticToken, router, "KBond", 15);
+          bond = await deployToken(SyntheticToken, router, "KBond", 18);
           await bond.transferOperator(manager.address);
           await bond.transferOwnership(manager.address);
           oracle = await Oracle.deploy(
@@ -472,7 +472,7 @@ describe("TokenManager", () => {
             await synthetic.transferOperator(manager.address);
             await synthetic.transferOwnership(manager.address);
 
-            bond = await deployToken(SyntheticToken, router, "KBond", 15);
+            bond = await deployToken(SyntheticToken, router, "KBond", 18);
             oracle = await Oracle.deploy(
               factory.address,
               underlying.address,
