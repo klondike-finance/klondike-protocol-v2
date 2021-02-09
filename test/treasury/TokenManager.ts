@@ -16,7 +16,7 @@ describe("TokenManager", () => {
   let TokenManager: ContractFactory;
   let SyntheticToken: ContractFactory;
   let Oracle: ContractFactory;
-  let BondManagerMock: ContractFactory;
+  let BondManager: ContractFactory;
   let EmissionManagerMock: ContractFactory;
   let factory: Contract;
   let router: Contract;
@@ -34,7 +34,7 @@ describe("TokenManager", () => {
     TokenManager = await ethers.getContractFactory("TokenManager");
     SyntheticToken = await ethers.getContractFactory("SyntheticToken");
     Oracle = await ethers.getContractFactory("Oracle");
-    BondManagerMock = await ethers.getContractFactory("BondManagerMock");
+    BondManager = await ethers.getContractFactory("BondManager");
     EmissionManagerMock = await ethers.getContractFactory(
       "EmissionManagerMock"
     );
@@ -44,10 +44,11 @@ describe("TokenManager", () => {
   });
   beforeEach(async () => {
     manager = await TokenManager.deploy(factory.address);
-    bondManager = await BondManagerMock.deploy();
+    bondManager = await BondManager.deploy();
     emissionManager = await EmissionManagerMock.deploy();
     await manager.setBondManager(bondManager.address);
     await manager.setEmissionManager(emissionManager.address);
+    await bondManager.setTokenManager(manager.address);
   });
 
   async function addPair(
@@ -78,8 +79,8 @@ describe("TokenManager", () => {
     await underlying.transferOwnership(manager.address);
     await synthetic.transferOperator(manager.address);
     await synthetic.transferOwnership(manager.address);
-    await bond.transferOperator(manager.address);
-    await bond.transferOwnership(manager.address);
+    await bond.transferOperator(bondManager.address);
+    await bond.transferOwnership(bondManager.address);
   }
 
   async function doSomeTrading() {
@@ -342,7 +343,9 @@ describe("TokenManager", () => {
               ethers.utils.getAddress(
                 pairFor(factory.address, synthetic.address, underlying.address)
               )
-            );
+            )
+            .and.to.emit(bondManager, "BondAdded")
+            .withArgs(bond.address);
           expect(await manager.isManagedToken(synthetic.address)).to.eq(true);
           expect(await manager.tokens(0)).to.eq(synthetic.address);
           await expect(manager.tokens(1)).to.be.reverted;

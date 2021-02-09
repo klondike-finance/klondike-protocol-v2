@@ -173,8 +173,16 @@ contract BondManager is IBondManager, ReentrancyGuardable, Operatable {
 
     // ------- Public, Operator ----------
 
+    /// Sets the pause to buying bonds
+    /// @param pause True if bonds buying should be stopped.
     function setPauseBuyBonds(bool pause) public onlyOperator {
         pauseBuyBonds = pause;
+    }
+
+    /// Sets the TokenManager
+    /// @param _tokenManager The address of the new TokenManager
+    function setTokenManager(address _tokenManager) public onlyOperator {
+        tokenManager = ITokenManager(_tokenManager);
     }
 
     // ------- Internal ----------
