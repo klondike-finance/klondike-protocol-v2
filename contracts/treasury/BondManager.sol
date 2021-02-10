@@ -9,16 +9,21 @@ import "./TokenManager.sol";
 import "../time/Timeboundable.sol";
 import "../access/ReentrancyGuardable.sol";
 import "../interfaces/IBondManager.sol";
+import "../interfaces/IMigrationTarget.sol";
 import "../interfaces/ITokenManager.sol";
 
 contract BondManager is
     IBondManager,
+    IMigrationTarget,
     ReentrancyGuardable,
     Operatable,
     Timeboundable
 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
+
+    /// Name tag
+    string public constant override name = "BondManager";
 
     /// Bond data (key is synthetic token address, value is bond address)
     mapping(address => address) public override bondIndex;
@@ -52,6 +57,24 @@ contract BondManager is
         returns (bool)
     {
         return bondIndex[syntheticTokenAddress] != address(0);
+    }
+
+    /// Checks if token ownerships are valid
+    /// @return True if ownerships are valid
+    function validTokenPermissions() public view returns (bool) {
+        address[] memory tokens = tokenManager.allTokens();
+        for (uint32 i = 0; i < tokens.length; i++) {
+            SyntheticToken token = SyntheticToken(tokens[i]);
+            if (address(token) != address(0)) {
+                if (token.operator() != address(this)) {
+                    return false;
+                }
+                if (token.owner() != address(this)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /// The decimals of the bond token
@@ -191,6 +214,27 @@ contract BondManager is
     function setTokenManager(address _tokenManager) public onlyOperator {
         tokenManager = ITokenManager(_tokenManager);
         emit TokenManagerChanged(msg.sender, _tokenManager);
+    }
+
+    /// Migrates to the new tokenManager
+    /// @param target new TokenManager
+    function migrate(IMigrationTarget target) public onlyOperator {
+        require(
+            keccak256(bytes(target.name())) == keccak256(bytes("BondManager")),
+            "Migration target must be BondManager"
+        );
+        address[] memory tokens = tokenManager.allTokens();
+        for (uint32 i = 0; i < tokens.length; i++) {
+            if (tokens[i] != address(0)) {
+                SyntheticToken bondToken = SyntheticToken(bondIndex[tokens[i]]);
+                bondToken.transfer(
+                    address(target),
+                    bondToken.balanceOf(address(this))
+                );
+                try bondToken.transferOperator(address(target)) {} catch {}
+                try bondToken.transferOwnership(address(target)) {} catch {}
+            }
+        }
     }
 
     // ------- Internal ----------

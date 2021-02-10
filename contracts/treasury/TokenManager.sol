@@ -8,18 +8,23 @@ import "../libraries/UniswapLibrary.sol";
 import "../interfaces/IOracle.sol";
 import "../interfaces/ITokenManager.sol";
 import "../interfaces/IBondManager.sol";
+import "../interfaces/IMigrationTarget.sol";
 import "../interfaces/IEmissionManager.sol";
 import "../SyntheticToken.sol";
 import "../access/Operatable.sol";
 
 /// TokenManager manages all tokens and their price data
-contract TokenManager is ITokenManager, Operatable {
+contract TokenManager is ITokenManager, Operatable, IMigrationTarget {
     struct TokenData {
         SyntheticToken syntheticToken;
         ERC20 underlyingToken;
         IUniswapV2Pair pair;
         IOracle oracle;
     }
+
+    /// Name tag
+    string public constant override name = "TokenManager";
+
     /// Token data (key is synthetic token address)
     mapping(address => TokenData) public tokenIndex;
     /// A set of managed synthetic token addresses
@@ -78,6 +83,23 @@ contract TokenManager is ITokenManager, Operatable {
         return
             address(tokenIndex[syntheticTokenAddress].syntheticToken) !=
             address(0);
+    }
+
+    /// Checks if token ownerships are valid
+    /// @return True if ownerships are valid
+    function validTokenPermissions() public view returns (bool) {
+        for (uint32 i = 0; i < tokens.length; i++) {
+            SyntheticToken token = SyntheticToken(tokens[i]);
+            if (address(token) != address(0)) {
+                if (token.operator() != address(this)) {
+                    return false;
+                }
+                if (token.owner() != address(this)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /// Checks if prerequisites for starting using TokenManager are fulfilled
@@ -317,6 +339,8 @@ contract TokenManager is ITokenManager, Operatable {
         token.mint(receiver, amount);
     }
 
+    // --------- Operator -----------
+
     /// Updates bond manager address
     /// @param _bondManager new bond manager
     function setBondManager(address _bondManager) public onlyOperator {
@@ -346,6 +370,23 @@ contract TokenManager is ITokenManager, Operatable {
         );
         tokenIndex[syntheticTokenAddress].oracle = oracle;
         emit OracleUpdated(msg.sender, syntheticTokenAddress, oracleAddress);
+    }
+
+    /// Migrates to the new tokenManager
+    /// @param target new TokenManager
+    function migrate(IMigrationTarget target) public onlyOperator {
+        require(
+            keccak256(bytes(target.name())) == keccak256(bytes("BondManager")),
+            "Migration target must be BondManager"
+        );
+
+        for (uint32 i = 0; i < tokens.length; i++) {
+            if (tokens[i] != address(0)) {
+                TokenData memory data = tokenIndex[tokens[i]];
+                data.syntheticToken.transferOperator(address(target));
+                data.syntheticToken.transferOwnership(address(target));
+            }
+        }
     }
 
     // ------- Events ----------
