@@ -106,7 +106,7 @@ contract EmissionManager is
         SyntheticToken syntheticToken = SyntheticToken(syntheticTokenAddress);
         uint256 supply =
             syntheticToken.totalSupply().sub(
-                syntheticToken.balanceOf(address(this))
+                syntheticToken.balanceOf(address(bondManager))
             );
         return
             supply.mul(rebasePriceUndPerUnitSyn.sub(oneUnderlyingUnit)).div(
@@ -230,7 +230,7 @@ contract EmissionManager is
         if (bondAmount > 0) {
             tokenManager.mintSynthetic(
                 syntheticTokenAddress,
-                address(this),
+                address(bondManager),
                 bondAmount
             );
             emit BondDistributionFunded(bondAmount);

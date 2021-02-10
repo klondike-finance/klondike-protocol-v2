@@ -13,6 +13,9 @@ import {
 
 describe("EmissionManager", () => {
   const PERIOD = 86400;
+  const DEV_FUND_RATE = 2;
+  const STABLE_FUND_RATE = 70;
+  const THRESHOLD = 105;
   let TokenManager: ContractFactory;
   let BondManager: ContractFactory;
   let EmissionManager: ContractFactory;
@@ -26,6 +29,8 @@ describe("EmissionManager", () => {
   let tokenManager: Contract;
   let boardroomMock: Contract;
   let op: SignerWithAddress;
+  let devFund: SignerWithAddress;
+  let stableFund: SignerWithAddress;
   let oracle: Contract;
   let underlying: Contract;
   let synthetic: Contract;
@@ -33,8 +38,10 @@ describe("EmissionManager", () => {
   let pair: Contract;
 
   before(async () => {
-    const [operator] = await ethers.getSigners();
+    const [operator, df, sf] = await ethers.getSigners();
     op = operator;
+    devFund = df;
+    stableFund = sf;
     TokenManager = await ethers.getContractFactory("TokenManager");
     BondManager = await ethers.getContractFactory("BondManager");
     EmissionManager = await ethers.getContractFactory("EmissionManager");
@@ -57,8 +64,8 @@ describe("EmissionManager", () => {
     await manager.setTokenManager(tokenManager.address);
     await manager.setBondManager(bondManager.address);
     await manager.setBoardroom(boardroomMock.address);
-    await manager.setStableFund(op.address);
-    await manager.setDevFund(op.address);
+    await manager.setStableFund(stableFund.address);
+    await manager.setDevFund(devFund.address);
     await manager.setDevFundRate(2);
     await manager.setStableFundRate(70);
     await manager.setThreshold(105);
@@ -67,7 +74,8 @@ describe("EmissionManager", () => {
   async function addPair(
     underlyingDecimals: number,
     syntheticDecimals: number,
-    bondDecimals?: number
+    bondDecimals?: number,
+    bondSupply?: BigNumber
   ) {
     const bondDecs = bondDecimals || syntheticDecimals;
     const { underlying: u, synthetic: s, pair: p } = await addUniswapPair(
@@ -78,7 +86,13 @@ describe("EmissionManager", () => {
       "KBTC",
       syntheticDecimals
     );
-    bond = await deployToken(SyntheticToken, router, "KBond", bondDecs);
+    bond = await deployToken(
+      SyntheticToken,
+      router,
+      "KBond",
+      bondDecs,
+      bondSupply
+    );
     underlying = u;
     synthetic = s;
     pair = p;
@@ -103,66 +117,265 @@ describe("EmissionManager", () => {
     );
   }
 
-  describe("#constructor", () => {
-    it("creates a new EmissionManager", async () => {
-      await expect(EmissionManager.deploy(await now(), PERIOD)).to.not.be
-        .reverted;
-    });
-  });
+  // describe("#constructor", () => {
+  //   it("creates a new EmissionManager", async () => {
+  //     await expect(EmissionManager.deploy(await now(), PERIOD)).to.not.be
+  //       .reverted;
+  //   });
+  // });
 
-  describe("#isInitialized", () => {
-    describe("when all parameters are set", () => {
-      it("returns true", async () => {
-        expect(await manager.isInitialized()).to.eq(true);
-      });
-    });
-    describe("when some parameters are not set", () => {
-      it("returns false", async () => {
-        await manager.setDevFundRate(0);
-        expect(await manager.isInitialized()).to.eq(false);
-      });
-    });
-  });
+  // describe("#isInitialized", () => {
+  //   describe("when all parameters are set", () => {
+  //     it("returns true", async () => {
+  //       expect(await manager.isInitialized()).to.eq(true);
+  //     });
+  //   });
+  //   describe("when some parameters are not set", () => {
+  //     it("returns false", async () => {
+  //       await manager.setDevFundRate(0);
+  //       expect(await manager.isInitialized()).to.eq(false);
+  //     });
+  //   });
+  // });
 
+  // describe("#positiveRebaseAmount", () => {
+  //   describe("price move up 20% and threshold is 105", () => {
+  //     it("returns the rebase amount", async () => {
+  //       await addPair(8, 18);
+  //       const expectedNewSyn = 1.1;
+  //       const expectedNewUnd = 1 / expectedNewSyn;
+  //       const newPrice = expectedNewSyn / expectedNewUnd;
+  //       const priceMovePercent = newPrice - 1;
+  //       await router.swapExactTokensForTokens(
+  //         BTC,
+  //         0,
+  //         [underlying.address, synthetic.address],
+  //         op.address,
+  //         (await now()) + 1800
+  //       );
+  //       await tokenManager.updateOracle(synthetic.address);
+  //       await fastForwardAndMine(ethers.provider, 3600);
+  //       await tokenManager.updateOracle(synthetic.address);
+  //       const supply = await synthetic.totalSupply();
+  //       const expAmount = supply
+  //         .mul(Math.floor(priceMovePercent * 1000))
+  //         .div(1000);
+  //       const actualAmount = await manager.positiveRebaseAmount(
+  //         synthetic.address
+  //       );
+  //       const exp = expAmount.div(ETH).toNumber();
+  //       const act = actualAmount.div(ETH).toNumber();
+  //       const delta = Math.abs(exp / act - 1);
+
+  //       expect(delta).to.lte(0.01);
+  //     });
+  //   });
+  //   describe("price move up 2% and threshold is 105", () => {
+  //     it("returns 0", async () => {
+  //       await addPair(8, 18);
+  //       await router.swapExactTokensForTokens(
+  //         BTC.div(10),
+  //         0,
+  //         [underlying.address, synthetic.address],
+  //         op.address,
+  //         (await now()) + 1800
+  //       );
+  //       await tokenManager.updateOracle(synthetic.address);
+  //       await fastForwardAndMine(ethers.provider, 3600);
+  //       await tokenManager.updateOracle(synthetic.address);
+  //       expect(await manager.positiveRebaseAmount(synthetic.address)).to.eq(0);
+  //     });
+  //   });
+  //   describe("price move down and threshold is 105", () => {
+  //     it("returns 0", async () => {
+  //       await addPair(8, 18);
+  //       await router.swapExactTokensForTokens(
+  //         ETH,
+  //         0,
+  //         [synthetic.address, underlying.address],
+  //         op.address,
+  //         (await now()) + 1800
+  //       );
+  //       await tokenManager.updateOracle(synthetic.address);
+  //       await fastForwardAndMine(ethers.provider, 3600);
+  //       await tokenManager.updateOracle(synthetic.address);
+  //       expect(await manager.positiveRebaseAmount(synthetic.address)).to.eq(0);
+  //     });
+  //   });
+  // });
   describe("#positiveRebaseAmount", () => {
     describe("price move up 20% and threshold is 105", () => {
-      it("returns the rebase amount", async () => {
-        await addPair(8, 18);
-        const expectedNewSyn = 1.1;
-        const expectedNewUnd = 1 / expectedNewSyn;
-        const newPrice = expectedNewSyn / expectedNewUnd;
-        const priceMovePercent = newPrice - 1;
-        await router.swapExactTokensForTokens(
-          BTC,
-          0,
-          [underlying.address, synthetic.address],
-          op.address,
-          (await now()) + 1800
-        );
-        await tokenManager.updateOracle(synthetic.address);
-        await fastForwardAndMine(ethers.provider, 3600);
-        await tokenManager.updateOracle(synthetic.address);
-        // const unitPrice = await tokenManager.averagePrice(
-        //   synthetic.address,
-        //   ETH
-        // );
-        const supply = await synthetic.totalSupply();
-        const expAmount = supply
-          .mul(Math.floor(priceMovePercent * 1000))
-          .div(1000);
-        const actualAmount = await manager.positiveRebaseAmount(
-          synthetic.address
-        );
-        const exp = expAmount.div(ETH).toNumber();
-        const act = actualAmount.div(ETH).toNumber();
-        const delta = Math.abs(exp / act - 1);
+      describe("zero bonds", () => {
+        it("makes rebase", async () => {
+          await addPair(8, 18, 18, BigNumber.from(0));
+          await router.swapExactTokensForTokens(
+            BTC,
+            0,
+            [underlying.address, synthetic.address],
+            op.address,
+            (await now()) + 1800
+          );
+          await tokenManager.updateOracle(synthetic.address);
+          await fastForwardAndMine(ethers.provider, 3600);
 
-        expect(delta).to.lte(0.01);
+          const expectedReward = BigNumber.from("209669990000000000000000");
+          const expectedDevFundReward = expectedReward
+            .mul(DEV_FUND_RATE)
+            .div(100);
+          const expectedStableFundReward = expectedReward
+            .sub(expectedDevFundReward)
+            .mul(STABLE_FUND_RATE)
+            .div(100);
+          const expectedBoardRoomReward = expectedReward
+            .sub(expectedDevFundReward)
+            .mul(100 - STABLE_FUND_RATE)
+            .div(100);
+          await expect(manager.makePositiveRebase())
+            .to.emit(synthetic, "Transfer")
+            .withArgs(
+              ethers.constants.AddressZero,
+              devFund.address,
+              expectedDevFundReward
+            )
+            .and.to.emit(synthetic, "Transfer")
+            .withArgs(
+              ethers.constants.AddressZero,
+              stableFund.address,
+              expectedStableFundReward
+            )
+            .and.to.emit(synthetic, "Transfer")
+            .withArgs(
+              ethers.constants.AddressZero,
+              boardroomMock.address,
+              expectedBoardRoomReward
+            );
+          expect(await synthetic.balanceOf(devFund.address)).to.eq(
+            expectedDevFundReward
+          );
+          expect(await synthetic.balanceOf(bondManager.address)).to.eq(0);
+
+          expect(await synthetic.balanceOf(stableFund.address)).to.eq(
+            expectedStableFundReward
+          );
+          expect(await synthetic.balanceOf(boardroomMock.address)).to.eq(
+            expectedBoardRoomReward
+          );
+        });
+      });
+      describe("moderate bonds", () => {
+        it("makes rebase", async () => {
+          const expectedReward = BigNumber.from("209669990000000000000000");
+          const expectedBondReward = expectedReward.div(2);
+          await addPair(8, 18, 18, expectedBondReward);
+          await router.swapExactTokensForTokens(
+            BTC,
+            0,
+            [underlying.address, synthetic.address],
+            op.address,
+            (await now()) + 1800
+          );
+          await tokenManager.updateOracle(synthetic.address);
+          await fastForwardAndMine(ethers.provider, 3600);
+
+          const expectedDevFundReward = expectedReward
+            .mul(DEV_FUND_RATE)
+            .div(100);
+
+          const expectedStableFundReward = expectedReward
+            .sub(expectedDevFundReward)
+            .sub(expectedBondReward)
+            .mul(STABLE_FUND_RATE)
+            .div(100);
+          const expectedBoardRoomReward = expectedReward
+            .sub(expectedDevFundReward)
+            .sub(expectedBondReward)
+            .mul(100 - STABLE_FUND_RATE)
+            .div(100);
+          await expect(manager.makePositiveRebase())
+            .to.emit(synthetic, "Transfer")
+            .withArgs(
+              ethers.constants.AddressZero,
+              devFund.address,
+              expectedDevFundReward
+            )
+            .and.to.emit(synthetic, "Transfer")
+            .withArgs(
+              ethers.constants.AddressZero,
+              bondManager.address,
+              expectedBondReward
+            )
+            .and.to.emit(synthetic, "Transfer")
+            .withArgs(
+              ethers.constants.AddressZero,
+              stableFund.address,
+              expectedStableFundReward
+            )
+            .and.to.emit(synthetic, "Transfer")
+            .withArgs(
+              ethers.constants.AddressZero,
+              boardroomMock.address,
+              expectedBoardRoomReward
+            );
+          expect(await synthetic.balanceOf(devFund.address)).to.eq(
+            expectedDevFundReward
+          );
+          expect(await synthetic.balanceOf(bondManager.address)).to.eq(
+            expectedBondReward
+          );
+          expect(await synthetic.balanceOf(stableFund.address)).to.eq(
+            expectedStableFundReward
+          );
+          expect(await synthetic.balanceOf(boardroomMock.address)).to.eq(
+            expectedBoardRoomReward
+          );
+        });
+      });
+      describe("overflowing bonds", () => {
+        it("makes rebase", async () => {
+          const expectedReward = BigNumber.from("209669990000000000000000");
+          const expectedBondReward = expectedReward;
+          await addPair(8, 18, 18, expectedBondReward);
+          await router.swapExactTokensForTokens(
+            BTC,
+            0,
+            [underlying.address, synthetic.address],
+            op.address,
+            (await now()) + 1800
+          );
+          await tokenManager.updateOracle(synthetic.address);
+          await fastForwardAndMine(ethers.provider, 3600);
+
+          const expectedDevFundReward = expectedReward
+            .mul(DEV_FUND_RATE)
+            .div(100);
+
+          await expect(manager.makePositiveRebase())
+            .to.emit(synthetic, "Transfer")
+            .withArgs(
+              ethers.constants.AddressZero,
+              devFund.address,
+              expectedDevFundReward
+            )
+            .and.to.emit(synthetic, "Transfer")
+            .withArgs(
+              ethers.constants.AddressZero,
+              bondManager.address,
+              expectedBondReward.sub(expectedDevFundReward)
+            );
+          expect(await synthetic.balanceOf(devFund.address)).to.eq(
+            expectedDevFundReward
+          );
+          expect(await synthetic.balanceOf(bondManager.address)).to.eq(
+            expectedBondReward.sub(expectedDevFundReward)
+          );
+          expect(await synthetic.balanceOf(stableFund.address)).to.eq(0);
+          expect(await synthetic.balanceOf(boardroomMock.address)).to.eq(0);
+        });
       });
     });
     describe("price move up 2% and threshold is 105", () => {
-      it("returns 0", async () => {
-        await addPair(8, 18);
+      it("doesn't make a rebase", async () => {
+        await addPair(8, 18, 18, BigNumber.from(0));
         await router.swapExactTokensForTokens(
           BTC.div(10),
           0,
@@ -172,13 +385,16 @@ describe("EmissionManager", () => {
         );
         await tokenManager.updateOracle(synthetic.address);
         await fastForwardAndMine(ethers.provider, 3600);
-        await tokenManager.updateOracle(synthetic.address);
-        expect(await manager.positiveRebaseAmount(synthetic.address)).to.eq(0);
+        await manager.makePositiveRebase();
+        expect(await synthetic.balanceOf(devFund.address)).to.eq(0);
+        expect(await synthetic.balanceOf(bondManager.address)).to.eq(0);
+        expect(await synthetic.balanceOf(stableFund.address)).to.eq(0);
+        expect(await synthetic.balanceOf(boardroomMock.address)).to.eq(0);
       });
     });
     describe("price move down and threshold is 105", () => {
-      it("returns 0", async () => {
-        await addPair(8, 18);
+      it("doesn't make a rebase", async () => {
+        await addPair(8, 18, 18, BigNumber.from(0));
         await router.swapExactTokensForTokens(
           ETH,
           0,
@@ -188,8 +404,11 @@ describe("EmissionManager", () => {
         );
         await tokenManager.updateOracle(synthetic.address);
         await fastForwardAndMine(ethers.provider, 3600);
-        await tokenManager.updateOracle(synthetic.address);
-        expect(await manager.positiveRebaseAmount(synthetic.address)).to.eq(0);
+        await manager.makePositiveRebase();
+        expect(await synthetic.balanceOf(devFund.address)).to.eq(0);
+        expect(await synthetic.balanceOf(bondManager.address)).to.eq(0);
+        expect(await synthetic.balanceOf(stableFund.address)).to.eq(0);
+        expect(await synthetic.balanceOf(boardroomMock.address)).to.eq(0);
       });
     });
   });
