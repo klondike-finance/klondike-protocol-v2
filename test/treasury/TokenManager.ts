@@ -725,4 +725,108 @@ describe("TokenManager", () => {
       });
     });
   });
+
+  describe("#allTokens", () => {
+    it("returns all tokens under management", async () => {
+      const tokens = [];
+      await addPair(8, 18);
+      tokens.push(synthetic.address);
+      await manager.addToken(
+        synthetic.address,
+        bond.address,
+        underlying.address,
+        oracle.address
+      );
+      await addPair(8, 18);
+      tokens.push(synthetic.address);
+      await manager.addToken(
+        synthetic.address,
+        bond.address,
+        underlying.address,
+        oracle.address
+      );
+      await addPair(8, 18);
+      tokens.push(synthetic.address);
+      await manager.addToken(
+        synthetic.address,
+        bond.address,
+        underlying.address,
+        oracle.address
+      );
+      await manager.deleteToken(tokens[1], op.address);
+      expect(await manager.allTokens()).to.eql([
+        tokens[0],
+        ethers.constants.AddressZero,
+        tokens[2],
+      ]);
+    });
+  });
+
+  describe("#underlyingToken", () => {
+    describe("when synthetic token is under management", () => {
+      it("returns underlying token", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        expect(await manager.underlyingToken(synthetic.address)).to.eq(
+          underlying.address
+        );
+      });
+    });
+    describe("when synthetic token is not under management", () => {
+      it("fails", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        await expect(
+          manager.underlyingToken(underlying.address)
+        ).to.be.revertedWith("TokenManager: Token is not managed");
+      });
+    });
+  });
+
+  describe("#mintSynthetic", () => {
+    it("mints synthetic token", async () => {
+      await addPair(8, 18);
+      await manager.addToken(
+        synthetic.address,
+        bond.address,
+        underlying.address,
+        oracle.address
+      );
+      const amount = 12345;
+      const balance = await synthetic.balanceOf(op.address);
+      await manager.setEmissionManager(op.address);
+      await expect(manager.mintSynthetic(synthetic.address, op.address, amount))
+        .to.emit(synthetic, "Transfer")
+        .withArgs(ethers.constants.AddressZero, op.address, amount);
+      expect(await synthetic.balanceOf(op.address)).to.eq(balance.add(amount));
+      await manager.setEmissionManager(emissionManager.address);
+    });
+
+    describe("when called not by EmissionManager", () => {
+      it("fails", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        await expect(
+          manager.mintSynthetic(synthetic.address, op.address, 123)
+        ).to.be.revertedWith(
+          "TokenManager: Only EmissionManager can call this function"
+        );
+      });
+    });
+  });
 });

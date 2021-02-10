@@ -4,7 +4,8 @@ pragma solidity =0.6.6;
 /// Token manager as seen by other managers
 interface ITokenManager {
     /// A set of synthetic tokens under management
-    function allTokens() external returns (address[] memory);
+    /// @dev Deleted tokens are still present in the array but with address(0)
+    function allTokens() external view returns (address[] memory);
 
     /// Checks if the token is managed by Token Manager
     /// @param syntheticTokenAddress The address of the synthetic token

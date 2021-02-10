@@ -120,13 +120,15 @@ contract EmissionManager is
     {
         address[] memory tokens = tokenManager.allTokens();
         for (uint32 i = 0; i < tokens.length; i++) {
-            makeOnePositiveRebase(tokens[i]);
+            if (tokens[i] != address(0)) {
+                _makeOnePositiveRebase(tokens[i]);
+            }
         }
     }
 
     /// Make positive rebase for one token
     /// @param syntheticTokenAddress The address of the synthetic token
-    function makeOnePositiveRebase(address syntheticTokenAddress)
+    function _makeOnePositiveRebase(address syntheticTokenAddress)
         internal
         initialized
         managedToken(syntheticTokenAddress)

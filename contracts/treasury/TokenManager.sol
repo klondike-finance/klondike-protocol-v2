@@ -60,7 +60,9 @@ contract TokenManager is ITokenManager, Operatable {
 
     // ------- View ----------
 
-    function allTokens() public override returns (address[] memory) {
+    /// A set of synthetic tokens under management
+    /// @dev Deleted tokens are still present in the array but with address(0)
+    function allTokens() public view override returns (address[] memory) {
         return tokens;
     }
 
