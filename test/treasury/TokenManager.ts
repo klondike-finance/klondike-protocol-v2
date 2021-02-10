@@ -44,7 +44,7 @@ describe("TokenManager", () => {
   });
   beforeEach(async () => {
     manager = await TokenManager.deploy(factory.address);
-    bondManager = await BondManager.deploy();
+    bondManager = await BondManager.deploy(await now());
     emissionManager = await EmissionManagerMock.deploy();
     await manager.setBondManager(bondManager.address);
     await manager.setEmissionManager(emissionManager.address);
@@ -149,80 +149,6 @@ describe("TokenManager", () => {
           await manager.isManagedToken(underlying.address),
           "Expected to manage synthetic token"
         ).to.eq(false);
-      });
-    });
-  });
-
-  describe("#syntheticDecimals", () => {
-    describe("when Synthetic token is managed", () => {
-      it("returns number of decimals for synthetic token", async () => {
-        await addPair(8, 25);
-        await manager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
-        expect(await manager.syntheticDecimals(synthetic.address)).to.eq(25);
-        await addPair(6, 0);
-        await manager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
-        expect(await manager.syntheticDecimals(synthetic.address)).to.eq(0);
-      });
-    });
-    describe("when Synthetic token is not managed", () => {
-      it("fails", async () => {
-        await addPair(8, 18);
-        await manager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
-        await expect(
-          manager.syntheticDecimals(underlying.address)
-        ).to.be.revertedWith("TokenManager: Token is not managed");
-      });
-    });
-  });
-
-  describe("#underlyingDecimals", () => {
-    describe("when Synthetic token is managed", () => {
-      it("returns number of decimals for underlying token", async () => {
-        await addPair(8, 25);
-        await manager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
-        expect(await manager.underlyingDecimals(synthetic.address)).to.eq(8);
-        await addPair(6, 0);
-        await manager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
-        expect(await manager.underlyingDecimals(synthetic.address)).to.eq(6);
-      });
-    });
-    describe("when Synthetic token is not managed", () => {
-      it("fails", async () => {
-        await addPair(8, 18);
-        await manager.addToken(
-          synthetic.address,
-          bond.address,
-          underlying.address,
-          oracle.address
-        );
-        await expect(
-          manager.underlyingDecimals(underlying.address)
-        ).to.be.revertedWith("TokenManager: Token is not managed");
       });
     });
   });
