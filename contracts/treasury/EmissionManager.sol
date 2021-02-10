@@ -38,6 +38,8 @@ contract EmissionManager is
     uint256 public devFundRate;
     /// Stable fund allocation rate (in percentage points)
     uint256 public stableFundRate;
+    /// Pauses positive rebases
+    bool public pausePositiveRebase;
 
     /// Create new Emission manager
     /// @param startTime Start of the operations
@@ -48,24 +50,25 @@ contract EmissionManager is
         Timeboundable(startTime, 0)
     {}
 
+    // --------- Modifiers ---------
+
     /// Checks if contract was initialized properly and ready for use
     modifier initialized() {
-        require(
-            isInitialized(),
-            "EmissionManager: TokenManager is not initialized"
-        );
+        require(isInitialized(), "EmissionManager: not initialized");
         _;
     }
 
-    /// Checks if the synthetic token is managed by the TokenManager
-    /// @param syntheticTokenAddress The address of the synthetic token
-    modifier managedToken(address syntheticTokenAddress) {
-        require(
-            tokenManager.isManagedToken(syntheticTokenAddress),
-            "EmissionManager: Token is not managed"
-        );
-        _;
-    }
+    // /// Checks if the synthetic token is managed by the TokenManager
+    // /// @param syntheticTokenAddress The address of the synthetic token
+    // modifier managedToken(address syntheticTokenAddress) {
+    //     require(
+    //         tokenManager.isManagedToken(syntheticTokenAddress),
+    //         "EmissionManager: Token is not managed"
+    //     );
+    //     _;
+    // }
+
+    // --------- View ---------
 
     /// Checks if contract was initialized properly and ready for use
     function isInitialized() public view returns (bool) {
@@ -80,7 +83,7 @@ contract EmissionManager is
             (threshold > 100);
     }
 
-    /// The amount for positive rebase of the syntheric token
+    /// The amount for positive rebase of the synthetic token
     /// @param syntheticTokenAddress The address of the synthetic token
     function positiveRebaseAmount(address syntheticTokenAddress)
         public
@@ -95,7 +98,8 @@ contract EmissionManager is
 
         uint256 rebasePriceUndPerUnitSyn =
             tokenManager.averagePrice(syntheticTokenAddress, oneSyntheticUnit);
-        uint256 thresholdUndPerUnitSyn = threshold.mul(oneUnderlyingUnit);
+        uint256 thresholdUndPerUnitSyn =
+            threshold.mul(oneUnderlyingUnit).div(100);
         if (rebasePriceUndPerUnitSyn < thresholdUndPerUnitSyn) {
             return 0;
         }
@@ -110,6 +114,8 @@ contract EmissionManager is
             );
     }
 
+    // --------- Public ---------
+
     /// Makes positive rebases for all eligible tokens
     function makePositiveRebase()
         public
@@ -118,6 +124,7 @@ contract EmissionManager is
         debounce
         inTimeBounds
     {
+        require(!pausePositiveRebase, "EmissionManager: Rebases are paused");
         address[] memory tokens = tokenManager.allTokens();
         for (uint32 i = 0; i < tokens.length; i++) {
             if (tokens[i] != address(0)) {
@@ -126,13 +133,77 @@ contract EmissionManager is
         }
     }
 
+    // --------- Owner (Timelocked) ---------
+
+    /// Set new dev fund
+    /// @param _devFund New dev fund address
+    function setDevFund(address _devFund) public onlyOwner {
+        devFund = _devFund;
+        emit DevFundChanged(operator, _devFund);
+    }
+
+    /// Set new stable fund
+    /// @param _stableFund New stable fund address
+    function setStableFund(address _stableFund) public onlyOwner {
+        stableFund = _stableFund;
+        emit StableFundChanged(operator, _stableFund);
+    }
+
+    /// Set new boardroom
+    /// @param _boardroom New boardroom address
+    function setBoardroom(address _boardroom) public onlyOwner {
+        boardroom = IBoardroom(_boardroom);
+        emit BoardroomChanged(operator, _boardroom);
+    }
+
+    /// Set new TokenManager
+    /// @param _tokenManager New TokenManager address
+    function setTokenManager(address _tokenManager) public onlyOwner {
+        tokenManager = ITokenManager(_tokenManager);
+        emit TokenManagerChanged(operator, _tokenManager);
+    }
+
+    /// Set new BondManager
+    /// @param _bondManager New BondManager address
+    function setBondManager(address _bondManager) public onlyOwner {
+        bondManager = IBondManager(_bondManager);
+        emit BondManagerChanged(operator, _bondManager);
+    }
+
+    /// Set new dev fund rate
+    /// @param _devFundRate New dev fund rate
+    function setDevFundRate(uint256 _devFundRate) public onlyOwner {
+        devFundRate = _devFundRate;
+        emit DevFundRateChanged(operator, _devFundRate);
+    }
+
+    /// Set new stable fund rate
+    /// @param _stableFundRate New stable fund rate
+    function setStableFundRate(uint256 _stableFundRate) public onlyOwner {
+        stableFundRate = _stableFundRate;
+        emit StableFundRateChanged(operator, _stableFundRate);
+    }
+
+    /// Set new threshold
+    /// @param _threshold New threshold
+    function setThreshold(uint256 _threshold) public onlyOwner {
+        threshold = _threshold;
+        emit ThresholdChanged(operator, _threshold);
+    }
+
+    // --------- Operator (immediate) ---------
+
+    /// Pauses / unpauses positive rebases
+    /// @param pause Sets the pause / unpause
+    function setPausePositiveRebase(bool pause) public onlyOperator {
+        pausePositiveRebase = pause;
+        emit PositiveRebasePaused(operator, pause);
+    }
+
     /// Make positive rebase for one token
     /// @param syntheticTokenAddress The address of the synthetic token
-    function _makeOnePositiveRebase(address syntheticTokenAddress)
-        internal
-        initialized
-        managedToken(syntheticTokenAddress)
-    {
+    /// @dev The caller must ensure `managedToken` and `initialized` properties
+    function _makeOnePositiveRebase(address syntheticTokenAddress) internal {
         tokenManager.updateOracle(syntheticTokenAddress);
         SyntheticToken syntheticToken = SyntheticToken(syntheticTokenAddress);
         uint256 amount = positiveRebaseAmount(syntheticTokenAddress);
@@ -187,62 +258,6 @@ contract EmissionManager is
         emit BoardroomFunded(stableFundAmount);
     }
 
-    /// Set new dev fund
-    /// @param _devFund New dev fund address
-    function setDevFund(address _devFund) public onlyOperator {
-        devFund = _devFund;
-        emit DevFundChanged(operator, _devFund);
-    }
-
-    /// Set new stable fund
-    /// @param _stableFund New stable fund address
-    function setStableFund(address _stableFund) public onlyOperator {
-        stableFund = _stableFund;
-        emit StableFundChanged(operator, _stableFund);
-    }
-
-    /// Set new boardroom
-    /// @param _boardroom New boardroom address
-    function setBoardroom(address _boardroom) public onlyOperator {
-        boardroom = IBoardroom(_boardroom);
-        emit BoardroomChanged(operator, _boardroom);
-    }
-
-    /// Set new TokenManager
-    /// @param _tokenManager New TokenManager address
-    function setTokenManager(address _tokenManager) public onlyOperator {
-        tokenManager = ITokenManager(_tokenManager);
-        emit TokenManagerChanged(operator, _tokenManager);
-    }
-
-    /// Set new BondManager
-    /// @param _bondManager New BondManager address
-    function setBondManager(address _bondManager) public onlyOperator {
-        bondManager = IBondManager(_bondManager);
-        emit BondManagerChanged(operator, _bondManager);
-    }
-
-    /// Set new dev fund rate
-    /// @param _devFundRate New dev fund rate
-    function setDevFundRate(uint256 _devFundRate) public onlyOperator {
-        devFundRate = _devFundRate;
-        emit DevFundRateChanged(operator, _devFundRate);
-    }
-
-    /// Set new stable fund rate
-    /// @param _stableFundRate New stable fund rate
-    function setStableFundRate(uint256 _stableFundRate) public onlyOperator {
-        stableFundRate = _stableFundRate;
-        emit StableFundRateChanged(operator, _stableFundRate);
-    }
-
-    /// Set new threshold
-    /// @param _threshold New threshold
-    function setThreshold(uint256 _threshold) public onlyOperator {
-        threshold = _threshold;
-        emit ThresholdChanged(operator, _threshold);
-    }
-
     event DevFundChanged(address indexed operator, address newFund);
     event StableFundChanged(address indexed operator, address newFund);
     event BoardroomChanged(address indexed operator, address newBoadroom);
@@ -251,6 +266,7 @@ contract EmissionManager is
         address newTokenManager
     );
     event BondManagerChanged(address indexed operator, address newBondManager);
+    event PositiveRebasePaused(address indexed operator, bool pause);
 
     event DevFundRateChanged(address indexed operator, uint256 newRate);
     event StableFundRateChanged(address indexed operator, uint256 newRate);
