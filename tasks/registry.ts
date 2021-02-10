@@ -16,7 +16,7 @@ const REGISTRY = {
 };
 
 export function initRegistry(hre: HardhatRuntimeEnvironment) {
-  if (REGISTRY.initialized) {
+  if (REGISTRY.initialized || process.env["REDEPLOY"]) {
     return;
   }
   const root = resolve(__dirname, "..", "registry", hre.network.name);

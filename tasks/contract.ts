@@ -42,6 +42,20 @@ export async function contractDeploy(
   registryName: string,
   ...args: Array<any>
 ): Promise<Contract> {
+  const entry = await getRegistryContract(hre, registryName);
+  if (entry) {
+    const contract = await hre.ethers.getContractAt(name, entry.address);
+    return contract;
+  }
+  return await contractHardDeploy(hre, name, registryName, ...args);
+}
+
+export async function contractHardDeploy(
+  hre: HardhatRuntimeEnvironment,
+  name: string,
+  registryName: string,
+  ...args: Array<any>
+): Promise<Contract> {
   console.log(
     `Deploying contract \`${name}\` with name \`${registryName}\` and args: ${args}...`
   );
