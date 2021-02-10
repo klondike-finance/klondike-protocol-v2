@@ -515,5 +515,25 @@ describe("EmissionManager", () => {
         );
       });
     });
+
+    describe("rebase called twice in less than `period` secs", () => {
+      it("fails", async () => {
+        await addPair(8, 18, 18, BigNumber.from(0));
+        await router.swapExactTokensForTokens(
+          BTC.div(10),
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await tokenManager.updateOracle(synthetic.address);
+        await fastForwardAndMine(ethers.provider, 3600);
+        await manager.makePositiveRebase();
+        await fastForwardAndMine(ethers.provider, PERIOD - 10000);
+        await expect(manager.makePositiveRebase()).to.be.revertedWith(
+          "Debouncable: already called in this time slot"
+        );
+      });
+    });
   });
 });
