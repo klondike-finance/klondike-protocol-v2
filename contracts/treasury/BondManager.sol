@@ -231,10 +231,11 @@ contract BondManager is
                     address(target),
                     bondToken.balanceOf(address(this))
                 );
-                try bondToken.transferOperator(address(target)) {} catch {}
-                try bondToken.transferOwnership(address(target)) {} catch {}
+                bondToken.transferOperator(address(target));
+                bondToken.transferOwnership(address(target));
             }
         }
+        emit Migrated(msg.sender, address(target));
     }
 
     // ------- Internal ----------
@@ -251,11 +252,6 @@ contract BondManager is
             "BondManager: Only TokenManager can call this function"
         );
         SyntheticToken bondToken = SyntheticToken(bondTokenAddress);
-        require(
-            (bondToken.operator() == address(this)) &&
-                (bondToken.owner() == address(this)),
-            "BondManager: Token operator and owner of the bond token must be set to TokenManager before adding a token"
-        );
         bondIndex[syntheticTokenAddress] = address(bondToken);
         emit BondAdded(bondTokenAddress);
     }
@@ -304,4 +300,6 @@ contract BondManager is
     );
     /// Emitted each bonds are bought
     event SoldBonds(address indexed owner, uint256 amount);
+    /// Emitted when migrated
+    event Migrated(address indexed operator, address target);
 }

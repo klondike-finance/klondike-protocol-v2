@@ -124,7 +124,7 @@ describe("BondManager", () => {
       });
     });
     describe("when bond token operator is not BondManager", () => {
-      it("fails", async () => {
+      it("works", async () => {
         const manager = await BondManager.deploy(await now());
         await manager.setTokenManager(op.address);
 
@@ -134,18 +134,6 @@ describe("BondManager", () => {
           "KBOND",
           BOND_DECIMALS
         );
-        await expect(
-          manager.addBondToken(synthetic.address, b.address)
-        ).to.be.revertedWith(
-          "BondManager: Token operator and owner of the bond token must be set to TokenManager before adding a token"
-        );
-        await b.transferOperator(manager.address);
-        await expect(
-          manager.addBondToken(synthetic.address, b.address)
-        ).to.be.revertedWith(
-          "BondManager: Token operator and owner of the bond token must be set to TokenManager before adding a token"
-        );
-        await b.transferOwnership(manager.address);
         await expect(manager.addBondToken(synthetic.address, b.address)).to.not
           .be.reverted;
       });

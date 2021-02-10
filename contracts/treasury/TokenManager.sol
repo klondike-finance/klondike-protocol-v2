@@ -252,11 +252,6 @@ contract TokenManager is ITokenManager, Operatable, IMigrationTarget {
             syntheticToken.decimals() == bondToken.decimals(),
             "TokenManager: Synthetic and Bond tokens must have the same number of decimals"
         );
-        require(
-            (syntheticToken.operator() == address(this)) &&
-                (syntheticToken.owner() == address(this)),
-            "TokenManager: Token operator and owner of the synthetic token must be set to TokenManager before adding a token"
-        );
 
         require(
             address(oracle.pair()) == address(pair),
@@ -376,8 +371,8 @@ contract TokenManager is ITokenManager, Operatable, IMigrationTarget {
     /// @param target new TokenManager
     function migrate(IMigrationTarget target) public onlyOperator {
         require(
-            keccak256(bytes(target.name())) == keccak256(bytes("BondManager")),
-            "Migration target must be BondManager"
+            keccak256(bytes(target.name())) == keccak256(bytes("TokenManager")),
+            "TokenManager: Migration target must be TokenManager"
         );
 
         for (uint32 i = 0; i < tokens.length; i++) {
@@ -387,6 +382,7 @@ contract TokenManager is ITokenManager, Operatable, IMigrationTarget {
                 data.syntheticToken.transferOwnership(address(target));
             }
         }
+        emit Migrated(msg.sender, address(target));
     }
 
     // ------- Events ----------
@@ -415,4 +411,6 @@ contract TokenManager is ITokenManager, Operatable, IMigrationTarget {
     event BondManagerChanged(address indexed operator, address newManager);
     /// Emitted each time EmissionManager is updated
     event EmissionManagerChanged(address indexed operator, address newManager);
+    /// Emitted when migrated
+    event Migrated(address indexed operator, address target);
 }
