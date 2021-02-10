@@ -411,5 +411,109 @@ describe("EmissionManager", () => {
         expect(await synthetic.balanceOf(boardroomMock.address)).to.eq(0);
       });
     });
+    describe("4 tokens - 1st is eligible, 2nd is deleted, 3rd is not eligigle, 4th is eligible", () => {
+      it("makes a rebase for 1st and 4th tokens", async () => {
+        const expectedReward = BigNumber.from("209669990000000000000000");
+        const expectedBondReward = expectedReward.div(2);
+        await addPair(8, 18, 18, expectedBondReward);
+        await router.swapExactTokensForTokens(
+          BTC,
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await tokenManager.updateOracle(synthetic.address);
+        await fastForwardAndMine(ethers.provider, 3600);
+
+        const expectedDevFundReward = expectedReward
+          .mul(DEV_FUND_RATE)
+          .div(100);
+
+        const expectedStableFundReward = expectedReward
+          .sub(expectedDevFundReward)
+          .sub(expectedBondReward)
+          .mul(STABLE_FUND_RATE)
+          .div(100);
+        const expectedBoardRoomReward = expectedReward
+          .sub(expectedDevFundReward)
+          .sub(expectedBondReward)
+          .mul(100 - STABLE_FUND_RATE)
+          .div(100);
+        const s1 = synthetic;
+
+        await addPair(8, 18, 18, BigNumber.from(0));
+        const s2 = synthetic;
+        await router.swapExactTokensForTokens(
+          BTC,
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await tokenManager.updateOracle(synthetic.address);
+        await fastForwardAndMine(ethers.provider, 3600);
+
+        await addPair(8, 18, 18, BigNumber.from(0));
+        const s3 = synthetic;
+        await router.swapExactTokensForTokens(
+          ETH,
+          0,
+          [synthetic.address, underlying.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await tokenManager.updateOracle(synthetic.address);
+        await fastForwardAndMine(ethers.provider, 3600);
+
+        await addPair(8, 18, 18, expectedBondReward);
+        await router.swapExactTokensForTokens(
+          BTC,
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await tokenManager.updateOracle(synthetic.address);
+        await fastForwardAndMine(ethers.provider, 3600);
+        const s4 = synthetic;
+
+        await tokenManager.deleteToken(s2.address, op.address);
+        await manager.makePositiveRebase();
+        expect(await s1.balanceOf(devFund.address)).to.eq(
+          expectedDevFundReward
+        );
+        expect(await s1.balanceOf(bondManager.address)).to.eq(
+          expectedBondReward
+        );
+        expect(await s1.balanceOf(stableFund.address)).to.eq(
+          expectedStableFundReward
+        );
+        expect(await s1.balanceOf(boardroomMock.address)).to.eq(
+          expectedBoardRoomReward
+        );
+
+        expect(await s2.balanceOf(devFund.address)).to.eq(0);
+        expect(await s2.balanceOf(bondManager.address)).to.eq(0);
+        expect(await s2.balanceOf(stableFund.address)).to.eq(0);
+        expect(await s2.balanceOf(boardroomMock.address)).to.eq(0);
+        expect(await s3.balanceOf(devFund.address)).to.eq(0);
+        expect(await s3.balanceOf(bondManager.address)).to.eq(0);
+        expect(await s3.balanceOf(stableFund.address)).to.eq(0);
+        expect(await s3.balanceOf(boardroomMock.address)).to.eq(0);
+        expect(await s4.balanceOf(devFund.address)).to.eq(
+          expectedDevFundReward
+        );
+        expect(await s4.balanceOf(bondManager.address)).to.eq(
+          expectedBondReward
+        );
+        expect(await s4.balanceOf(stableFund.address)).to.eq(
+          expectedStableFundReward
+        );
+        expect(await s4.balanceOf(boardroomMock.address)).to.eq(
+          expectedBoardRoomReward
+        );
+      });
+    });
   });
 });
