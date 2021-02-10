@@ -515,8 +515,6 @@ describe("BondManager", () => {
           3600,
           await now()
         );
-        await underlying.transferOperator(manager.address);
-        await underlying.transferOwnership(manager.address);
         await tokenManager.addToken(
           synthetic.address,
           bond.address,
@@ -528,6 +526,13 @@ describe("BondManager", () => {
     });
     describe("when some tokens are not owned by TokenManager", () => {
       it("returns false", async () => {
+        manager = await BondManager.deploy(await now());
+        tokenManager = await TokenManager.deploy(factory.address);
+        emissionManager = await EmissionManagerMock.deploy();
+        await manager.setTokenManager(tokenManager.address);
+        await tokenManager.setBondManager(manager.address);
+        await tokenManager.setEmissionManager(emissionManager.address);
+
         const { underlying: u, synthetic: s, pair } = await addUniswapPair(
           factory,
           router,
