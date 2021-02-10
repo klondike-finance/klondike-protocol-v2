@@ -117,92 +117,92 @@ describe("EmissionManager", () => {
     );
   }
 
-  // describe("#constructor", () => {
-  //   it("creates a new EmissionManager", async () => {
-  //     await expect(EmissionManager.deploy(await now(), PERIOD)).to.not.be
-  //       .reverted;
-  //   });
-  // });
+  describe("#constructor", () => {
+    it("creates a new EmissionManager", async () => {
+      await expect(EmissionManager.deploy(await now(), PERIOD)).to.not.be
+        .reverted;
+    });
+  });
 
-  // describe("#isInitialized", () => {
-  //   describe("when all parameters are set", () => {
-  //     it("returns true", async () => {
-  //       expect(await manager.isInitialized()).to.eq(true);
-  //     });
-  //   });
-  //   describe("when some parameters are not set", () => {
-  //     it("returns false", async () => {
-  //       await manager.setDevFundRate(0);
-  //       expect(await manager.isInitialized()).to.eq(false);
-  //     });
-  //   });
-  // });
+  describe("#isInitialized", () => {
+    describe("when all parameters are set", () => {
+      it("returns true", async () => {
+        expect(await manager.isInitialized()).to.eq(true);
+      });
+    });
+    describe("when some parameters are not set", () => {
+      it("returns false", async () => {
+        await manager.setDevFundRate(0);
+        expect(await manager.isInitialized()).to.eq(false);
+      });
+    });
+  });
 
-  // describe("#positiveRebaseAmount", () => {
-  //   describe("price move up 20% and threshold is 105", () => {
-  //     it("returns the rebase amount", async () => {
-  //       await addPair(8, 18);
-  //       const expectedNewSyn = 1.1;
-  //       const expectedNewUnd = 1 / expectedNewSyn;
-  //       const newPrice = expectedNewSyn / expectedNewUnd;
-  //       const priceMovePercent = newPrice - 1;
-  //       await router.swapExactTokensForTokens(
-  //         BTC,
-  //         0,
-  //         [underlying.address, synthetic.address],
-  //         op.address,
-  //         (await now()) + 1800
-  //       );
-  //       await tokenManager.updateOracle(synthetic.address);
-  //       await fastForwardAndMine(ethers.provider, 3600);
-  //       await tokenManager.updateOracle(synthetic.address);
-  //       const supply = await synthetic.totalSupply();
-  //       const expAmount = supply
-  //         .mul(Math.floor(priceMovePercent * 1000))
-  //         .div(1000);
-  //       const actualAmount = await manager.positiveRebaseAmount(
-  //         synthetic.address
-  //       );
-  //       const exp = expAmount.div(ETH).toNumber();
-  //       const act = actualAmount.div(ETH).toNumber();
-  //       const delta = Math.abs(exp / act - 1);
+  describe("#positiveRebaseAmount", () => {
+    describe("price move up 20% and threshold is 105", () => {
+      it("returns the rebase amount", async () => {
+        await addPair(8, 18);
+        const expectedNewSyn = 1.1;
+        const expectedNewUnd = 1 / expectedNewSyn;
+        const newPrice = expectedNewSyn / expectedNewUnd;
+        const priceMovePercent = newPrice - 1;
+        await router.swapExactTokensForTokens(
+          BTC,
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await tokenManager.updateOracle(synthetic.address);
+        await fastForwardAndMine(ethers.provider, 3600);
+        await tokenManager.updateOracle(synthetic.address);
+        const supply = await synthetic.totalSupply();
+        const expAmount = supply
+          .mul(Math.floor(priceMovePercent * 1000))
+          .div(1000);
+        const actualAmount = await manager.positiveRebaseAmount(
+          synthetic.address
+        );
+        const exp = expAmount.div(ETH).toNumber();
+        const act = actualAmount.div(ETH).toNumber();
+        const delta = Math.abs(exp / act - 1);
 
-  //       expect(delta).to.lte(0.01);
-  //     });
-  //   });
-  //   describe("price move up 2% and threshold is 105", () => {
-  //     it("returns 0", async () => {
-  //       await addPair(8, 18);
-  //       await router.swapExactTokensForTokens(
-  //         BTC.div(10),
-  //         0,
-  //         [underlying.address, synthetic.address],
-  //         op.address,
-  //         (await now()) + 1800
-  //       );
-  //       await tokenManager.updateOracle(synthetic.address);
-  //       await fastForwardAndMine(ethers.provider, 3600);
-  //       await tokenManager.updateOracle(synthetic.address);
-  //       expect(await manager.positiveRebaseAmount(synthetic.address)).to.eq(0);
-  //     });
-  //   });
-  //   describe("price move down and threshold is 105", () => {
-  //     it("returns 0", async () => {
-  //       await addPair(8, 18);
-  //       await router.swapExactTokensForTokens(
-  //         ETH,
-  //         0,
-  //         [synthetic.address, underlying.address],
-  //         op.address,
-  //         (await now()) + 1800
-  //       );
-  //       await tokenManager.updateOracle(synthetic.address);
-  //       await fastForwardAndMine(ethers.provider, 3600);
-  //       await tokenManager.updateOracle(synthetic.address);
-  //       expect(await manager.positiveRebaseAmount(synthetic.address)).to.eq(0);
-  //     });
-  //   });
-  // });
+        expect(delta).to.lte(0.01);
+      });
+    });
+    describe("price move up 2% and threshold is 105", () => {
+      it("returns 0", async () => {
+        await addPair(8, 18);
+        await router.swapExactTokensForTokens(
+          BTC.div(10),
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await tokenManager.updateOracle(synthetic.address);
+        await fastForwardAndMine(ethers.provider, 3600);
+        await tokenManager.updateOracle(synthetic.address);
+        expect(await manager.positiveRebaseAmount(synthetic.address)).to.eq(0);
+      });
+    });
+    describe("price move down and threshold is 105", () => {
+      it("returns 0", async () => {
+        await addPair(8, 18);
+        await router.swapExactTokensForTokens(
+          ETH,
+          0,
+          [synthetic.address, underlying.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await tokenManager.updateOracle(synthetic.address);
+        await fastForwardAndMine(ethers.provider, 3600);
+        await tokenManager.updateOracle(synthetic.address);
+        expect(await manager.positiveRebaseAmount(synthetic.address)).to.eq(0);
+      });
+    });
+  });
   describe("#positiveRebaseAmount", () => {
     describe("price move up 20% and threshold is 105", () => {
       describe("zero bonds", () => {
@@ -533,6 +533,118 @@ describe("EmissionManager", () => {
         await expect(manager.makePositiveRebase()).to.be.revertedWith(
           "Debouncable: already called in this time slot"
         );
+      });
+    });
+    describe("when EmissionManager is not initialized", () => {
+      it("fails", async () => {
+        await addPair(8, 18, 18, BigNumber.from(0));
+        await manager.setDevFundRate(0);
+        await router.swapExactTokensForTokens(
+          BTC.div(10),
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await tokenManager.updateOracle(synthetic.address);
+        await fastForwardAndMine(ethers.provider, 3600);
+
+        await expect(manager.makePositiveRebase()).to.be.revertedWith(
+          "EmissionManager: not initialized"
+        );
+      });
+    });
+    describe("when EmissionManager is paused", () => {
+      it("fails", async () => {
+        await addPair(8, 18, 18, BigNumber.from(0));
+        await manager.setPausePositiveRebase(true);
+        await router.swapExactTokensForTokens(
+          BTC.div(10),
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await tokenManager.updateOracle(synthetic.address);
+        await fastForwardAndMine(ethers.provider, 3600);
+
+        await expect(manager.makePositiveRebase()).to.be.revertedWith(
+          "EmissionManager: Rebases are paused"
+        );
+        await manager.setPausePositiveRebase(false);
+      });
+    });
+  });
+
+  describe("#setDevFund, #setStableFund, #setBoardroom, #setTokenManager, #setBondManager, #setDevFundRate, #setStableFundRate, #setThreshold", () => {
+    beforeEach(async () => {
+      await manager.transferOperator(devFund.address);
+    });
+    afterEach(async () => {
+      await manager.transferOperator(op.address);
+    });
+
+    describe("when called by Owner", () => {
+      it("succeeds", async () => {
+        await expect(manager.setDevFund(op.address)).to.not.be.reverted;
+        await expect(manager.setStableFund(op.address)).to.not.be.reverted;
+        await expect(manager.setBoardroom(op.address)).to.not.be.reverted;
+        await expect(manager.setTokenManager(op.address)).to.not.be.reverted;
+        await expect(manager.setBondManager(op.address)).to.not.be.reverted;
+        await expect(manager.setDevFundRate(op.address)).to.not.be.reverted;
+        await expect(manager.setStableFundRate(op.address)).to.not.be.reverted;
+        await expect(manager.setThreshold(op.address)).to.not.be.reverted;
+      });
+    });
+    describe("when called by Operator", () => {
+      it("fails", async () => {
+        await expect(
+          manager.connect(devFund).setDevFund(op.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(
+          manager.connect(devFund).setStableFund(op.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(
+          manager.connect(devFund).setBoardroom(op.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(
+          manager.connect(devFund).setTokenManager(op.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(
+          manager.connect(devFund).setBondManager(op.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(
+          manager.connect(devFund).setDevFundRate(op.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(
+          manager.connect(devFund).setStableFundRate(op.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(
+          manager.connect(devFund).setThreshold(op.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe("#setPausePositiveRebase", () => {
+    beforeEach(async () => {
+      await manager.transferOperator(devFund.address);
+    });
+    afterEach(async () => {
+      await manager.transferOperator(op.address);
+    });
+    describe("when called by Owner", () => {
+      it("fails", async () => {
+        await expect(manager.setPausePositiveRebase(true)).to.be.revertedWith(
+          "Only operator can call this method"
+        );
+      });
+    });
+
+    describe("when called by Operator", () => {
+      it("sets the pause", async () => {
+        await expect(manager.connect(devFund).setPausePositiveRebase(true)).to
+          .not.be.reverted;
       });
     });
   });
