@@ -9,16 +9,21 @@ import "./TokenManager.sol";
 import "../time/Timeboundable.sol";
 import "../access/ReentrancyGuardable.sol";
 import "../interfaces/IBondManager.sol";
+import "../interfaces/IMigrationTarget.sol";
 import "../interfaces/ITokenManager.sol";
 
 contract BondManager is
     IBondManager,
+    IMigrationTarget,
     ReentrancyGuardable,
     Operatable,
     Timeboundable
 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
+
+    /// Name tag
+    string public constant override name = "BondManager";
 
     /// Bond data (key is synthetic token address, value is bond address)
     mapping(address => address) public override bondIndex;
@@ -52,6 +57,24 @@ contract BondManager is
         returns (bool)
     {
         return bondIndex[syntheticTokenAddress] != address(0);
+    }
+
+    /// Checks if token ownerships are valid
+    /// @return True if ownerships are valid
+    function validTokenPermissions() public view returns (bool) {
+        address[] memory tokens = tokenManager.allTokens();
+        for (uint32 i = 0; i < tokens.length; i++) {
+            SyntheticToken token = SyntheticToken(bondIndex[tokens[i]]);
+            if (address(token) != address(0)) {
+                if (token.operator() != address(this)) {
+                    return false;
+                }
+                if (token.owner() != address(this)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /// The decimals of the bond token
@@ -147,6 +170,7 @@ contract BondManager is
         SyntheticToken bondToken =
             SyntheticToken(bondIndex[syntheticTokenAddress]);
         bondToken.mint(msg.sender, amountOfBonds);
+        emit BoughtBonds(msg.sender, amountOfSyntheticIn, amountOfBonds);
     }
 
     /// Sell bonds for synthetic 1-to-1
@@ -173,6 +197,7 @@ contract BondManager is
         );
         bondToken.burnFrom(msg.sender, amount);
         syntheticToken.transfer(msg.sender, amount);
+        emit SoldBonds(msg.sender, amount);
     }
 
     // ------- Public, Operator ----------
@@ -181,12 +206,36 @@ contract BondManager is
     /// @param pause True if bonds buying should be stopped.
     function setPauseBuyBonds(bool pause) public onlyOperator {
         pauseBuyBonds = pause;
+        emit BuyBondsPaused(msg.sender, pause);
     }
 
     /// Sets the TokenManager
     /// @param _tokenManager The address of the new TokenManager
     function setTokenManager(address _tokenManager) public onlyOperator {
         tokenManager = ITokenManager(_tokenManager);
+        emit TokenManagerChanged(msg.sender, _tokenManager);
+    }
+
+    /// Migrates to the new tokenManager
+    /// @param target new TokenManager
+    function migrate(IMigrationTarget target) public onlyOperator {
+        require(
+            keccak256(bytes(target.name())) == keccak256(bytes("BondManager")),
+            "BondManager: Migration target must be BondManager"
+        );
+        address[] memory tokens = tokenManager.allTokens();
+        for (uint32 i = 0; i < tokens.length; i++) {
+            if (tokens[i] != address(0)) {
+                SyntheticToken bondToken = SyntheticToken(bondIndex[tokens[i]]);
+                bondToken.transfer(
+                    address(target),
+                    bondToken.balanceOf(address(this))
+                );
+                bondToken.transferOperator(address(target));
+                bondToken.transferOwnership(address(target));
+            }
+        }
+        emit Migrated(msg.sender, address(target));
     }
 
     // ------- Internal ----------
@@ -203,11 +252,6 @@ contract BondManager is
             "BondManager: Only TokenManager can call this function"
         );
         SyntheticToken bondToken = SyntheticToken(bondTokenAddress);
-        require(
-            (bondToken.operator() == address(this)) &&
-                (bondToken.owner() == address(this)),
-            "BondManager: Token operator and owner of the bond token must be set to TokenManager before adding a token"
-        );
         bondIndex[syntheticTokenAddress] = address(bondToken);
         emit BondAdded(bondTokenAddress);
     }
@@ -244,4 +288,18 @@ contract BondManager is
     event BondAdded(address indexed bondTokenAddress);
     /// Emitted each time the token becomes unmanaged
     event BondDeleted(address indexed bondAddress, address indexed newOperator);
+    /// Emitted each time TokenManager is updated
+    event TokenManagerChanged(address indexed operator, address newManager);
+    /// Emitted each time buyBonds paused / unpaused
+    event BuyBondsPaused(address indexed operator, bool pause);
+    /// Emitted each bonds are bought
+    event BoughtBonds(
+        address indexed owner,
+        uint256 amountOfSynthetics,
+        uint256 amountOfBonds
+    );
+    /// Emitted each bonds are bought
+    event SoldBonds(address indexed owner, uint256 amount);
+    /// Emitted when migrated
+    event Migrated(address indexed operator, address target);
 }

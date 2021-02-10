@@ -396,7 +396,7 @@ describe("TokenManager", () => {
         });
       });
       describe("when synthetic token operator is not TokenManager", () => {
-        it("fails", async () => {
+        it("works", async () => {
           const { underlying: u, synthetic: s, pair } = await addUniswapPair(
             factory,
             router,
@@ -424,9 +424,7 @@ describe("TokenManager", () => {
               underlying.address,
               oracle.address
             )
-          ).to.be.revertedWith(
-            "TokenManager: Token operator and owner of the synthetic token must be set to TokenManager before adding a token"
-          );
+          ).to.not.be.reverted;
         });
       });
       describe("when caller is not operator", () => {
@@ -826,6 +824,193 @@ describe("TokenManager", () => {
         ).to.be.revertedWith(
           "TokenManager: Only EmissionManager can call this function"
         );
+      });
+    });
+  });
+
+  describe("#validTokenPermissions", () => {
+    describe("when all synthetic tokens are managed by TokenManager", () => {
+      it("returns true", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const s2 = synthetic;
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        await manager.deleteToken(s2.address, op.address);
+        expect(await manager.validTokenPermissions()).to.eq(true);
+      });
+    });
+    describe("when some tokens are not operated by TokenManager", () => {
+      it("returns false", async () => {
+        const { underlying: u, synthetic: s, pair } = await addUniswapPair(
+          factory,
+          router,
+          "WBTC",
+          8,
+          "KBTC",
+          18
+        );
+        bond = await deployToken(SyntheticToken, router, "KBond", 18);
+        underlying = u;
+        synthetic = s;
+        oracle = await Oracle.deploy(
+          factory.address,
+          underlying.address,
+          synthetic.address,
+          3600,
+          await now()
+        );
+        await underlying.transferOperator(manager.address);
+        await underlying.transferOwnership(manager.address);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        expect(await manager.validTokenPermissions()).to.eq(false);
+      });
+    });
+    describe("when some tokens are not owned by TokenManager", () => {
+      it("returns false", async () => {
+        const { underlying: u, synthetic: s, pair } = await addUniswapPair(
+          factory,
+          router,
+          "WBTC",
+          8,
+          "KBTC",
+          18
+        );
+        bond = await deployToken(SyntheticToken, router, "KBond", 18);
+        underlying = u;
+        synthetic = s;
+        oracle = await Oracle.deploy(
+          factory.address,
+          underlying.address,
+          synthetic.address,
+          3600,
+          await now()
+        );
+        await underlying.transferOperator(manager.address);
+        await underlying.transferOwnership(manager.address);
+        await synthetic.transferOperator(manager.address);
+
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        expect(await manager.validTokenPermissions()).to.eq(false);
+      });
+    });
+  });
+
+  describe("#migrate", () => {
+    describe("when called by Operator", () => {
+      describe("when target is TokenManager", () => {
+        it("migrates all token ownerships and operators to the new target", async () => {
+          await addPair(8, 18);
+          await manager.addToken(
+            synthetic.address,
+            bond.address,
+            underlying.address,
+            oracle.address
+          );
+          await addPair(8, 18);
+          await manager.addToken(
+            synthetic.address,
+            bond.address,
+            underlying.address,
+            oracle.address
+          );
+          const s2 = synthetic;
+          await addPair(8, 18);
+          await manager.addToken(
+            synthetic.address,
+            bond.address,
+            underlying.address,
+            oracle.address
+          );
+          await manager.deleteToken(s2.address, op.address);
+          const manager2 = await TokenManager.deploy(factory.address);
+          const bondManager2 = await BondManager.deploy(await now());
+          const emissionManager2 = await EmissionManagerMock.deploy();
+          await manager2.setBondManager(bondManager2.address);
+          await manager2.setEmissionManager(emissionManager2.address);
+          await bondManager2.setTokenManager(manager2.address);
+
+          await expect(manager.migrate(manager2.address))
+            .to.emit(manager, "Migrated")
+            .withArgs(op.address, manager2.address);
+          expect(await synthetic.operator()).to.eq(manager2.address);
+          expect(await synthetic.owner()).to.eq(manager2.address);
+        });
+      });
+      describe("when target is not TokenManager", () => {
+        it("fails", async () => {
+          await addPair(8, 18);
+          await manager.addToken(
+            synthetic.address,
+            bond.address,
+            underlying.address,
+            oracle.address
+          );
+          const manager2 = await TokenManager.deploy(factory.address);
+          const bondManager2 = await BondManager.deploy(await now());
+          const emissionManager2 = await EmissionManagerMock.deploy();
+          await manager2.setBondManager(bondManager2.address);
+          await manager2.setEmissionManager(emissionManager2.address);
+          await bondManager2.setTokenManager(manager2.address);
+
+          await expect(
+            manager.migrate(bondManager2.address)
+          ).to.be.revertedWith(
+            "TokenManager: Migration target must be TokenManager"
+          );
+          await expect(manager.migrate(op.address)).to.be.revertedWith(
+            "function call to a non-contract account"
+          );
+        });
+      });
+    });
+    describe("when called by not Operator", () => {
+      it("fails", async () => {
+        const [_, other] = await ethers.getSigners();
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const manager2 = await TokenManager.deploy(factory.address);
+        const bondManager2 = await BondManager.deploy(await now());
+        const emissionManager2 = await EmissionManagerMock.deploy();
+        await manager2.setBondManager(bondManager2.address);
+        await manager2.setEmissionManager(emissionManager2.address);
+        await bondManager2.setTokenManager(manager2.address);
+
+        await expect(
+          manager.connect(other).migrate(manager2.address)
+        ).to.be.revertedWith("Only operator can call this method");
       });
     });
   });

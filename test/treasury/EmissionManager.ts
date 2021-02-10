@@ -315,7 +315,18 @@ describe("EmissionManager", () => {
               ethers.constants.AddressZero,
               boardroomMock.address,
               expectedBoardRoomReward
-            );
+            )
+            .and.to.emit(manager, "PositiveRebaseTotal")
+            .withArgs(synthetic.address, expectedReward)
+            .and.to.emit(manager, "DevFundFunded")
+            .withArgs(synthetic.address, expectedDevFundReward)
+            .and.to.emit(manager, "BondDistributionFunded")
+            .withArgs(synthetic.address, expectedBondReward)
+            .and.to.emit(manager, "StableFundFunded")
+            .withArgs(synthetic.address, expectedStableFundReward)
+            .and.to.emit(manager, "BoardroomFunded")
+            .withArgs(synthetic.address, expectedBoardRoomReward);
+
           expect(await synthetic.balanceOf(devFund.address)).to.eq(
             expectedDevFundReward
           );

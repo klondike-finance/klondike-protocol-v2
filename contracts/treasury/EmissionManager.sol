@@ -139,56 +139,56 @@ contract EmissionManager is
     /// @param _devFund New dev fund address
     function setDevFund(address _devFund) public onlyOwner {
         devFund = _devFund;
-        emit DevFundChanged(operator, _devFund);
+        emit DevFundChanged(msg.sender, _devFund);
     }
 
     /// Set new stable fund
     /// @param _stableFund New stable fund address
     function setStableFund(address _stableFund) public onlyOwner {
         stableFund = _stableFund;
-        emit StableFundChanged(operator, _stableFund);
+        emit StableFundChanged(msg.sender, _stableFund);
     }
 
     /// Set new boardroom
     /// @param _boardroom New boardroom address
     function setBoardroom(address _boardroom) public onlyOwner {
         boardroom = IBoardroom(_boardroom);
-        emit BoardroomChanged(operator, _boardroom);
+        emit BoardroomChanged(msg.sender, _boardroom);
     }
 
     /// Set new TokenManager
     /// @param _tokenManager New TokenManager address
     function setTokenManager(address _tokenManager) public onlyOwner {
         tokenManager = ITokenManager(_tokenManager);
-        emit TokenManagerChanged(operator, _tokenManager);
+        emit TokenManagerChanged(msg.sender, _tokenManager);
     }
 
     /// Set new BondManager
     /// @param _bondManager New BondManager address
     function setBondManager(address _bondManager) public onlyOwner {
         bondManager = IBondManager(_bondManager);
-        emit BondManagerChanged(operator, _bondManager);
+        emit BondManagerChanged(msg.sender, _bondManager);
     }
 
     /// Set new dev fund rate
     /// @param _devFundRate New dev fund rate
     function setDevFundRate(uint256 _devFundRate) public onlyOwner {
         devFundRate = _devFundRate;
-        emit DevFundRateChanged(operator, _devFundRate);
+        emit DevFundRateChanged(msg.sender, _devFundRate);
     }
 
     /// Set new stable fund rate
     /// @param _stableFundRate New stable fund rate
     function setStableFundRate(uint256 _stableFundRate) public onlyOwner {
         stableFundRate = _stableFundRate;
-        emit StableFundRateChanged(operator, _stableFundRate);
+        emit StableFundRateChanged(msg.sender, _stableFundRate);
     }
 
     /// Set new threshold
     /// @param _threshold New threshold
     function setThreshold(uint256 _threshold) public onlyOwner {
         threshold = _threshold;
-        emit ThresholdChanged(operator, _threshold);
+        emit ThresholdChanged(msg.sender, _threshold);
     }
 
     // --------- Operator (immediate) ---------
@@ -197,7 +197,7 @@ contract EmissionManager is
     /// @param pause Sets the pause / unpause
     function setPausePositiveRebase(bool pause) public onlyOperator {
         pausePositiveRebase = pause;
-        emit PositiveRebasePaused(operator, pause);
+        emit PositiveRebasePaused(msg.sender, pause);
     }
 
     /// Make positive rebase for one token
@@ -210,6 +210,7 @@ contract EmissionManager is
         if (amount == 0) {
             return;
         }
+        emit PositiveRebaseTotal(syntheticTokenAddress, amount);
 
         uint256 devFundAmount = amount.mul(devFundRate).div(100);
         tokenManager.mintSynthetic(
@@ -217,7 +218,7 @@ contract EmissionManager is
             devFund,
             devFundAmount
         );
-        emit DevFundFunded(devFundAmount);
+        emit DevFundFunded(syntheticTokenAddress, devFundAmount);
         amount = amount.sub(devFundAmount);
 
         SyntheticToken bondToken =
@@ -233,7 +234,7 @@ contract EmissionManager is
                 address(bondManager),
                 bondAmount
             );
-            emit BondDistributionFunded(bondAmount);
+            emit BondDistributionFunded(syntheticTokenAddress, bondAmount);
         }
         amount = amount.sub(bondAmount);
         if (amount == 0) {
@@ -246,7 +247,7 @@ contract EmissionManager is
             stableFund,
             stableFundAmount
         );
-        emit StableFundFunded(stableFundAmount);
+        emit StableFundFunded(syntheticTokenAddress, stableFundAmount);
         amount = amount.sub(stableFundAmount);
 
         tokenManager.mintSynthetic(
@@ -255,7 +256,7 @@ contract EmissionManager is
             amount
         );
         boardroom.notifyTransfer(syntheticTokenAddress, amount);
-        emit BoardroomFunded(stableFundAmount);
+        emit BoardroomFunded(syntheticTokenAddress, amount);
     }
 
     event DevFundChanged(address indexed operator, address newFund);
@@ -271,8 +272,21 @@ contract EmissionManager is
     event DevFundRateChanged(address indexed operator, uint256 newRate);
     event StableFundRateChanged(address indexed operator, uint256 newRate);
     event ThresholdChanged(address indexed operator, uint256 newThreshold);
-    event BondDistributionFunded(uint256 amount);
-    event BoardroomFunded(uint256 amount);
-    event DevFundFunded(uint256 amount);
-    event StableFundFunded(uint256 amount);
+    event PositiveRebaseTotal(
+        address indexed syntheticTokenAddress,
+        uint256 amount
+    );
+    event BondDistributionFunded(
+        address indexed syntheticTokenAddress,
+        uint256 amount
+    );
+    event BoardroomFunded(
+        address indexed syntheticTokenAddress,
+        uint256 amount
+    );
+    event DevFundFunded(address indexed syntheticTokenAddress, uint256 amount);
+    event StableFundFunded(
+        address indexed syntheticTokenAddress,
+        uint256 amount
+    );
 }
