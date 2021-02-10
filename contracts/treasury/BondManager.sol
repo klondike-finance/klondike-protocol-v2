@@ -64,7 +64,7 @@ contract BondManager is
     function validTokenPermissions() public view returns (bool) {
         address[] memory tokens = tokenManager.allTokens();
         for (uint32 i = 0; i < tokens.length; i++) {
-            SyntheticToken token = SyntheticToken(tokens[i]);
+            SyntheticToken token = SyntheticToken(bondIndex[tokens[i]]);
             if (address(token) != address(0)) {
                 if (token.operator() != address(this)) {
                     return false;
@@ -221,7 +221,7 @@ contract BondManager is
     function migrate(IMigrationTarget target) public onlyOperator {
         require(
             keccak256(bytes(target.name())) == keccak256(bytes("BondManager")),
-            "Migration target must be BondManager"
+            "BondManager: Migration target must be BondManager"
         );
         address[] memory tokens = tokenManager.allTokens();
         for (uint32 i = 0; i < tokens.length; i++) {
