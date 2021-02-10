@@ -18,4 +18,8 @@ interface IBondManager {
     /// @param newOperator New operator for the bond token
     function deleteBondToken(address syntheticTokenAddress, address newOperator)
         external;
+
+    function bondIndex(address syntheticTokenAddress)
+        external
+        returns (address);
 }

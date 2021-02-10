@@ -16,9 +16,7 @@ import "../access/Operatable.sol";
 contract TokenManager is ITokenManager, Operatable {
     struct TokenData {
         SyntheticToken syntheticToken;
-        uint8 syntheticDecimals;
         ERC20 underlyingToken;
-        uint8 underlyingDecimals;
         IUniswapV2Pair pair;
         IOracle oracle;
     }
@@ -62,12 +60,19 @@ contract TokenManager is ITokenManager, Operatable {
 
     // ------- View ----------
 
+    /// A set of synthetic tokens under management
+    /// @dev Deleted tokens are still present in the array but with address(0)
+    function allTokens() public view override returns (address[] memory) {
+        return tokens;
+    }
+
     /// Checks if the token is managed by Token Manager
     /// @param syntheticTokenAddress The address of the synthetic token
     /// @return True if token is managed
     function isManagedToken(address syntheticTokenAddress)
         public
         view
+        override
         returns (bool)
     {
         return
@@ -82,30 +87,16 @@ contract TokenManager is ITokenManager, Operatable {
             (address(emissionManager) != address(0));
     }
 
-    /// The decimals of the synthetic token
+    /// Address of the underlying token
     /// @param syntheticTokenAddress The address of the synthetic token
-    /// @return The number of decimals for the synthetic token
-    /// @dev Fails if the token is not managed
-    function syntheticDecimals(address syntheticTokenAddress)
+    function underlyingToken(address syntheticTokenAddress)
         public
         view
+        override
         managedToken(syntheticTokenAddress)
-        returns (uint8)
+        returns (address)
     {
-        return tokenIndex[syntheticTokenAddress].syntheticDecimals;
-    }
-
-    /// The decimals of the underlying token
-    /// @param syntheticTokenAddress The address of the synthetic token
-    /// @return The number of decimals for the underlying token
-    /// @dev Fails if the token is not managed
-    function underlyingDecimals(address syntheticTokenAddress)
-        public
-        view
-        managedToken(syntheticTokenAddress)
-        returns (uint8)
-    {
-        return tokenIndex[syntheticTokenAddress].underlyingDecimals;
+        return address(tokenIndex[syntheticTokenAddress].underlyingToken);
     }
 
     /// Average price of the synthetic token according to price oracle
@@ -168,7 +159,9 @@ contract TokenManager is ITokenManager, Operatable {
         managedToken(syntheticTokenAddress)
         returns (uint256)
     {
-        return uint256(10)**syntheticDecimals(syntheticTokenAddress);
+        SyntheticToken synToken =
+            SyntheticToken(tokenIndex[syntheticTokenAddress].syntheticToken);
+        return uint256(10)**synToken.decimals();
     }
 
     /// Get one underlying unit
@@ -181,7 +174,8 @@ contract TokenManager is ITokenManager, Operatable {
         managedToken(syntheticTokenAddress)
         returns (uint256)
     {
-        return uint256(10)**underlyingDecimals(syntheticTokenAddress);
+        ERC20 undToken = tokenIndex[syntheticTokenAddress].underlyingToken;
+        return uint256(10)**undToken.decimals();
     }
 
     // ------- External --------------------
@@ -195,7 +189,7 @@ contract TokenManager is ITokenManager, Operatable {
         managedToken(syntheticTokenAddress)
     {
         IOracle oracle = tokenIndex[syntheticTokenAddress].oracle;
-        oracle.update();
+        try oracle.update() {} catch {}
     }
 
     // ------- External, Operator ----------
@@ -222,7 +216,7 @@ contract TokenManager is ITokenManager, Operatable {
         );
         SyntheticToken syntheticToken = SyntheticToken(syntheticTokenAddress);
         SyntheticToken bondToken = SyntheticToken(bondTokenAddress);
-        ERC20 underlyingToken = ERC20(underlyingTokenAddress);
+        ERC20 underlyingTkn = ERC20(underlyingTokenAddress);
         IOracle oracle = IOracle(oracleAddress);
         IUniswapV2Pair pair =
             IUniswapV2Pair(
@@ -247,14 +241,7 @@ contract TokenManager is ITokenManager, Operatable {
             "TokenManager: Tokens and Oracle tokens are different"
         );
         TokenData memory tokenData =
-            TokenData(
-                syntheticToken,
-                syntheticToken.decimals(),
-                underlyingToken,
-                underlyingToken.decimals(),
-                pair,
-                oracle
-            );
+            TokenData(syntheticToken, underlyingTkn, pair, oracle);
         tokenIndex[syntheticTokenAddress] = tokenData;
         tokens.push(syntheticTokenAddress);
         bondManager.addBondToken(syntheticTokenAddress, bondTokenAddress);
@@ -311,6 +298,23 @@ contract TokenManager is ITokenManager, Operatable {
         );
         SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
         token.burnFrom(owner, amount);
+    }
+
+    /// Mints synthetic token
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param receiver Address to receive minted token
+    /// @param amount Amount to mint
+    function mintSynthetic(
+        address syntheticTokenAddress,
+        address receiver,
+        uint256 amount
+    ) public override managedToken(syntheticTokenAddress) initialized {
+        require(
+            msg.sender == address(emissionManager),
+            "TokenManager: Only EmissionManager can call this function"
+        );
+        SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
+        token.mint(receiver, amount);
     }
 
     /// Updates bond manager address

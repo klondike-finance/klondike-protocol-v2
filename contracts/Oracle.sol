@@ -60,7 +60,7 @@ contract Oracle is Debouncable, Timeboundable, IOracle {
 
     /// Updates oracle price
     /// @dev Works only once in a period, other times reverts
-    function update() external override debounce() inTimeBounds() {
+    function update() external override commitableDebounce() inTimeBounds() {
         (
             uint256 price0Cumulative,
             uint256 price1Cumulative,

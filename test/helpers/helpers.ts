@@ -38,13 +38,14 @@ export async function deployToken(
   tokenFactory: ContractFactory,
   uniswapRouter: Contract,
   name: string,
-  decimals: number
+  decimals: number,
+  supply?: BigNumber
 ): Promise<Contract> {
   const token = await tokenFactory.deploy(name, name, decimals);
   const [operator] = await ethers.getSigners();
-  const supply = BigNumber.from(10).pow(decimals + 6);
-  await token.mint(operator.address, supply);
-  await token.approve(uniswapRouter.address, supply);
+  const sup = supply || BigNumber.from(10).pow(decimals + 6);
+  await token.mint(operator.address, sup);
+  await token.approve(uniswapRouter.address, sup);
   return token;
 }
 

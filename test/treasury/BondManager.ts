@@ -17,7 +17,7 @@ import {
 describe("BondManager", () => {
   let BondManager: ContractFactory;
   let TokenManager: ContractFactory;
-  let EmissionManager: ContractFactory;
+  let EmissionManagerMock: ContractFactory;
   let SyntheticToken: ContractFactory;
   let Oracle: ContractFactory;
   let manager: Contract;
@@ -38,15 +38,17 @@ describe("BondManager", () => {
   before(async () => {
     BondManager = await ethers.getContractFactory("BondManager");
     TokenManager = await ethers.getContractFactory("TokenManager");
-    EmissionManager = await ethers.getContractFactory("EmissionManagerMock");
+    EmissionManagerMock = await ethers.getContractFactory(
+      "EmissionManagerMock"
+    );
     SyntheticToken = await ethers.getContractFactory("SyntheticToken");
     Oracle = await ethers.getContractFactory("Oracle");
     const { factory: f, router: r } = await deployUniswap();
     factory = f;
     router = r;
-    manager = await BondManager.deploy();
+    manager = await BondManager.deploy(await now());
     tokenManager = await TokenManager.deploy(factory.address);
-    emissionManager = await EmissionManager.deploy();
+    emissionManager = await EmissionManagerMock.deploy();
     await manager.setTokenManager(tokenManager.address);
     await tokenManager.setBondManager(manager.address);
     await tokenManager.setEmissionManager(emissionManager.address);
@@ -91,7 +93,7 @@ describe("BondManager", () => {
 
   describe("#constructor", () => {
     it("creates a bond manager", async () => {
-      await expect(BondManager.deploy()).to.not.be.reverted;
+      await expect(BondManager.deploy(await now())).to.not.be.reverted;
     });
   });
 
@@ -102,7 +104,7 @@ describe("BondManager", () => {
 
     describe("when synthetic token operator is TokenManager", () => {
       it("adds bond token", async () => {
-        const manager = await BondManager.deploy();
+        const manager = await BondManager.deploy(await now());
         await manager.setTokenManager(op.address);
         const bond = await deployToken(
           SyntheticToken,
@@ -123,7 +125,7 @@ describe("BondManager", () => {
     });
     describe("when bond token operator is not BondManager", () => {
       it("fails", async () => {
-        const manager = await BondManager.deploy();
+        const manager = await BondManager.deploy(await now());
         await manager.setTokenManager(op.address);
 
         const b = await deployToken(
@@ -150,7 +152,7 @@ describe("BondManager", () => {
     });
     describe("when called not by TokenManager", () => {
       it("fails", async () => {
-        const manager = await BondManager.deploy();
+        const manager = await BondManager.deploy(await now());
         await expect(
           manager.addBondToken(synthetic.address, bond.address)
         ).to.be.revertedWith(
@@ -478,7 +480,7 @@ describe("BondManager", () => {
   describe("#setPauseBuyBonds", () => {
     describe("when called by the Operator", () => {
       it("sets pause on selling bonds", async () => {
-        const m = await BondManager.deploy();
+        const m = await BondManager.deploy(await now());
         expect(await m.pauseBuyBonds()).to.eq(false);
         await m.setPauseBuyBonds(true);
         expect(await m.pauseBuyBonds()).to.eq(true);

@@ -3,6 +3,25 @@ pragma solidity =0.6.6;
 
 /// Token manager as seen by other managers
 interface ITokenManager {
+    /// A set of synthetic tokens under management
+    /// @dev Deleted tokens are still present in the array but with address(0)
+    function allTokens() external view returns (address[] memory);
+
+    /// Checks if the token is managed by Token Manager
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @return True if token is managed
+    function isManagedToken(address syntheticTokenAddress)
+        external
+        view
+        returns (bool);
+
+    /// Address of the underlying token
+    /// @param syntheticTokenAddress The address of the synthetic token
+    function underlyingToken(address syntheticTokenAddress)
+        external
+        view
+        returns (address);
+
     /// Average price of the synthetic token according to price oracle
     /// @param syntheticTokenAddress The address of the synthetic token
     /// @param syntheticTokenAmount The amount to be priced
@@ -34,6 +53,16 @@ interface ITokenManager {
     function burnSyntheticFrom(
         address syntheticTokenAddress,
         address owner,
+        uint256 amount
+    ) external;
+
+    /// Mints synthetic token
+    /// @param syntheticTokenAddress The address of the synthetic token
+    /// @param receiver Address to receive minted token
+    /// @param amount Amount to mint
+    function mintSynthetic(
+        address syntheticTokenAddress,
+        address receiver,
         uint256 amount
     ) external;
 
