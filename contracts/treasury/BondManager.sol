@@ -147,6 +147,7 @@ contract BondManager is
         SyntheticToken bondToken =
             SyntheticToken(bondIndex[syntheticTokenAddress]);
         bondToken.mint(msg.sender, amountOfBonds);
+        emit BoughtBonds(msg.sender, amountOfSyntheticIn, amountOfBonds);
     }
 
     /// Sell bonds for synthetic 1-to-1
@@ -173,6 +174,7 @@ contract BondManager is
         );
         bondToken.burnFrom(msg.sender, amount);
         syntheticToken.transfer(msg.sender, amount);
+        emit SoldBonds(msg.sender, amount);
     }
 
     // ------- Public, Operator ----------
@@ -181,12 +183,14 @@ contract BondManager is
     /// @param pause True if bonds buying should be stopped.
     function setPauseBuyBonds(bool pause) public onlyOperator {
         pauseBuyBonds = pause;
+        emit BuyBondsPaused(msg.sender, pause);
     }
 
     /// Sets the TokenManager
     /// @param _tokenManager The address of the new TokenManager
     function setTokenManager(address _tokenManager) public onlyOperator {
         tokenManager = ITokenManager(_tokenManager);
+        emit TokenManagerChanged(msg.sender, _tokenManager);
     }
 
     // ------- Internal ----------
@@ -244,4 +248,16 @@ contract BondManager is
     event BondAdded(address indexed bondTokenAddress);
     /// Emitted each time the token becomes unmanaged
     event BondDeleted(address indexed bondAddress, address indexed newOperator);
+    /// Emitted each time TokenManager is updated
+    event TokenManagerChanged(address indexed operator, address newManager);
+    /// Emitted each time buyBonds paused / unpaused
+    event BuyBondsPaused(address indexed operator, bool pause);
+    /// Emitted each bonds are bought
+    event BoughtBonds(
+        address indexed owner,
+        uint256 amountOfSynthetics,
+        uint256 amountOfBonds
+    );
+    /// Emitted each bonds are bought
+    event SoldBonds(address indexed owner, uint256 amount);
 }

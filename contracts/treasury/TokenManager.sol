@@ -321,12 +321,14 @@ contract TokenManager is ITokenManager, Operatable {
     /// @param _bondManager new bond manager
     function setBondManager(address _bondManager) public onlyOperator {
         bondManager = IBondManager(_bondManager);
+        emit BondManagerChanged(msg.sender, _bondManager);
     }
 
     /// Updates emission manager address
     /// @param _emissionManager new emission manager
     function setEmissionManager(address _emissionManager) public onlyOperator {
         emissionManager = IEmissionManager(_emissionManager);
+        emit EmissionManagerChanged(msg.sender, _emissionManager);
     }
 
     /// Updates oracle for synthetic token address
@@ -343,6 +345,7 @@ contract TokenManager is ITokenManager, Operatable {
             "TokenManager: Tokens and Oracle tokens are different"
         );
         tokenIndex[syntheticTokenAddress].oracle = oracle;
+        emit OracleUpdated(msg.sender, syntheticTokenAddress, oracleAddress);
     }
 
     // ------- Events ----------
@@ -361,4 +364,14 @@ contract TokenManager is ITokenManager, Operatable {
         address oracleAddress,
         address pairAddress
     );
+    /// Emitted each time Oracle is updated
+    event OracleUpdated(
+        address indexed operator,
+        address indexed syntheticTokenAddress,
+        address oracleAddress
+    );
+    /// Emitted each time BondManager is updated
+    event BondManagerChanged(address indexed operator, address newManager);
+    /// Emitted each time EmissionManager is updated
+    event EmissionManagerChanged(address indexed operator, address newManager);
 }
