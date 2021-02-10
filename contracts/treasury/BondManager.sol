@@ -1,24 +1,27 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.6.6;
 
+// Todo initialized + bond events + migration + starttime
+
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "./TokenManager.sol";
+import "../time/Timeboundable.sol";
 import "../access/ReentrancyGuardable.sol";
 import "../interfaces/IBondManager.sol";
 import "../interfaces/ITokenManager.sol";
 
-contract BondManager is IBondManager, ReentrancyGuardable, Operatable {
+contract BondManager is
+    IBondManager,
+    ReentrancyGuardable,
+    Operatable,
+    Timeboundable
+{
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    struct BondData {
-        SyntheticToken bondToken;
-        uint8 bondDecimals;
-    }
-
-    /// Bond data (key is synthetic token address)
-    mapping(address => BondData) public bondIndex;
+    /// Bond data (key is synthetic token address, value is bond address)
+    mapping(address => address) public override bondIndex;
 
     /// Pauses buying bonds
     bool public pauseBuyBonds = false;
@@ -27,7 +30,7 @@ contract BondManager is IBondManager, ReentrancyGuardable, Operatable {
     ITokenManager public tokenManager;
 
     /// Creates a new Bond Manager
-    constructor() public {}
+    constructor(uint256 startTime) public Timeboundable(startTime, 0) {}
 
     // ------- Modifiers ------------
 
@@ -48,8 +51,7 @@ contract BondManager is IBondManager, ReentrancyGuardable, Operatable {
         view
         returns (bool)
     {
-        return
-            address(bondIndex[syntheticTokenAddress].bondToken) != address(0);
+        return bondIndex[syntheticTokenAddress] != address(0);
     }
 
     /// The decimals of the bond token
@@ -62,7 +64,7 @@ contract BondManager is IBondManager, ReentrancyGuardable, Operatable {
         managedToken(syntheticTokenAddress)
         returns (uint8)
     {
-        return bondIndex[syntheticTokenAddress].bondDecimals;
+        return SyntheticToken(bondIndex[syntheticTokenAddress]).decimals();
     }
 
     /// This is the price of synthetic in underlying (und / syn)
@@ -124,7 +126,7 @@ contract BondManager is IBondManager, ReentrancyGuardable, Operatable {
         address syntheticTokenAddress,
         uint256 amountOfSyntheticIn,
         uint256 minAmountBondsOut
-    ) public onePerBlock managedToken(syntheticTokenAddress) {
+    ) public onePerBlock managedToken(syntheticTokenAddress) inTimeBounds {
         tokenManager.updateOracle(syntheticTokenAddress);
         require(
             !pauseBuyBonds,
@@ -142,7 +144,8 @@ contract BondManager is IBondManager, ReentrancyGuardable, Operatable {
             amountOfSyntheticIn
         );
 
-        SyntheticToken bondToken = bondIndex[syntheticTokenAddress].bondToken;
+        SyntheticToken bondToken =
+            SyntheticToken(bondIndex[syntheticTokenAddress]);
         bondToken.mint(msg.sender, amountOfBonds);
     }
 
@@ -158,9 +161,10 @@ contract BondManager is IBondManager, ReentrancyGuardable, Operatable {
         address syntheticTokenAddress,
         uint256 amountOfBondsIn,
         uint256 minAmountOfSyntheticOut
-    ) public managedToken(syntheticTokenAddress) onePerBlock {
+    ) public managedToken(syntheticTokenAddress) onePerBlock inTimeBounds {
         SyntheticToken syntheticToken = SyntheticToken(syntheticTokenAddress); // trusted address since this is a managedToken
-        SyntheticToken bondToken = bondIndex[syntheticTokenAddress].bondToken;
+        SyntheticToken bondToken =
+            SyntheticToken(bondIndex[syntheticTokenAddress]);
         uint256 amount =
             Math.min(syntheticToken.balanceOf(address(this)), amountOfBondsIn);
         require(
@@ -204,10 +208,7 @@ contract BondManager is IBondManager, ReentrancyGuardable, Operatable {
                 (bondToken.owner() == address(this)),
             "BondManager: Token operator and owner of the bond token must be set to TokenManager before adding a token"
         );
-        bondIndex[syntheticTokenAddress] = BondData(
-            bondToken,
-            bondToken.decimals()
-        );
+        bondIndex[syntheticTokenAddress] = address(bondToken);
         emit BondAdded(bondTokenAddress);
     }
 
@@ -227,13 +228,17 @@ contract BondManager is IBondManager, ReentrancyGuardable, Operatable {
             newOperator,
             syntheticToken.balanceOf(address(this))
         );
-        SyntheticToken bondToken = bondIndex[syntheticTokenAddress].bondToken;
+        SyntheticToken bondToken =
+            SyntheticToken(bondIndex[syntheticTokenAddress]);
         bondToken.transferOperator(newOperator);
         bondToken.transferOwnership(newOperator);
         delete bondIndex[syntheticTokenAddress];
         assert(!isManagedToken(syntheticTokenAddress));
         emit BondDeleted(address(bondToken), newOperator);
     }
+
+    // event RedeemedBonds(address indexed from, uint256 amount);
+    // event BoughtBonds(address indexed from, uint256 amount);
 
     /// Emitted each time the token becomes managed
     event BondAdded(address indexed bondTokenAddress);
