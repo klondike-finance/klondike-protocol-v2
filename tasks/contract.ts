@@ -4,8 +4,16 @@ import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Contract, Wallet } from "ethers";
 import { getContractAddress } from "ethers/lib/utils";
-import { getRegistryContract, initRegistry, updateRegistry } from "./registry";
+import {
+  getAllRegistryContracts,
+  getRegistryContract,
+  initRegistry,
+  updateRegistry,
+} from "./registry";
 import { writeFileSync } from "fs";
+import { ethers } from "hardhat";
+import https from "https";
+import axios from "axios";
 
 task("contract:deploy", "Deploys a contract")
   .addParam(
@@ -36,7 +44,43 @@ task("contract:verify", "Verifies contracts")
     }
   });
 
+task("contract:verify:all", "Verifies contracts").setAction(
+  async ({ namesOrAddresses }, hre) => {
+    await contractVerifyAll(hre);
+  }
+);
+
 export async function contractDeploy(
+  hre: HardhatRuntimeEnvironment,
+  name: string,
+  registryName: string,
+  ...args: Array<any>
+): Promise<Contract> {
+  const entry = await getRegistryContract(hre, registryName);
+  if (entry) {
+    const contract = await hre.ethers.getContractAt(name, entry.address);
+    console.log(
+      `Prefetched contract ${registryName} at address ${entry.address}`
+    );
+
+    return contract;
+  }
+  return await contractHardDeploy(hre, name, registryName, ...args);
+}
+
+export async function findExistingContract(
+  hre: HardhatRuntimeEnvironment,
+  registryName: string
+): Promise<Contract> {
+  const entry = await getRegistryContract(hre, registryName);
+  if (!entry) {
+    throw `Contract \`${registryName}\` not found in the registry`;
+  }
+  const contract = await hre.ethers.getContractAt(entry.name, entry.address);
+  return contract;
+}
+
+export async function contractHardDeploy(
   hre: HardhatRuntimeEnvironment,
   name: string,
   registryName: string,
@@ -61,6 +105,29 @@ export async function contractDeploy(
   return await hre.ethers.getContractAt(name, address);
 }
 
+async function contractVerifyAll(hre: HardhatRuntimeEnvironment) {
+  const contracts = getAllRegistryContracts(hre);
+  for (const contract of contracts) {
+    try {
+      await contractVerify(hre, contract);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+}
+
+async function contractVerified(
+  hre: HardhatRuntimeEnvironment,
+  address: string
+) {
+  const domain =
+    hre.network.name === "mainnet" ? "api" : `api-${hre.network.name}`;
+  const url = `https://${domain}.etherscan.io/api?module=contract&action=getabi&address=${address}&apikey=${hre.config.etherscan.apiKey}`;
+  const abiResponse = await axios.get(url);
+  const status = abiResponse.data.status;
+  return status.toString() === "1";
+}
+
 async function contractVerify(
   hre: HardhatRuntimeEnvironment,
   contractNameOrAddress: string
@@ -69,6 +136,11 @@ async function contractVerify(
   if (!entry) {
     throw `Contract \`${contractNameOrAddress}\` not found in registry`;
   }
+  if (await contractVerified(hre, entry.address)) {
+    console.log("Already verified - skipping");
+    return;
+  }
+
   console.log(
     `Verifying contract \`${entry.name}\` with name \`${entry.registryName}\` at address \`${entry.address}\``
   );

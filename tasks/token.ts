@@ -1,9 +1,9 @@
 import { BigNumber, Contract } from "ethers";
 import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { contractDeploy } from "./contract";
+import { contractDeploy, findExistingContract } from "./contract";
 import { getRegistryContract } from "./registry";
-import { sendTransaction } from "./utils";
+import { ETH, isProd, sendTransaction } from "./utils";
 
 task("token:deploy", "Deploys a new synthetic token")
   .addParam("name", "The name of the token", undefined, types.string)
@@ -77,4 +77,72 @@ export async function mint(
   const tx = await contract.populateTransaction.mint(to, value);
   await sendTransaction(hre, tx);
   console.log("Done");
+}
+
+export async function deployTokens(
+  hre: HardhatRuntimeEnvironment,
+  underlyingRegistryName: string,
+  initialLiquidityMint: BigNumber = BigNumber.from(0)
+) {
+  console.log(
+    `Deploying 3 tokens for ${underlyingRegistryName} with initial mint ${initialLiquidityMint.toString()}`
+  );
+
+  const [operator] = await hre.ethers.getSigners();
+  let underlying;
+  if (isProd(hre)) {
+    underlying = await findExistingContract(hre, underlyingRegistryName);
+  } else {
+    underlying = await contractDeploy(
+      hre,
+      "SyntheticToken",
+      underlyingRegistryName,
+      underlyingRegistryName,
+      underlyingRegistryName,
+      8
+    );
+  }
+  const synthetic = await contractDeploy(
+    hre,
+    "SyntheticToken",
+    deriveSyntheticName(underlyingRegistryName),
+    deriveSyntheticName(underlyingRegistryName),
+    deriveSyntheticName(underlyingRegistryName),
+    18
+  );
+  const bond = await contractDeploy(
+    hre,
+    "SyntheticToken",
+    deriveBondName(underlyingRegistryName),
+    deriveBondName(underlyingRegistryName),
+    deriveBondName(underlyingRegistryName),
+    18
+  );
+  if (isProd(hre)) {
+    await mint(
+      hre,
+      underlyingRegistryName,
+      operator.address,
+      initialLiquidityMint
+    );
+  } else {
+    await mint(
+      hre,
+      deriveSyntheticName(underlyingRegistryName),
+      operator.address,
+      ETH.mul(1000)
+    );
+    await mint(hre, underlyingRegistryName, operator.address, ETH.mul(1000));
+  }
+  console.log("Deployed 3 tokens");
+
+  return { synthetic, bond, underlying };
+}
+
+export function deriveSyntheticName(underlyingName: string) {
+  return `K${underlyingName}`;
+}
+
+export function deriveBondName(underlyingName: string) {
+  return `KB-${underlyingName}`;
 }

@@ -4,6 +4,8 @@ import UniswapV2FactoryBuild from "@uniswap/v2-core/build/UniswapV2Factory.json"
 import UniswapV2RouterBuild from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
 import { getRegistryContract } from "./registry";
 import { now, sendTransaction } from "./utils";
+import { contractDeploy } from "./contract";
+import { ethers } from "hardhat";
 
 export const UniswapV2Factory = new ContractFactory(
   UniswapV2FactoryBuild.abi,
@@ -20,22 +22,38 @@ export const UNISWAP_V2_ROUTER_ADDRESS =
   "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
 
 export async function getUniswapFactory(
-  hre: HardhatRuntimeEnvironment,
-  address?: string
+  hre: HardhatRuntimeEnvironment
 ): Promise<Contract> {
+  if (hre.network.name === "hardhat") {
+    return await contractDeploy(
+      hre,
+      "UniswapV2Factory",
+      "UniswapFactory",
+      hre.ethers.constants.AddressZero
+    );
+  }
   return await hre.ethers.getContractAt(
     UniswapV2FactoryBuild.abi,
-    address || UNISWAP_V2_FACTORY_ADDRESS
+    UNISWAP_V2_FACTORY_ADDRESS
   );
 }
 
 export async function getUniswapRouter(
-  hre: HardhatRuntimeEnvironment,
-  address?: string
+  hre: HardhatRuntimeEnvironment
 ): Promise<Contract> {
+  if (hre.network.name === "hardhat") {
+    const factory = await getUniswapFactory(hre);
+    return await contractDeploy(
+      hre,
+      "UniswapV2Router02",
+      "UniswapRouter",
+      factory.address,
+      hre.ethers.constants.AddressZero
+    );
+  }
   return await hre.ethers.getContractAt(
     UniswapV2RouterBuild.abi,
-    address || UNISWAP_V2_ROUTER_ADDRESS
+    UNISWAP_V2_ROUTER_ADDRESS
   );
 }
 
@@ -43,6 +61,7 @@ export async function approveUniswap(
   hre: HardhatRuntimeEnvironment,
   registryNameOrAddressToken: string
 ) {
+  const [operator] = await hre.ethers.getSigners();
   const tokenRegistry = getRegistryContract(hre, registryNameOrAddressToken);
   console.log(`Approving token ${tokenRegistry.registryName} for Uniswap...`);
   const token: Contract = await hre.ethers.getContractAt(
@@ -51,6 +70,10 @@ export async function approveUniswap(
   );
   const router = await getUniswapRouter(hre);
 
+  const allowance = await token.allowance(operator.address, router.address);
+  if (allowance > 0) {
+    console.log("Allowance is set, skipping...");
+  }
   await token.approve(router.address, hre.ethers.constants.MaxUint256);
   console.log("Done");
 }
@@ -61,8 +84,7 @@ export async function addLiquidity(
   registryNameOrAddressB: string,
   amountA: BigNumber,
   amountB: BigNumber,
-  receiver?: string,
-  routerAddress: string = UNISWAP_V2_ROUTER_ADDRESS
+  receiver?: string
 ) {
   const tokenA = getRegistryContract(hre, registryNameOrAddressA);
   const tokenB = getRegistryContract(hre, registryNameOrAddressB);
@@ -73,13 +95,19 @@ export async function addLiquidity(
   console.log(
     `Adding liquidity to \`${tokenAName}\` - \`${tokenBName}\` UniPool: ${amountA.toString()} - ${amountB.toString()}...`
   );
+  const factory = await getUniswapFactory(hre);
+  const pair = await factory.getPair(tokenAAddress, tokenBAddress);
+  if (pair != hre.ethers.constants.AddressZero) {
+    console.log("Pair already exists, skipping.");
+    return;
+  }
   await approveUniswap(hre, registryNameOrAddressA);
   await approveUniswap(hre, registryNameOrAddressB);
 
   const [operator] = await hre.ethers.getSigners();
   const to = receiver || operator.address;
 
-  const router = await getUniswapRouter(hre, routerAddress);
+  const router = await getUniswapRouter(hre);
 
   const tx = await router.populateTransaction.addLiquidity(
     tokenAAddress,

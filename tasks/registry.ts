@@ -16,7 +16,7 @@ const REGISTRY = {
 };
 
 export function initRegistry(hre: HardhatRuntimeEnvironment) {
-  if (REGISTRY.initialized) {
+  if (REGISTRY.initialized || process.env["REDEPLOY"]) {
     return;
   }
   const root = resolve(__dirname, "..", "registry", hre.network.name);
@@ -44,6 +44,11 @@ export function initRegistry(hre: HardhatRuntimeEnvironment) {
     REGISTRY.index[REGISTRY.data[name].address] = name;
   }
   REGISTRY.initialized = true;
+}
+
+export function getAllRegistryContracts(hre: HardhatRuntimeEnvironment) {
+  initRegistry(hre);
+  return Object.keys(REGISTRY.data);
 }
 
 export function getRegistryContract(
