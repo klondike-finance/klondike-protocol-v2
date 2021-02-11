@@ -4,7 +4,10 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import { HardhatUserConfig } from "hardhat/config";
 import { config as dotenv } from "dotenv";
+import "./tasks/token";
 import "./tasks/oracle";
+import "./tasks/main";
+
 dotenv();
 
 const config: HardhatUserConfig = {

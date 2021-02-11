@@ -23,3 +23,7 @@ export async function sendTransaction(
   await txResp.wait();
   console.log("Transaction confirmed");
 }
+
+export function isProd(hre: HardhatRuntimeEnvironment) {
+  return hre.network.name === "mainnet";
+}

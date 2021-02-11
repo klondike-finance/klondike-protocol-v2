@@ -46,6 +46,11 @@ export function initRegistry(hre: HardhatRuntimeEnvironment) {
   REGISTRY.initialized = true;
 }
 
+export function getAllRegistryContracts(hre: HardhatRuntimeEnvironment) {
+  initRegistry(hre);
+  return Object.keys(REGISTRY.data);
+}
+
 export function getRegistryContract(
   hre: HardhatRuntimeEnvironment,
   registryNameOrAddress: string
