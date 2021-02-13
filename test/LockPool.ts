@@ -440,4 +440,22 @@ describe("LockPool", () => {
       });
     });
   });
+
+  describe("#setRewardDays", () => {
+    describe("when called by Operator", () => {
+      it("sets the reward days", async () => {
+        lockPool = await LockPool.deploy(
+          droid.address,
+          jedi.address,
+          await now()
+        );
+        await lockPool.setRewardFactor(7, 100);
+        await lockPool.setRewardFactor(30, 150);
+        await lockPool.setRewardFactor(7, 110);
+        expect(await lockPool.rewardFactor(7)).to.eq(110);
+        expect(await lockPool.rewardFactor(30)).to.eq(150);
+        expect(await lockPool.getRewardDays()).to.eql([7, 30]);
+      });
+    });
+  });
 });
