@@ -4,20 +4,36 @@ pragma solidity =0.6.6;
 import "./SyntheticToken.sol";
 import "./ProxyToken.sol";
 import "./time/Timeboundable.sol";
+import "./access/ReentrancyGuardable.sol";
 import "./access/Operatable.sol";
 
-contract LockPool is Timeboundable, ProxyToken, Operatable {
+/// Contract for locking tokens for some time and receiving rewards immediately
+contract LockPool is
+    Timeboundable,
+    ProxyToken,
+    Operatable,
+    ReentrancyGuardable
+{
+    /// Marks the moment of staking. At staking usedDate is 0.
+    /// If UTXO is used for withdraw usedDate is the time of withdraw.
     struct UTXO {
         uint256 unlockDate;
         uint256 amount;
         uint256 usedDate;
     }
 
-    mapping(address => UTXO[]) private utxos;
-    mapping(address => uint256) private firstUtxo;
+    /// Utxos for a staker
+    mapping(address => UTXO[]) public utxos;
+    /// Before that UTXO all utxos are used
+    mapping(address => uint256) public firstUtxo;
+    /// Rewarding factor mapping days of lock to factor applied
     mapping(uint32 => uint32) public rewardFactor;
+    /// Tracks all relevant rewardDays
+    uint32[] private rewardDays;
 
+    /// Token for lock
     SyntheticToken stakingToken;
+    /// Token for rewards given immediately after lock
     SyntheticToken rewardsToken;
 
     constructor(
@@ -27,14 +43,11 @@ contract LockPool is Timeboundable, ProxyToken, Operatable {
     ) public Timeboundable(_start, 0) ProxyToken(_stakingToken) {
         stakingToken = SyntheticToken(_stakingToken);
         rewardsToken = SyntheticToken(_rewardsToken);
-        _setRewardFactor(7, 100);
-        _setRewardFactor(30, 150);
-        _setRewardFactor(90, 200);
-        _setRewardFactor(180, 250);
-        _setRewardFactor(365, 300);
-        _setRewardFactor(1460, 450);
     }
 
+    // ------- Modifiers ----------
+
+    /// Checks if contract is ready to be used
     modifier initialized() {
         require(
             validTokenPermissions(),
@@ -43,23 +56,20 @@ contract LockPool is Timeboundable, ProxyToken, Operatable {
         _;
     }
 
+    // ------- View ----------
+
+    /// Returns all tracked reward days
+    function getRewardDays() public view returns (uint32[] memory) {
+        return rewardDays;
+    }
+
+    /// Token permissions are set correctly
     function validTokenPermissions() public view returns (bool) {
         return rewardsToken.operator() == address(this);
     }
 
-    function stake(uint256 amount, uint32 daysLock) public initialized {
-        uint32 multiplier = rewardFactor[daysLock];
-        uint256 reward = daysLock * amount * multiplier;
-        require(reward > 0, "Invalid daysLock or amount param param");
-        uint256 unlockDate = block.timestamp + daysLock * 86400;
-
-        super.stake(amount);
-        rewardsToken.mint(msg.sender, reward);
-        utxos[msg.sender].push(UTXO(unlockDate, amount, 0));
-
-        emit Staked(msg.sender, amount, reward, daysLock);
-    }
-
+    /// Check how many staking tokens is available for user withdraw
+    /// @param owner owner of the tokens
     function stakeAvailableForUnlock(address owner)
         public
         view
@@ -76,6 +86,25 @@ contract LockPool is Timeboundable, ProxyToken, Operatable {
         }
     }
 
+    // ------- Public ----------
+
+    /// Stake tokens and receive rewards
+    /// @param amount of tokens to stake
+    /// @param daysLock number of days to lock tokens
+    function stake(uint256 amount, uint32 daysLock) public initialized {
+        uint32 multiplier = rewardFactor[daysLock];
+        uint256 reward = daysLock * amount * multiplier;
+        require(reward > 0, "Invalid daysLock or amount param param");
+        uint256 unlockDate = block.timestamp + daysLock * 86400;
+
+        super.stake(amount);
+        utxos[msg.sender].push(UTXO(unlockDate, amount, 0));
+        rewardsToken.mint(msg.sender, reward);
+
+        emit Staked(msg.sender, amount, reward, daysLock);
+    }
+
+    /// Withdraws all available tokens
     function withdraw() public {
         uint256 actualAmount = 0;
         UTXO[] storage ownerUtxos = utxos[msg.sender];
@@ -93,23 +122,42 @@ contract LockPool is Timeboundable, ProxyToken, Operatable {
         if (firstUtxo[msg.sender] != first) {
             firstUtxo[msg.sender] = first;
         }
+        if (actualAmount == 0) {
+            return;
+        }
         super.withdraw(actualAmount);
         emit Withdrawn(actualAmount);
     }
 
+    // ------- Public, Operator ----------
+
+    /// Set reward factor
+    /// @param daysLock for this number of days
+    /// @param factor the value of the factor
     function setRewardFactor(uint32 daysLock, uint32 factor)
         public
         onlyOperator
     {
-        _setRewardFactor(daysLock, factor);
-    }
-
-    function _setRewardFactor(uint32 daysLock, uint32 factor) internal {
         rewardFactor[daysLock] = factor;
+        bool dayExists = false;
+        for (uint256 i = 0; i < rewardDays.length; i++) {
+            if (rewardDays[i] == daysLock) {
+                dayExists = true;
+                break;
+            }
+        }
+        if (!dayExists) {
+            rewardDays.push(daysLock);
+        }
         emit UpdatedRewardFactor(daysLock, factor);
     }
 
-    event Staked(address from, uint256 amount, uint256 reward, uint32 daysLock);
+    event Staked(
+        address from,
+        uint256 amountStaked,
+        uint256 rewardReceived,
+        uint32 daysLock
+    );
     event Withdrawn(uint256 amount);
     event UpdatedRewardFactor(uint32 daysLock, uint32 factor);
 }
