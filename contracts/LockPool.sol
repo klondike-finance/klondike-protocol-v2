@@ -1,6 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.6.6;
 
+// Todo - pause + migration
+
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./SyntheticToken.sol";
 import "./ProxyToken.sol";
 import "./time/Timeboundable.sol";
@@ -27,9 +30,9 @@ contract LockPool is
     /// Before that UTXO all utxos are used
     mapping(address => uint256) public firstUtxo;
     /// Rewarding factor mapping days of lock to factor applied
-    mapping(uint32 => uint32) public rewardFactor;
+    mapping(uint256 => uint256) public rewardFactor;
     /// Tracks all relevant rewardDays
-    uint32[] private rewardDays;
+    uint256[] private rewardDays;
 
     /// Token for lock
     SyntheticToken stakingToken;
@@ -60,7 +63,7 @@ contract LockPool is
     // ------- View ----------
 
     /// Returns all tracked reward days
-    function getRewardDays() public view returns (uint32[] memory) {
+    function getRewardDays() public view returns (uint256[] memory) {
         return rewardDays;
     }
 
@@ -92,14 +95,15 @@ contract LockPool is
     /// Lock tokens and receive rewards
     /// @param amount of tokens to stake
     /// @param daysLock number of days to lock tokens
-    function lock(uint256 amount, uint32 daysLock)
+    function lock(uint256 amount, uint256 daysLock)
         public
         initialized
         onePerBlock
+        inTimeBounds
     {
-        uint32 multiplier = rewardFactor[daysLock];
-        uint256 reward = daysLock * amount * multiplier;
-        require(reward > 0, "Invalid daysLock or amount param param");
+        uint256 multiplier = rewardFactor[daysLock];
+        uint256 reward = daysLock.mul(amount).mul(multiplier).div(100);
+        require(reward > 0, "LockPool: Invalid daysLock or amount param");
         uint256 unlockDate = block.timestamp + daysLock * 86400;
 
         stake(amount);
@@ -110,7 +114,7 @@ contract LockPool is
     }
 
     /// Withdraws all available tokens
-    function unlock() public onePerBlock {
+    function unlock() public onePerBlock inTimeBounds {
         uint256 actualAmount = 0;
         UTXO[] storage ownerUtxos = utxos[msg.sender];
         uint256 first = firstUtxo[msg.sender];
@@ -139,9 +143,10 @@ contract LockPool is
     /// Set reward factor
     /// @param daysLock for this number of days
     /// @param factor the value of the factor
-    function setRewardFactor(uint32 daysLock, uint32 factor)
+    function setRewardFactor(uint256 daysLock, uint256 factor)
         public
         onlyOperator
+        onePerBlock
     {
         rewardFactor[daysLock] = factor;
         bool dayExists = false;
@@ -161,8 +166,8 @@ contract LockPool is
         address from,
         uint256 amountStaked,
         uint256 rewardReceived,
-        uint32 daysLock
+        uint256 daysLock
     );
     event Withdrawn(uint256 amount);
-    event UpdatedRewardFactor(uint32 daysLock, uint32 factor);
+    event UpdatedRewardFactor(uint256 daysLock, uint256 factor);
 }
