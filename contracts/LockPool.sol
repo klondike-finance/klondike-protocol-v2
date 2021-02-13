@@ -89,10 +89,10 @@ contract LockPool is
 
     // ------- Public ----------
 
-    /// Stake tokens and receive rewards
+    /// Lock tokens and receive rewards
     /// @param amount of tokens to stake
     /// @param daysLock number of days to lock tokens
-    function stake(uint256 amount, uint32 daysLock)
+    function lock(uint256 amount, uint32 daysLock)
         public
         initialized
         onePerBlock
@@ -102,7 +102,7 @@ contract LockPool is
         require(reward > 0, "Invalid daysLock or amount param param");
         uint256 unlockDate = block.timestamp + daysLock * 86400;
 
-        super.stake(amount);
+        stake(amount);
         utxos[msg.sender].push(UTXO(unlockDate, amount, 0));
         rewardsToken.mint(msg.sender, reward);
 
@@ -110,7 +110,7 @@ contract LockPool is
     }
 
     /// Withdraws all available tokens
-    function withdraw() public onePerBlock {
+    function unlock() public onePerBlock {
         uint256 actualAmount = 0;
         UTXO[] storage ownerUtxos = utxos[msg.sender];
         uint256 first = firstUtxo[msg.sender];
@@ -130,7 +130,7 @@ contract LockPool is
         if (actualAmount == 0) {
             return;
         }
-        super.withdraw(actualAmount);
+        withdraw(actualAmount);
         emit Withdrawn(actualAmount);
     }
 
