@@ -32,4 +32,18 @@ describe("LockPool", () => {
         .not.be.reverted;
     });
   });
+
+  describe("#validPermissions", () => {
+    describe("when rewardsToken is managed by LockPool", () => {
+      it("returns true", async () => {
+        await jedi.transferOperator(lockPool.address);
+        expect(await lockPool.validPermissions()).to.eq(true);
+      });
+    });
+    describe("when rewardsToken is not managed by LockPool", () => {
+      it("returns false", async () => {
+        expect(await lockPool.validPermissions()).to.eq(false);
+      });
+    });
+  });
 });

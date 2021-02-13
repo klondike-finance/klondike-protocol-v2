@@ -53,10 +53,7 @@ contract LockPool is
 
     /// Checks if contract is ready to be used
     modifier initialized() {
-        require(
-            validTokenPermissions(),
-            "LockPool: token permissions are not set"
-        );
+        require(validPermissions(), "LockPool: token permissions are not set");
         _;
     }
 
@@ -68,7 +65,7 @@ contract LockPool is
     }
 
     /// Token permissions are set correctly
-    function validTokenPermissions() public view returns (bool) {
+    function validPermissions() public view returns (bool) {
         return rewardsToken.operator() == address(this);
     }
 
