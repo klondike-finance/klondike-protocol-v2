@@ -460,5 +460,24 @@ describe("LockPool", () => {
         ]);
       });
     });
+    describe("#balanceOf", () => {
+      it("returns the balance of staked tokens", async () => {
+        await lockPool.lock(10000, 7);
+        await lockPool.lock(20000, 30);
+        expect(await lockPool.balanceOf(op.address)).to.eq(30000);
+      });
+    });
+
+    describe("#totalSupply", () => {
+      it("returns the balance of all staked tokens", async () => {
+        const [_, other] = await ethers.getSigners();
+        await lockPool.lock(10000, 7);
+        await lockPool.lock(20000, 30);
+        await droid.transfer(other.address, 30000);
+        await droid.connect(other).approve(lockPool.address, 30000);
+        await lockPool.connect(other).lock(30000, 30);
+        expect(await lockPool.totalSupply()).to.eq(60000);
+      });
+    });
   });
 });
