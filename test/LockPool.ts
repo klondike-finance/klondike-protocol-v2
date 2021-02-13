@@ -146,85 +146,213 @@ describe("LockPool", () => {
   //   });
   // });
 
-  describe("#lock", () => {
-    describe("all the conditions are good", () => {
-      it("locks the tokens and returns the reward", async () => {
-        const amount = 123;
+  // describe("#lock", () => {
+  //   describe("all the conditions are good", () => {
+  //     it("locks the tokens and returns the reward", async () => {
+  //       const amount = 123;
+  //       await droid.transfer(
+  //         "0x0000000000000000000000000000000000000001",
+  //         (await droid.balanceOf(op.address)).sub(amount * 7)
+  //       );
+  //       await jedi.transfer(
+  //         "0x0000000000000000000000000000000000000001",
+  //         await jedi.balanceOf(op.address)
+  //       );
+  //       await lockPool.lock(amount, 7);
+  //       expect(await jedi.balanceOf(op.address)).to.eq(
+  //         BigNumber.from(amount).mul(7)
+  //       );
+  //       await jedi.transfer(
+  //         "0x0000000000000000000000000000000000000001",
+  //         await jedi.balanceOf(op.address)
+  //       );
+
+  //       await lockPool.lock(amount, 30);
+  //       expect(await jedi.balanceOf(op.address)).to.eq(
+  //         BigNumber.from(amount).mul(30).mul(150).div(100)
+  //       );
+  //       await jedi.transfer(
+  //         "0x0000000000000000000000000000000000000001",
+  //         await jedi.balanceOf(op.address)
+  //       );
+
+  //       await lockPool.lock(amount, 90);
+  //       expect(await jedi.balanceOf(op.address)).to.eq(
+  //         BigNumber.from(amount).mul(90).mul(200).div(100)
+  //       );
+  //       await jedi.transfer(
+  //         "0x0000000000000000000000000000000000000001",
+  //         await jedi.balanceOf(op.address)
+  //       );
+
+  //       await lockPool.lock(amount, 180);
+  //       expect(await jedi.balanceOf(op.address)).to.eq(
+  //         BigNumber.from(amount).mul(180).mul(250).div(100)
+  //       );
+  //       await jedi.transfer(
+  //         "0x0000000000000000000000000000000000000001",
+  //         await jedi.balanceOf(op.address)
+  //       );
+
+  //       await lockPool.lock(amount, 365);
+  //       expect(await jedi.balanceOf(op.address)).to.eq(
+  //         BigNumber.from(amount).mul(365).mul(300).div(100)
+  //       );
+  //       await jedi.transfer(
+  //         "0x0000000000000000000000000000000000000001",
+  //         await jedi.balanceOf(op.address)
+  //       );
+
+  //       await lockPool.lock(amount, 1460);
+  //       expect(await jedi.balanceOf(op.address)).to.eq(
+  //         BigNumber.from(amount).mul(1460).mul(450).div(100)
+  //       );
+  //       expect(await droid.balanceOf(op.address)).to.eq(amount);
+  //     });
+  //   });
+
+  //   describe("when days param is missing", () => {
+  //     it("fails", async () => {
+  //       await expect(lockPool.lock(123, 31)).to.be.revertedWith(
+  //         "LockPool: Invalid daysLock or amount param"
+  //       );
+  //     });
+  //   });
+
+  //   describe("when amount is 0", () => {
+  //     it("fails", async () => {
+  //       await expect(lockPool.lock(0, 30)).to.be.revertedWith(
+  //         "LockPool: Invalid daysLock or amount param"
+  //       );
+  //     });
+  //   });
+
+  //   describe("when contract is not started", () => {
+  //     it("fails", async () => {
+  //       droid = await SyntheticToken.deploy("DROID", "DROID", 18);
+  //       jedi = await SyntheticToken.deploy("JEDI", "JEDI", 18);
+  //       await droid.mint(op.address, ETH.mul(100));
+  //       await jedi.mint(op.address, ETH.mul(100));
+  //       lockPool = await LockPool.deploy(
+  //         droid.address,
+  //         jedi.address,
+  //         (await now()) + 100
+  //       );
+  //       await jedi.transferOperator(lockPool.address);
+  //       await droid.approve(lockPool.address, ethers.constants.MaxUint256);
+  //       await lockPool.setRewardFactor(7, 100);
+  //       await expect(lockPool.lock(100, 30)).to.be.revertedWith(
+  //         "Timeboundable: Not started yet"
+  //       );
+  //     });
+  //   });
+
+  //   describe("when permissions are not set", () => {
+  //     it("fails", async () => {
+  //       droid = await SyntheticToken.deploy("DROID", "DROID", 18);
+  //       jedi = await SyntheticToken.deploy("JEDI", "JEDI", 18);
+  //       lockPool = await LockPool.deploy(
+  //         droid.address,
+  //         jedi.address,
+  //         await now()
+  //       );
+  //       await expect(lockPool.lock(100, 30)).to.be.revertedWith(
+  //         "LockPool: token permissions are not set"
+  //       );
+  //     });
+  //   });
+  // });
+
+  describe("#unlock", () => {
+    describe("when all prerequisites are met", () => {
+      it("transfers all available tokens (1)", async () => {
         await droid.transfer(
           "0x0000000000000000000000000000000000000001",
-          (await droid.balanceOf(op.address)).sub(amount * 7)
-        );
-        await jedi.transfer(
-          "0x0000000000000000000000000000000000000001",
-          await jedi.balanceOf(op.address)
-        );
-        await lockPool.lock(amount, 7);
-        expect(await jedi.balanceOf(op.address)).to.eq(
-          BigNumber.from(amount).mul(7)
-        );
-        await jedi.transfer(
-          "0x0000000000000000000000000000000000000001",
-          await jedi.balanceOf(op.address)
+          (await droid.balanceOf(op.address)).sub(30000)
         );
 
-        await lockPool.lock(amount, 30);
-        expect(await jedi.balanceOf(op.address)).to.eq(
-          BigNumber.from(amount).mul(30).mul(150).div(100)
+        await lockPool.lock(10000, 7);
+        // 0
+        await fastForwardAndMine(ethers.provider, 1000);
+        // 1000
+        await lockPool.lock(20000, 30);
+        // 1001
+        await fastForwardAndMine(ethers.provider, 7 * 86400 - 1002);
+        // 7 * 86400
+        await expect(lockPool.unlock()).to.be.revertedWith(
+          "LockPool: No tokens available"
         );
-        await jedi.transfer(
+
+        await fastForwardAndMine(ethers.provider, 1);
+        // 7 * 86400 + 1
+        await expect(lockPool.unlock()).to.not.be.reverted;
+        expect(await droid.balanceOf(op.address)).to.eq(10000);
+        expect(await lockPool.firstUtxo(op.address)).to.eq(1);
+
+        await droid.transfer(
           "0x0000000000000000000000000000000000000001",
-          await jedi.balanceOf(op.address)
+          await droid.balanceOf(op.address)
         );
 
-        await lockPool.lock(amount, 90);
-        expect(await jedi.balanceOf(op.address)).to.eq(
-          BigNumber.from(amount).mul(90).mul(200).div(100)
-        );
-        await jedi.transfer(
-          "0x0000000000000000000000000000000000000001",
-          await jedi.balanceOf(op.address)
+        await fastForwardAndMine(ethers.provider, (30 - 7) * 86400 - 3 + 1000);
+        // 30 * 86400 + 1000
+        await expect(lockPool.unlock()).to.be.revertedWith(
+          "LockPool: No tokens available"
         );
 
-        await lockPool.lock(amount, 180);
-        expect(await jedi.balanceOf(op.address)).to.eq(
-          BigNumber.from(amount).mul(180).mul(250).div(100)
-        );
-        await jedi.transfer(
-          "0x0000000000000000000000000000000000000001",
-          await jedi.balanceOf(op.address)
-        );
+        expect(await droid.balanceOf(op.address)).to.eq(0);
 
-        await lockPool.lock(amount, 365);
-        expect(await jedi.balanceOf(op.address)).to.eq(
-          BigNumber.from(amount).mul(365).mul(300).div(100)
-        );
-        await jedi.transfer(
-          "0x0000000000000000000000000000000000000001",
-          await jedi.balanceOf(op.address)
-        );
+        await fastForwardAndMine(ethers.provider, 10);
+        // 30 * 86400 + 1002
+        await expect(lockPool.unlock()).to.not.be.reverted;
+        expect(await droid.balanceOf(op.address)).to.eq(20000);
+        expect(await lockPool.firstUtxo(op.address)).to.eq(2);
 
-        await lockPool.lock(amount, 1460);
-        expect(await jedi.balanceOf(op.address)).to.eq(
-          BigNumber.from(amount).mul(1460).mul(450).div(100)
-        );
-        expect(await droid.balanceOf(op.address)).to.eq(amount);
-      });
-    });
+        await fastForwardAndMine(ethers.provider, 1000000000);
 
-    describe("when days param is missing", () => {
-      it("fails", async () => {
-        await expect(lockPool.lock(123, 31)).to.be.revertedWith(
-          "LockPool: Invalid daysLock or amount param"
+        await expect(lockPool.unlock()).to.be.revertedWith(
+          "LockPool: No tokens available"
         );
       });
     });
 
-    describe("when amount is 0", () => {
-      it("fails", async () => {
-        await expect(lockPool.lock(0, 30)).to.be.revertedWith(
-          "LockPool: Invalid daysLock or amount param"
-        );
-      });
+    it("transfers all available tokens (2)", async () => {
+      await droid.transfer(
+        "0x0000000000000000000000000000000000000001",
+        (await droid.balanceOf(op.address)).sub(12000)
+      );
+      await lockPool.lock(1000, 7);
+      await lockPool.lock(1000, 180);
+      await lockPool.lock(1000, 180);
+      await lockPool.lock(1000, 90);
+      await lockPool.lock(1000, 90);
+      await lockPool.lock(1000, 90);
+
+      await fastForwardAndMine(ethers.provider, 1000);
+      await lockPool.lock(1000, 7);
+      await lockPool.lock(1000, 180);
+      await lockPool.lock(1000, 180);
+      await lockPool.lock(1000, 7);
+      await lockPool.lock(1000, 90);
+      await lockPool.lock(1000, 90);
+
+      await fastForwardAndMine(ethers.provider, 90 * 86400 + 1);
+      await expect(lockPool.unlock()).to.not.be.reverted;
+      expect(await droid.balanceOf(op.address)).to.eq(8000);
+      await expect(lockPool.unlock()).to.be.revertedWith(
+        "LockPool: No tokens available"
+      );
+      await droid.transfer(
+        "0x0000000000000000000000000000000000000001",
+        await droid.balanceOf(op.address)
+      );
+
+      await fastForwardAndMine(ethers.provider, 90 * 86400 + 1);
+      await expect(lockPool.unlock()).to.not.be.reverted;
+      expect(await droid.balanceOf(op.address)).to.eq(4000);
+      await expect(lockPool.unlock()).to.be.revertedWith(
+        "LockPool: No tokens available"
+      );
     });
 
     describe("when contract is not started", () => {
@@ -241,7 +369,7 @@ describe("LockPool", () => {
         await jedi.transferOperator(lockPool.address);
         await droid.approve(lockPool.address, ethers.constants.MaxUint256);
         await lockPool.setRewardFactor(7, 100);
-        await expect(lockPool.lock(100, 30)).to.be.revertedWith(
+        await expect(lockPool.unlock()).to.be.revertedWith(
           "Timeboundable: Not started yet"
         );
       });

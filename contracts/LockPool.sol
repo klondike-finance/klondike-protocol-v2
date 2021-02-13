@@ -132,7 +132,7 @@ contract LockPool is
             firstUtxo[msg.sender] = first;
         }
         if (actualAmount == 0) {
-            return;
+            revert("LockPool: No tokens available");
         }
         withdraw(actualAmount);
         emit Withdrawn(actualAmount);
