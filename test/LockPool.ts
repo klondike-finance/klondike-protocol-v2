@@ -454,7 +454,10 @@ describe("LockPool", () => {
         await lockPool.setRewardFactor(7, 110);
         expect(await lockPool.rewardFactor(7)).to.eq(110);
         expect(await lockPool.rewardFactor(30)).to.eq(150);
-        expect(await lockPool.getRewardDays()).to.eql([7, 30]);
+        expect(await lockPool.getRewardDays()).to.eql([
+          BigNumber.from(7),
+          BigNumber.from(30),
+        ]);
       });
     });
   });
