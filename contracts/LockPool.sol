@@ -34,6 +34,9 @@ contract LockPool is
     /// Tracks all relevant rewardDays
     uint256[] private rewardDays;
 
+    /// pause lock
+    bool public pauseLock;
+
     /// Token for lock
     SyntheticToken stakingToken;
     /// Token for rewards given immediately after lock
@@ -69,7 +72,9 @@ contract LockPool is
 
     /// Token permissions are set correctly
     function validPermissions() public view returns (bool) {
-        return rewardsToken.operator() == address(this);
+        return
+            (rewardsToken.operator() == address(this)) &&
+            (rewardsToken.owner() == address(this));
     }
 
     /// Check how many staking tokens is available for user withdraw
@@ -101,6 +106,7 @@ contract LockPool is
         onePerBlock
         inTimeBounds
     {
+        require(!pauseLock, "LockPool: Locking is paused");
         uint256 multiplier = rewardFactor[daysLock];
         uint256 reward = daysLock.mul(amount).mul(multiplier).div(100);
         require(reward > 0, "LockPool: Invalid daysLock or amount param");
@@ -138,14 +144,14 @@ contract LockPool is
         emit Withdrawn(actualAmount);
     }
 
-    // ------- Public, Operator ----------
+    // ------- Public, Owner (timelock) ----------
 
     /// Set reward factor
     /// @param daysLock for this number of days
     /// @param factor the value of the factor
     function setRewardFactor(uint256 daysLock, uint256 factor)
         public
-        onlyOperator
+        onlyOwner
         onePerBlock
     {
         rewardFactor[daysLock] = factor;
@@ -159,7 +165,24 @@ contract LockPool is
         if (!dayExists) {
             rewardDays.push(daysLock);
         }
-        emit UpdatedRewardFactor(daysLock, factor);
+        emit UpdatedRewardFactor(msg.sender, daysLock, factor);
+    }
+
+    /// Transfer rewardtoken ownership to target
+    /// @param target target to migrate to
+    function migrate(address target) public onlyOwner {
+        rewardsToken.transferOperator(target);
+        rewardsToken.transferOwnership(target);
+        emit Migrated(msg.sender, target);
+    }
+
+    // ------- Public, Operator (instant) ----------
+
+    /// Sets the pause for the lock
+    /// @param _pauseLock pause value
+    function setPauseLock(bool _pauseLock) public onlyOperator {
+        pauseLock = _pauseLock;
+        emit Paused(msg.sender, _pauseLock);
     }
 
     event Staked(
@@ -169,5 +192,11 @@ contract LockPool is
         uint256 daysLock
     );
     event Withdrawn(uint256 amount);
-    event UpdatedRewardFactor(uint256 daysLock, uint256 factor);
+    event UpdatedRewardFactor(
+        address indexed operator,
+        uint256 daysLock,
+        uint256 factor
+    );
+    event Migrated(address indexed operator, address target);
+    event Paused(address indexed operator, bool pause);
 }
