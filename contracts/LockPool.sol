@@ -36,10 +36,14 @@ contract LockPool is
     /// Token for rewards given immediately after lock
     SyntheticToken rewardsToken;
 
+    /// Creates new lock pool
+    /// @param _stakingToken Address of the token to be staked
+    /// @param _rewardsToken Address of the rewarding token
+    /// @param _start When this pool is started
     constructor(
-        uint256 _start,
         address _stakingToken,
-        address _rewardsToken
+        address _rewardsToken,
+        uint256 _start
     ) public Timeboundable(_start, 0) ProxyToken(_stakingToken) {
         stakingToken = SyntheticToken(_stakingToken);
         rewardsToken = SyntheticToken(_rewardsToken);
@@ -91,7 +95,11 @@ contract LockPool is
     /// Stake tokens and receive rewards
     /// @param amount of tokens to stake
     /// @param daysLock number of days to lock tokens
-    function stake(uint256 amount, uint32 daysLock) public initialized {
+    function stake(uint256 amount, uint32 daysLock)
+        public
+        initialized
+        onePerBlock
+    {
         uint32 multiplier = rewardFactor[daysLock];
         uint256 reward = daysLock * amount * multiplier;
         require(reward > 0, "Invalid daysLock or amount param param");
@@ -105,7 +113,7 @@ contract LockPool is
     }
 
     /// Withdraws all available tokens
-    function withdraw() public {
+    function withdraw() public onePerBlock {
         uint256 actualAmount = 0;
         UTXO[] storage ownerUtxos = utxos[msg.sender];
         uint256 first = firstUtxo[msg.sender];
