@@ -21,15 +21,19 @@ contract Boardroom is
 
     /// Added each time reward to the Boardroom is added
     struct PoolRewardSnapshot {
+        /// when snapshost was made
         uint256 timestamp;
+        /// how much reward was added at this snapshot
         uint256 addedSyntheticReward;
-        uint256 totalRewardTokenSupply;
-        uint256 totalSyntheticReward;
+        /// accumulated reward per share unit (10^18 of reward token)
+        uint256 accruedRewardPerShareUnit;
     }
 
     /// Accumulated personal rewards available for claiming
     struct PersonRewardAccrual {
+        /// Last accrual time represented by snapshotId
         uint256 lastAccrualSnaphotId;
+        /// Accrued and ready for distribution reward
         uint256 accruedReward;
     }
 
@@ -43,6 +47,10 @@ contract Boardroom is
     uint256 public immutable boostShareMultiplier;
     /// Reward token formula param
     uint256 public immutable boostTokenDenominator;
+    /// Decimals for base, boost and rewards tokens;
+    uint256 public immutable decimals;
+    /// Pause
+    bool pause;
 
     /// Base token. Both base and boost token yield reward token which ultimately participates in rewards distribution.
     SyntheticToken public base;
@@ -90,6 +98,11 @@ contract Boardroom is
     ) public Timeboundable(_start, 0) {
         base = SyntheticToken(_base);
         boost = SyntheticToken(_boost);
+        require(
+            base.decimals() == boost.decimals(),
+            "Boardroom: Base and Boost decimals must be equal"
+        );
+        decimals = base.decimals();
         tokenManager = TokenManager(_tokenManager);
         emissionManager = _emissionManager;
         lockPool = LockPool(_lockPool);
@@ -102,8 +115,7 @@ contract Boardroom is
                 PoolRewardSnapshot({
                     timestamp: block.timestamp,
                     addedSyntheticReward: 0,
-                    totalRewardTokenSupply: 0,
-                    totalSyntheticReward: 0
+                    accruedRewardPerShareUnit: 0
                 })
             );
         }
@@ -202,14 +214,14 @@ contract Boardroom is
             poolRewardSnapshots[token];
         PoolRewardSnapshot storage lastSnapshot =
             tokenSnapshots[tokenSnapshots.length - 1];
+        uint256 deltaRPSU = amount.mul(10**decimals).div(rewardTokenSupply);
         tokenSnapshots.push(
             PoolRewardSnapshot({
                 timestamp: block.timestamp,
                 addedSyntheticReward: amount,
-                totalRewardTokenSupply: rewardTokenSupply,
-                totalSyntheticReward: lastSnapshot.totalSyntheticReward.add(
-                    amount
-                )
+                accruedRewardPerShareUnit: lastSnapshot
+                    .accruedRewardPerShareUnit
+                    .add(deltaRPSU)
             })
         );
     }
@@ -330,16 +342,14 @@ contract Boardroom is
         }
         PoolRewardSnapshot storage lastSnapshot =
             tokenSnapshots[tokenSnapshots.length - 1];
+        uint256 lastOverallRPSU = lastSnapshot.accruedRewardPerShareUnit;
         PoolRewardSnapshot storage lastAccrualSnapshot =
             tokenSnapshots[accrual.lastAccrualSnaphotId];
-        uint256 addedTotalReward =
-            lastSnapshot.totalSyntheticReward.sub(
-                lastAccrualSnapshot.totalSyntheticReward
-            );
+        uint256 lastUserAccrualRPSU =
+            lastAccrualSnapshot.accruedRewardPerShareUnit;
+        uint256 deltaRPSU = lastOverallRPSU.sub(lastUserAccrualRPSU);
         uint256 addedUserReward =
-            addedTotalReward.mul(rewardTokenBalances[msg.sender]).div(
-                lastSnapshot.totalRewardTokenSupply
-            );
+            rewardsTokenBalance(msg.sender).mul(deltaRPSU);
         accrual.lastAccrualSnaphotId = tokenSnapshots.length - 1;
         accrual.accruedReward = accrual.accruedReward.add(addedUserReward);
         emit RewardAccrued(
