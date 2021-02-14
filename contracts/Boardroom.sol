@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./access/ReentrancyGuardable.sol";
 import "./time/Timeboundable.sol";
-import "./ProxyToken.sol";
 import "./LockPool.sol";
 import "./SyntheticToken.sol";
 import "./treasury/TokenManager.sol";
@@ -41,18 +40,14 @@ contract Boardroom is
     mapping(address => mapping(address => PersonRewardAccrual)) personRewardAccruals;
 
     /// Reward token formula param
-    uint256 public immutable boost_share_multiplier;
+    uint256 public immutable boostShareMultiplier;
     /// Reward token formula param
-    uint256 public immutable boost_token_denominator;
+    uint256 public immutable boostTokenDenominator;
 
     /// Base token. Both base and boost token yield reward token which ultimately participates in rewards distribution.
     SyntheticToken public base;
     /// Boost token
     SyntheticToken public boost;
-    /// Proxy for tracing base stakes
-    ProxyToken public proxyBase;
-    /// Proxy for tracing boost stakes
-    ProxyToken public proxyBoost;
     /// TokenManager ref
     TokenManager public tokenManager;
     /// EmissionManager ref
@@ -61,43 +56,45 @@ contract Boardroom is
     LockPool public lockPool;
 
     /// Proxy for reward token supply
-    uint256 private _rewardTokenSupply;
+    uint256 public rewardTokenSupply;
     /// Proxy for reward token balances
-    mapping(address => uint256) private _rewardTokenBalances;
+    mapping(address => uint256) public rewardTokenBalances;
+    /// Proxy for base token supply
+    uint256 public baseTokenSupply;
+    /// Proxy for base token balances
+    mapping(address => uint256) public baseTokenBalances;
+    /// Proxy for boost token supply
+    uint256 public boostTokenSupply;
+    /// Proxy for boost token balances
+    mapping(address => uint256) public boostTokenBalances;
 
     /// Creates new Boardroom
     /// @param _base address of the base token
     /// @param _boost address of the boost token
-    /// @param _proxyBase address of the proxy base token
-    /// @param _proxyBoost address of the proxy boost token
     /// @param _tokenManager address of the TokenManager
     /// @param _emissionManager address of the EmissionManager
     /// @param _lockPool address of the LockPool
     /// @param _lockPool address of the LockPool
-    /// @param _boost_share_multiplier boost formula param
-    /// @param _boost_token_denominator boost formula param
+    /// @param _boostShareMultiplier boost formula param
+    /// @param _boostTokenDenominator boost formula param
     /// @param _start start of the pool date
     constructor(
         address _base,
         address _boost,
-        address _proxyBase,
-        address _proxyBoost,
         address _tokenManager,
         address _emissionManager,
         address _lockPool,
-        uint256 _boost_share_multiplier,
-        uint256 _boost_token_denominator,
+        uint256 _boostShareMultiplier,
+        uint256 _boostTokenDenominator,
         uint256 _start
     ) public Timeboundable(_start, 0) {
         base = SyntheticToken(_base);
         boost = SyntheticToken(_boost);
-        proxyBase = ProxyToken(_proxyBase);
-        proxyBoost = ProxyToken(_proxyBoost);
         tokenManager = TokenManager(_tokenManager);
         emissionManager = _emissionManager;
         lockPool = LockPool(_lockPool);
-        boost_share_multiplier = _boost_share_multiplier;
-        boost_token_denominator = _boost_token_denominator;
+        boostShareMultiplier = _boostShareMultiplier;
+        boostTokenDenominator = _boostTokenDenominator;
         address[] memory syntheticTokens = tokenManager.allTokens();
         for (uint256 i = 0; i < syntheticTokens.length; i++) {
             address token = syntheticTokens[i];
@@ -118,15 +115,15 @@ contract Boardroom is
 
     /// Get reward token balance for a user
     function rewardsTokenBalance(address owner) public view returns (uint256) {
-        uint256 baseBalance = proxyBase.balanceOf(owner);
+        uint256 baseBalance = baseTokenBalances[owner];
         uint256 baseLockedBalance = lockPool.balanceOf(owner);
-        uint256 boostBalance = proxyBoost.balanceOf(owner);
+        uint256 boostBalance = boostTokenBalances[owner];
         return
             baseBalance.add(baseLockedBalance).add(
-                boost_share_multiplier.mul(
+                boostShareMultiplier.mul(
                     Math.min(
                         baseBalance,
-                        boostBalance.div(boost_token_denominator)
+                        boostBalance.div(boostTokenDenominator)
                     )
                 )
             );
@@ -147,10 +144,10 @@ contract Boardroom is
         );
         updateAccruals();
         if (baseAmount > 0) {
-            proxyBase.stake(baseAmount);
+            _stakeBase(baseAmount);
         }
         if (boostAmount > 0) {
-            proxyBoost.stake(boostAmount);
+            _stakeBoost(boostAmount);
         }
         _updateRewardTokenBalance(msg.sender);
     }
@@ -169,10 +166,10 @@ contract Boardroom is
         );
         updateAccruals();
         if (baseAmount > 0) {
-            proxyBase.withdraw(baseAmount);
+            _withdrawBase(baseAmount);
         }
         if (boostAmount > 0) {
-            proxyBoost.withdraw(boostAmount);
+            _withdrawBoost(boostAmount);
         }
         _updateRewardTokenBalance(msg.sender);
     }
@@ -211,7 +208,7 @@ contract Boardroom is
             PoolRewardSnapshot({
                 timestamp: block.timestamp,
                 addedSyntheticReward: amount,
-                totalRewardTokenSupply: _rewardTokenSupply,
+                totalRewardTokenSupply: rewardTokenSupply,
                 totalSyntheticReward: lastSnapshot.totalSyntheticReward.add(
                     amount
                 )
@@ -223,7 +220,7 @@ contract Boardroom is
 
     /// Updates reward token balance of the owner after locking tokens
     /// @param owner address of the owner
-    function updateRewardsAfterLock(address owner) public {
+    function updateRewardsAfterLock(address owner) public override {
         require(
             msg.sender == address(lockPool),
             "Boardroom: can only be called by LockPool"
@@ -251,18 +248,6 @@ contract Boardroom is
         boost = SyntheticToken(_boost);
     }
 
-    /// Updates ProxyBase
-    /// @param _proxyBase new ProxyBase
-    function setProxyBase(address _proxyBase) public onlyOwner {
-        proxyBase = ProxyToken(_proxyBase);
-    }
-
-    /// Updates ProxyBoost
-    /// @param _proxyBoost new ProxyBoost
-    function setProxyBoost(address _proxyBoost) public onlyOwner {
-        proxyBoost = ProxyToken(_proxyBoost);
-    }
-
     /// Updates TokenManager
     /// @param _tokenManager new TokenManager
     function setTokenManager(address _tokenManager) public onlyOwner {
@@ -278,15 +263,39 @@ contract Boardroom is
     // ------- Internal ----------
 
     function _stakeReward(uint256 amount) internal {
-        _rewardTokenBalances[msg.sender] = _rewardTokenBalances[msg.sender].add(
+        rewardTokenBalances[msg.sender] = rewardTokenBalances[msg.sender].add(
             amount
         );
-        _rewardTokenSupply = _rewardTokenSupply.add(amount);
+        rewardTokenSupply = rewardTokenSupply.add(amount);
     }
 
     function _withdrawReward(uint256 amount) internal {
-        _rewardTokenBalances[msg.sender] += amount;
-        _rewardTokenSupply += amount;
+        rewardTokenBalances[msg.sender] += amount;
+        rewardTokenSupply += amount;
+    }
+
+    function _stakeBase(uint256 amount) internal {
+        baseTokenBalances[msg.sender] = baseTokenBalances[msg.sender].add(
+            amount
+        );
+        baseTokenSupply = baseTokenSupply.add(amount);
+    }
+
+    function _withdrawBase(uint256 amount) internal {
+        baseTokenBalances[msg.sender] += amount;
+        baseTokenSupply += amount;
+    }
+
+    function _stakeBoost(uint256 amount) internal {
+        boostTokenBalances[msg.sender] = boostTokenBalances[msg.sender].add(
+            amount
+        );
+        boostTokenSupply = boostTokenSupply.add(amount);
+    }
+
+    function _withdrawBoost(uint256 amount) internal {
+        boostTokenBalances[msg.sender] += amount;
+        boostTokenSupply += amount;
     }
 
     function _claimReward(address syntheticTokenAddress) internal {
@@ -319,7 +328,7 @@ contract Boardroom is
                 lastAccrualSnapshot.totalSyntheticReward
             );
         uint256 addedUserReward =
-            addedTotalReward.mul(_rewardTokenBalances[msg.sender]).div(
+            addedTotalReward.mul(rewardTokenBalances[msg.sender]).div(
                 lastSnapshot.totalRewardTokenSupply
             );
         accrual.lastAccrualSnaphotId = tokenSnapshots.length - 1;
@@ -327,7 +336,7 @@ contract Boardroom is
     }
 
     function _updateRewardTokenBalance(address owner) internal {
-        uint256 currentBalance = _rewardTokenBalances[owner];
+        uint256 currentBalance = rewardTokenBalances[owner];
         uint256 newBalance = rewardsTokenBalance(owner);
         if (newBalance == currentBalance) {
             return;
