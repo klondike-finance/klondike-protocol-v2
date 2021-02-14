@@ -182,7 +182,7 @@ export async function transferOwnership(
   const token = await findExistingContract(hre, tokenName);
   console.log(`Transferring operator of ${tokenName} to ${target}`);
   const op = await token.operator();
-  if (op === target) {
+  if (op.toLowerCase() === target.toLowerCase()) {
     console.log(
       `${target} is already an operator of ${tokenName}. Skipping...`
     );
@@ -193,7 +193,7 @@ export async function transferOwnership(
 
   console.log(`Transferring owner of ${tokenName} to ${target}`);
   const ow = await token.owner();
-  if (ow === target) {
+  if (ow.toLowerCase() === target.toLowerCase()) {
     console.log(`${target} is already an owner of ${tokenName}. Skipping...`);
   } else {
     const tx = await token.populateTransaction.transferOwnership(target);

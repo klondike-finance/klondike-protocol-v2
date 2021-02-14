@@ -43,7 +43,7 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   const swapPool = await contractDeploy(
     hre,
     "SwapPool",
-    "KlonDroidSwap",
+    "KlonDroidSwapPool",
     klon.address,
     droid.address,
     await now(hre),
