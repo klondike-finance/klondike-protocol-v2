@@ -109,8 +109,6 @@ contract Boardroom is
         }
     }
 
-    // ------- Modifiers ----------
-
     // ------- Public ----------
 
     /// Get reward token balance for a user
@@ -234,30 +232,35 @@ contract Boardroom is
     /// @param _lockPool new LockPool
     function setLockPool(address _lockPool) public onlyOwner {
         lockPool = LockPool(_lockPool);
+        emit UpdatedLockPool(msg.sender, _lockPool);
     }
 
     /// Updates Base
     /// @param _base new Base
     function setBase(address _base) public onlyOwner {
         base = SyntheticToken(_base);
+        emit UpdatedBase(msg.sender, _base);
     }
 
     /// Updates Boost
     /// @param _boost new Boost
     function setBoost(address _boost) public onlyOwner {
         boost = SyntheticToken(_boost);
+        emit UpdatedBoost(msg.sender, _boost);
     }
 
     /// Updates TokenManager
     /// @param _tokenManager new TokenManager
     function setTokenManager(address _tokenManager) public onlyOwner {
         tokenManager = TokenManager(_tokenManager);
+        emit UpdatedTokenManager(msg.sender, _tokenManager);
     }
 
     /// Updates EmissionManager
     /// @param _emissionManager new EmissionManager
     function setEmissionManager(address _emissionManager) public onlyOwner {
         emissionManager = _emissionManager;
+        emit UpdatedEmissionManager(msg.sender, _emissionManager);
     }
 
     // ------- Internal ----------
@@ -267,11 +270,13 @@ contract Boardroom is
             amount
         );
         rewardTokenSupply = rewardTokenSupply.add(amount);
+        emit RewardStaked(msg.sender, amount);
     }
 
     function _withdrawReward(uint256 amount) internal {
         rewardTokenBalances[msg.sender] += amount;
         rewardTokenSupply += amount;
+        emit RewardWithdrawn(msg.sender, amount);
     }
 
     function _stakeBase(uint256 amount) internal {
@@ -279,11 +284,13 @@ contract Boardroom is
             amount
         );
         baseTokenSupply = baseTokenSupply.add(amount);
+        emit BaseStaked(msg.sender, amount);
     }
 
     function _withdrawBase(uint256 amount) internal {
         baseTokenBalances[msg.sender] += amount;
         baseTokenSupply += amount;
+        emit BaseStaked(msg.sender, amount);
     }
 
     function _stakeBoost(uint256 amount) internal {
@@ -291,11 +298,13 @@ contract Boardroom is
             amount
         );
         boostTokenSupply = boostTokenSupply.add(amount);
+        emit BoostStaked(msg.sender, amount);
     }
 
     function _withdrawBoost(uint256 amount) internal {
         boostTokenBalances[msg.sender] += amount;
         boostTokenSupply += amount;
+        emit BoostWithdrawn(msg.sender, amount);
     }
 
     function _claimReward(address syntheticTokenAddress) internal {
@@ -333,6 +342,12 @@ contract Boardroom is
             );
         accrual.lastAccrualSnaphotId = tokenSnapshots.length - 1;
         accrual.accruedReward = accrual.accruedReward.add(addedUserReward);
+        emit RewardAccrued(
+            syntheticTokenAddress,
+            msg.sender,
+            addedUserReward,
+            accrual.accruedReward
+        );
     }
 
     function _updateRewardTokenBalance(address owner) internal {
@@ -350,5 +365,32 @@ contract Boardroom is
 
     // ------- Events ----------
 
-    event RewardPaid(address syntheticTokenAddress, address to, uint256 reward);
+    event RewardAccrued(
+        address syntheticTokenAddress,
+        address to,
+        uint256 incrementalReward,
+        uint256 totalReward
+    );
+    event RewardPaid(
+        address indexed syntheticTokenAddress,
+        address indexed to,
+        uint256 reward
+    );
+    event RewardStaked(address indexed to, uint256 amount);
+    event RewardWithdrawn(address indexed to, uint256 amount);
+    event BaseStaked(address indexed to, uint256 amount);
+    event BaseWithdrawn(address indexed to, uint256 amount);
+    event BoostStaked(address indexed to, uint256 amount);
+    event BoostWithdrawn(address indexed to, uint256 amount);
+    event UpdatedLockPool(address indexed operator, address newPool);
+    event UpdatedBase(address indexed operator, address newBase);
+    event UpdatedBoost(address indexed operator, address newBoost);
+    event UpdatedTokenManager(
+        address indexed operator,
+        address newTokenManager
+    );
+    event UpdatedEmissionManager(
+        address indexed operator,
+        address newEmissionManager
+    );
 }
