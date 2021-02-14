@@ -50,6 +50,7 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
     0
   );
   await transferOwnership(hre, "Klon", swapPool.address);
+  await transferOwnership(hre, "Droid", swapPool.address);
 
   await deployLockPool(hre, klon, droid);
 
@@ -77,7 +78,7 @@ async function deployLockPool(
   await setRewardFactor(hre, lockPool, 180, 250);
   await setRewardFactor(hre, lockPool, 365, 300);
   await setRewardFactor(hre, lockPool, 1460, 450);
-  await transferOwnership(hre, "Droid", lockPool.address);
+  await transferOwnership(hre, "Jedi", lockPool.address);
   return lockPool;
 }
 
