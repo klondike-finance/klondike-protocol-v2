@@ -118,6 +118,32 @@ export async function deployTokens(
     deriveBondName(underlyingRegistryName),
     18
   );
+  const klon = await contractDeploy(
+    hre,
+    "SyntheticToken",
+    "Klon",
+    "Klon",
+    "Klon",
+    18
+  );
+
+  const droid = await contractDeploy(
+    hre,
+    "SyntheticToken",
+    "Droid",
+    "Droid",
+    "Droid",
+    18
+  );
+  const jedi = await contractDeploy(
+    hre,
+    "SyntheticToken",
+    "Jedi",
+    "Jedi",
+    "Jedi",
+    18
+  );
+
   if (isProd(hre)) {
     await mint(
       hre,
@@ -133,10 +159,11 @@ export async function deployTokens(
       ETH.mul(1000)
     );
     await mint(hre, underlyingRegistryName, operator.address, ETH.mul(1000));
+    await mint(hre, "Klon", operator.address, ETH.mul(1000));
   }
-  console.log("Deployed 3 tokens");
+  console.log("Deployed 5 tokens");
 
-  return { synthetic, bond, underlying };
+  return { synthetic, bond, underlying, droid, jedi, klon };
 }
 
 export function deriveSyntheticName(underlyingName: string) {
@@ -145,4 +172,31 @@ export function deriveSyntheticName(underlyingName: string) {
 
 export function deriveBondName(underlyingName: string) {
   return `KB-${underlyingName}`;
+}
+
+export async function transferOwnership(
+  hre: HardhatRuntimeEnvironment,
+  tokenName: string,
+  target: string
+) {
+  const token = await findExistingContract(hre, tokenName);
+  console.log(`Transferring operator of ${tokenName} to ${target}`);
+  const op = await token.operator();
+  if (op.toLowerCase() === target.toLowerCase()) {
+    console.log(
+      `${target} is already an operator of ${tokenName}. Skipping...`
+    );
+  } else {
+    const tx = await token.populateTransaction.transferOperator(target);
+    await sendTransaction(hre, tx);
+  }
+
+  console.log(`Transferring owner of ${tokenName} to ${target}`);
+  const ow = await token.owner();
+  if (ow.toLowerCase() === target.toLowerCase()) {
+    console.log(`${target} is already an owner of ${tokenName}. Skipping...`);
+  } else {
+    const tx = await token.populateTransaction.transferOwnership(target);
+    await sendTransaction(hre, tx);
+  }
 }

@@ -20,7 +20,7 @@ export async function sendTransaction(
   console.log(
     `Sent transaction with hash \`${txResp.hash}\`. Waiting confirmation`
   );
-  await txResp.wait();
+  await txResp.wait(2);
   console.log("Transaction confirmed");
 }
 

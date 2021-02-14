@@ -1,9 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.6.6;
 
-// Todo - pause + migration
-
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./SyntheticToken.sol";
 import "./ProxyToken.sol";
 import "./time/Timeboundable.sol";
