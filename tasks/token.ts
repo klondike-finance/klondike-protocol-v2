@@ -118,6 +118,32 @@ export async function deployTokens(
     deriveBondName(underlyingRegistryName),
     18
   );
+  const klon = await contractDeploy(
+    hre,
+    "SyntheticToken",
+    "Klon",
+    "Klon",
+    "Klon",
+    18
+  );
+
+  const droid = await contractDeploy(
+    hre,
+    "SyntheticToken",
+    "Droid",
+    "Droid",
+    "Droid",
+    18
+  );
+  const jedi = await contractDeploy(
+    hre,
+    "SyntheticToken",
+    "Jedi",
+    "Jedi",
+    "Jedi",
+    18
+  );
+
   if (isProd(hre)) {
     await mint(
       hre,
@@ -133,10 +159,11 @@ export async function deployTokens(
       ETH.mul(1000)
     );
     await mint(hre, underlyingRegistryName, operator.address, ETH.mul(1000));
+    await mint(hre, "Klon", operator.address, ETH.mul(1000));
   }
-  console.log("Deployed 3 tokens");
+  console.log("Deployed 5 tokens");
 
-  return { synthetic, bond, underlying };
+  return { synthetic, bond, underlying, droid, jedi, klon };
 }
 
 export function deriveSyntheticName(underlyingName: string) {
