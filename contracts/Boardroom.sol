@@ -82,7 +82,6 @@ contract Boardroom is
     /// @param _tokenManager address of the TokenManager
     /// @param _emissionManager address of the EmissionManager
     /// @param _lockPool address of the LockPool
-    /// @param _lockPool address of the LockPool
     /// @param _boostShareMultiplier boost formula param
     /// @param _boostTokenDenominator boost formula param
     /// @param _start start of the pool date
@@ -121,6 +120,14 @@ contract Boardroom is
         }
     }
 
+    // ------- Modifiers ----------
+
+    /// Checks if pause is set
+    modifier unpaused() {
+        require(!pause, "Boardroom operations are paused");
+        _;
+    }
+
     // ------- Public ----------
 
     /// Get reward token balance for a user
@@ -147,6 +154,7 @@ contract Boardroom is
         public
         onePerBlock
         inTimeBounds
+        unpaused
     {
         require(
             (baseAmount > 0) || (boostAmount > 0),
@@ -193,7 +201,7 @@ contract Boardroom is
     }
 
     /// Transfer all rewards to sender
-    function claimRewards() public onePerBlock {
+    function claimRewards() public onePerBlock unpaused {
         address[] memory tokens = tokenManager.allTokens();
         for (uint256 i = 0; i < tokens.length - 1; i++) {
             _claimReward(tokens[i]);
@@ -273,6 +281,15 @@ contract Boardroom is
     function setEmissionManager(address _emissionManager) public onlyOwner {
         emissionManager = _emissionManager;
         emit UpdatedEmissionManager(msg.sender, _emissionManager);
+    }
+
+    // ------- Public, Operator (multisig) ----------
+
+    /// Set pause
+    /// @param _pause pause value
+    function setPause(bool _pause) public onlyOperator {
+        pause = _pause;
+        emit UpdatedPause(msg.sender, _pause);
     }
 
     // ------- Internal ----------
@@ -395,6 +412,7 @@ contract Boardroom is
     event UpdatedLockPool(address indexed operator, address newPool);
     event UpdatedBase(address indexed operator, address newBase);
     event UpdatedBoost(address indexed operator, address newBoost);
+    event UpdatedPause(address indexed operator, bool pause);
     event UpdatedTokenManager(
         address indexed operator,
         address newTokenManager
