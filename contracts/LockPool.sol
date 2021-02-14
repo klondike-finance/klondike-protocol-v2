@@ -4,6 +4,7 @@ pragma solidity =0.6.6;
 import "./SyntheticToken.sol";
 import "./ProxyToken.sol";
 import "./time/Timeboundable.sol";
+import "./interfaces/IBoardroom.sol";
 import "./access/ReentrancyGuardable.sol";
 import "./access/Operatable.sol";
 
@@ -38,6 +39,8 @@ contract LockPool is
     SyntheticToken stakingToken;
     /// Token for rewards given immediately after lock
     SyntheticToken rewardsToken;
+    /// Boardroom
+    IBoardroom boardroom;
 
     /// Creates new lock pool
     /// @param _stakingToken Address of the token to be staked
@@ -46,10 +49,12 @@ contract LockPool is
     constructor(
         address _stakingToken,
         address _rewardsToken,
+        address _boardroom,
         uint256 _start
     ) public Timeboundable(_start, 0) ProxyToken(_stakingToken) {
         stakingToken = SyntheticToken(_stakingToken);
         rewardsToken = SyntheticToken(_rewardsToken);
+        boardroom = IBoardroom(_boardroom);
     }
 
     // ------- Modifiers ----------
@@ -112,6 +117,7 @@ contract LockPool is
         stake(amount);
         utxos[msg.sender].push(UTXO(unlockDate, amount, 0));
         rewardsToken.mint(msg.sender, reward);
+        boardroom.updateRewardsAfterLock(msg.sender);
 
         emit Staked(msg.sender, amount, reward, daysLock);
     }
