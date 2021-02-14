@@ -173,3 +173,30 @@ export function deriveSyntheticName(underlyingName: string) {
 export function deriveBondName(underlyingName: string) {
   return `KB-${underlyingName}`;
 }
+
+export async function transferOwnership(
+  hre: HardhatRuntimeEnvironment,
+  tokenName: string,
+  target: string
+) {
+  const token = await findExistingContract(hre, tokenName);
+  console.log(`Transferring operator of ${tokenName} to ${target}`);
+  const op = await token.operator();
+  if (op === target) {
+    console.log(
+      `${target} is already an operator of ${tokenName}. Skipping...`
+    );
+  } else {
+    const tx = await token.populateTransaction.transferOperator(target);
+    await sendTransaction(hre, tx);
+  }
+
+  console.log(`Transferring owner of ${tokenName} to ${target}`);
+  const ow = await token.owner();
+  if (ow === target) {
+    console.log(`${target} is already an owner of ${tokenName}. Skipping...`);
+  } else {
+    const tx = await token.populateTransaction.transferOwnership(target);
+    await sendTransaction(hre, tx);
+  }
+}

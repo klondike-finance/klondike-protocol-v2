@@ -4,7 +4,12 @@ import { BTC, ETH, isProd, now, sendTransaction } from "./utils";
 import { getRegistryContract } from "./registry";
 import { deployContract } from "ethereum-waffle";
 import { BigNumber, Contract } from "ethers";
-import { deployTokens, deriveBondName, deriveSyntheticName } from "./token";
+import {
+  deployTokens,
+  deriveBondName,
+  deriveSyntheticName,
+  transferOwnership,
+} from "./token";
 import { deriveOracleName, oracleDeploy } from "./oracle";
 import {
   addTokens,
@@ -44,8 +49,7 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
     await now(hre),
     0
   );
-  await klon.transferOperator(swapPool.address);
-  await klon.transferOwnership(swapPool.address);
+  await transferOwnership(hre, "Klon", swapPool.address);
 
   await deployLockPool(hre, klon, droid);
 
@@ -62,7 +66,7 @@ async function deployLockPool(
   const lockPool = await contractDeploy(
     hre,
     "LockPool",
-    "DroidJediLock",
+    "DroidJediLockPool",
     klon.address,
     droid.address,
     await now(hre)
@@ -73,9 +77,7 @@ async function deployLockPool(
   await setRewardFactor(hre, lockPool, 180, 250);
   await setRewardFactor(hre, lockPool, 365, 300);
   await setRewardFactor(hre, lockPool, 1460, 450);
-  await droid.transferOperator(lockPool.address);
-  await droid.transferOwnership(lockPool.address);
-
+  await transferOwnership(hre, "Droid", lockPool.address);
   return lockPool;
 }
 
