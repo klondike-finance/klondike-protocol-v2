@@ -235,7 +235,7 @@ contract Boardroom is
                     .add(deltaRPSU)
             })
         );
-        emit IncomingBoardroomReward(msg.sender, token, amount);
+        emit IncomingBoardroomReward(token, msg.sender, amount);
     }
 
     // ------- Public, LockManager ----------
@@ -421,8 +421,8 @@ contract Boardroom is
         uint256 reward
     );
     event IncomingBoardroomReward(
-        address indexed from,
         address indexed token,
+        address indexed from,
         uint256 amount
     );
     event RewardStaked(address indexed to, uint256 amount);
