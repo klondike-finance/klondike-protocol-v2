@@ -60,6 +60,10 @@ contract LockPool is
     /// Checks if contract is ready to be used
     modifier initialized() {
         require(validPermissions(), "LockPool: token permissions are not set");
+        require(
+            address(boardroom) != address(0),
+            "LockPool: boardroom is not intialized"
+        );
         _;
     }
 
