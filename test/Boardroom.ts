@@ -64,7 +64,12 @@ describe("Boardroom", () => {
     tokenManagerMock = await TokenManagerMock.deploy();
     await tokenManagerMock.addToken(kbtc.address);
     await tokenManagerMock.addToken(keth.address);
-    boardroom = await Boardroom.deploy(
+    boardroom = await createBoardroom();
+    await lockPool.setBoardroom(boardroom.address);
+  });
+
+  async function createBoardroom() {
+    return await Boardroom.deploy(
       base.address,
       boost.address,
       tokenManagerMock.address,
@@ -74,8 +79,7 @@ describe("Boardroom", () => {
       BOOST_TOKEN_DENOMINATOR,
       await now()
     );
-    await lockPool.setBoardroom(boardroom.address);
-  });
+  }
 
   describe("#constructor", () => {
     it("creates Boardroom", async () => {
@@ -91,6 +95,15 @@ describe("Boardroom", () => {
           await now()
         )
       ).to.not.be.reverted;
+    });
+    describe("when base and boost decimals are different", () => {
+      it("fails", async () => {
+        base = await SyntheticToken.deploy("DROID", "DROID", 17);
+        boost = await SyntheticToken.deploy("JEDI", "JEDI", 18);
+        await expect(createBoardroom()).to.be.revertedWith(
+          "Boardroom: Base and Boost decimals must be equal"
+        );
+      });
     });
   });
 });
