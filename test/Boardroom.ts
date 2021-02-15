@@ -164,92 +164,125 @@ describe("Boardroom", () => {
   //     });
   //   });
 
-  describe("#stake", () => {
-    it("stakes base and boost tokens", async () => {
+  //   describe("#stake", () => {
+  //     it("stakes base and boost tokens", async () => {
+  //       const baseAmount = 123456;
+  //       const boostAmount = 32;
+
+  //       await boardroom.stake(baseAmount, 0);
+  //       expect(await boardroom.baseTokenBalances(op.address)).to.eq(baseAmount);
+
+  //       await boardroom.stake(0, boostAmount);
+  //       expect(await boardroom.boostTokenBalances(op.address)).to.eq(boostAmount);
+
+  //       await boardroom.stake(baseAmount, boostAmount);
+  //       expect(await boardroom.baseTokenBalances(op.address)).to.eq(
+  //         baseAmount * 2
+  //       );
+  //       expect(await boardroom.boostTokenBalances(op.address)).to.eq(
+  //         boostAmount * 2
+  //       );
+  //     });
+
+  //     describe("when both amounts are 0", () => {
+  //       it("fails", async () => {
+  //         await expect(boardroom.stake(0, 0)).to.be.revertedWith(
+  //           "Boardroom: one amount should be > 0"
+  //         );
+  //       });
+  //     });
+
+  //     describe("when there's not enough balance to stake", () => {
+  //       it("fails", async () => {
+  //         await boost.transfer(staker0.address, 1235);
+  //         const baseBalance = await base.balanceOf(op.address);
+  //         const boostBalance = await boost.balanceOf(op.address);
+
+  //         await expect(boardroom.stake(baseBalance + 1, 0)).to.be.revertedWith(
+  //           "ERC20: transfer amount exceeds balance"
+  //         );
+  //         await expect(boardroom.stake(boostBalance + 1, 0)).to.be.revertedWith(
+  //           "ERC20: transfer amount exceeds balance"
+  //         );
+
+  //         await expect(boardroom.stake(baseBalance, 0))
+  //           .to.emit(boardroom, "BaseStaked")
+  //           .withArgs(op.address, baseBalance);
+  //         await expect(boardroom.stake(0, boostBalance))
+  //           .to.emit(boardroom, "BoostStaked")
+  //           .withArgs(op.address, boostBalance);
+  //         expect(await base.balanceOf(op.address)).to.eq(0);
+  //         expect(await boost.balanceOf(op.address)).to.eq(0);
+  //       });
+  //     });
+
+  //     describe("when balance is not approved", () => {
+  //       it("fails", async () => {
+  //         await boost.transfer(staker0.address, 1235);
+  //         const baseBalance = await base.balanceOf(op.address);
+  //         const boostBalance = await boost.balanceOf(op.address);
+  //         await base.approve(boardroom.address, baseBalance.sub(1));
+  //         await boost.approve(boardroom.address, boostBalance.sub(1));
+
+  //         await expect(boardroom.stake(baseBalance, 0)).to.be.revertedWith(
+  //           "ERC20: transfer amount exceeds allowance"
+  //         );
+  //         await expect(boardroom.stake(0, boostBalance)).to.be.revertedWith(
+  //           "ERC20: transfer amount exceeds allowance"
+  //         );
+
+  //         await base.approve(boardroom.address, baseBalance);
+  //         await boost.approve(boardroom.address, boostBalance);
+
+  //         await expect(boardroom.stake(baseBalance, 0))
+  //           .to.emit(boardroom, "BaseStaked")
+  //           .withArgs(op.address, baseBalance);
+  //         await expect(boardroom.stake(0, boostBalance))
+  //           .to.emit(boardroom, "BoostStaked")
+  //           .withArgs(op.address, boostBalance);
+  //         expect(await base.balanceOf(op.address)).to.eq(0);
+  //         expect(await boost.balanceOf(op.address)).to.eq(0);
+  //       });
+  //     });
+
+  //     describe("when boardroom is paused", () => {
+  //       it("fails", async () => {
+  //         await boardroom.setPause(true);
+  //         await expect(boardroom.stake(123, 0)).to.be.revertedWith(
+  //           "Boardroom operations are paused"
+  //         );
+  //       });
+  //     });
+  //   });
+
+  describe("#withdraw", () => {
+    it("withdraws available funds", async () => {
+      const baseBalance = await base.balanceOf(op.address);
+      const boostBalance = await boost.balanceOf(op.address);
       const baseAmount = 123456;
       const boostAmount = 32;
 
-      await boardroom.stake(baseAmount, 0);
-      expect(await boardroom.baseTokenBalances(op.address)).to.eq(baseAmount);
-
-      await boardroom.stake(0, boostAmount);
-      expect(await boardroom.boostTokenBalances(op.address)).to.eq(boostAmount);
-
       await boardroom.stake(baseAmount, boostAmount);
-      expect(await boardroom.baseTokenBalances(op.address)).to.eq(
-        baseAmount * 2
-      );
-      expect(await boardroom.boostTokenBalances(op.address)).to.eq(
-        boostAmount * 2
-      );
+      await expect(boardroom.withdraw(baseAmount, boostAmount))
+        .to.emit(boardroom, "BaseWithdrawn")
+        .withArgs(op.address, baseAmount)
+        .and.emit(boardroom, "BoostWithdrawn")
+        .withArgs(op.address, boostAmount);
+      expect(await base.balanceOf(op.address)).to.eq(baseBalance);
+      expect(await boost.balanceOf(op.address)).to.eq(boostBalance);
     });
 
-    describe("when both amounts are 0", () => {
+    describe("when limits are overflown", () => {
       it("fails", async () => {
-        await expect(boardroom.stake(0, 0)).to.be.revertedWith(
-          "Boardroom: one amount should be > 0"
+        const baseAmount = 123456;
+        const boostAmount = 32;
+
+        await boardroom.stake(baseAmount, boostAmount);
+        await expect(boardroom.withdraw(baseAmount + 1, 0)).to.be.revertedWith(
+          "SafeMath: subtraction overflow"
         );
-      });
-    });
-
-    describe("when there's not enough balance to stake", () => {
-      it("fails", async () => {
-        await boost.transfer(staker0.address, 1235);
-        const baseBalance = await base.balanceOf(op.address);
-        const boostBalance = await boost.balanceOf(op.address);
-
-        await expect(boardroom.stake(baseBalance + 1, 0)).to.be.revertedWith(
-          "ERC20: transfer amount exceeds balance"
-        );
-        await expect(boardroom.stake(boostBalance + 1, 0)).to.be.revertedWith(
-          "ERC20: transfer amount exceeds balance"
-        );
-
-        await expect(boardroom.stake(baseBalance, 0))
-          .to.emit(boardroom, "BaseStaked")
-          .withArgs(op.address, baseBalance);
-        await expect(boardroom.stake(0, boostBalance))
-          .to.emit(boardroom, "BoostStaked")
-          .withArgs(op.address, boostBalance);
-        expect(await base.balanceOf(op.address)).to.eq(0);
-        expect(await boost.balanceOf(op.address)).to.eq(0);
-      });
-    });
-
-    describe("when balance is not approved", () => {
-      it("fails", async () => {
-        await boost.transfer(staker0.address, 1235);
-        const baseBalance = await base.balanceOf(op.address);
-        const boostBalance = await boost.balanceOf(op.address);
-        await base.approve(boardroom.address, baseBalance.sub(1));
-        await boost.approve(boardroom.address, boostBalance.sub(1));
-
-        await expect(boardroom.stake(baseBalance, 0)).to.be.revertedWith(
-          "ERC20: transfer amount exceeds allowance"
-        );
-        await expect(boardroom.stake(0, boostBalance)).to.be.revertedWith(
-          "ERC20: transfer amount exceeds allowance"
-        );
-
-        await base.approve(boardroom.address, baseBalance);
-        await boost.approve(boardroom.address, boostBalance);
-
-        await expect(boardroom.stake(baseBalance, 0))
-          .to.emit(boardroom, "BaseStaked")
-          .withArgs(op.address, baseBalance);
-        await expect(boardroom.stake(0, boostBalance))
-          .to.emit(boardroom, "BoostStaked")
-          .withArgs(op.address, boostBalance);
-        expect(await base.balanceOf(op.address)).to.eq(0);
-        expect(await boost.balanceOf(op.address)).to.eq(0);
-      });
-    });
-
-    describe("when boardroom is paused", () => {
-      it("fails", async () => {
-        await boardroom.setPause(true);
-        await expect(boardroom.stake(123, 0)).to.be.revertedWith(
-          "Boardroom operations are paused"
+        await expect(boardroom.withdraw(0, boostAmount + 1)).to.be.revertedWith(
+          "SafeMath: subtraction overflow"
         );
       });
     });
