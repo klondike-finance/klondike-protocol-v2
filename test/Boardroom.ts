@@ -1,8 +1,8 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
-import { Contract, ContractFactory } from "ethers";
+import { BigNumber, Contract, ContractFactory } from "ethers";
 import { ethers } from "hardhat";
-import { ETH, now } from "./helpers/helpers";
+import { ETH, fastForwardAndMine, now } from "./helpers/helpers";
 
 describe("Boardroom", () => {
   const BOOST_FACTOR = 4;
@@ -255,36 +255,144 @@ describe("Boardroom", () => {
   //     });
   //   });
 
-  describe("#withdraw", () => {
-    it("withdraws available funds", async () => {
-      const baseBalance = await base.balanceOf(op.address);
-      const boostBalance = await boost.balanceOf(op.address);
-      const baseAmount = 123456;
-      const boostAmount = 32;
+  // describe("#withdraw", () => {
+  //   it("withdraws available funds", async () => {
+  //     const baseBalance = await base.balanceOf(op.address);
+  //     const boostBalance = await boost.balanceOf(op.address);
+  //     const baseAmount = 123456;
+  //     const boostAmount = 32;
 
-      await boardroom.stake(baseAmount, boostAmount);
-      await expect(boardroom.withdraw(baseAmount, boostAmount))
-        .to.emit(boardroom, "BaseWithdrawn")
-        .withArgs(op.address, baseAmount)
-        .and.emit(boardroom, "BoostWithdrawn")
-        .withArgs(op.address, boostAmount);
-      expect(await base.balanceOf(op.address)).to.eq(baseBalance);
-      expect(await boost.balanceOf(op.address)).to.eq(boostBalance);
-    });
+  //     await boardroom.stake(baseAmount, boostAmount);
+  //     await expect(boardroom.withdraw(baseAmount, boostAmount))
+  //       .to.emit(boardroom, "BaseWithdrawn")
+  //       .withArgs(op.address, baseAmount)
+  //       .and.emit(boardroom, "BoostWithdrawn")
+  //       .withArgs(op.address, boostAmount);
+  //     expect(await base.balanceOf(op.address)).to.eq(baseBalance);
+  //     expect(await boost.balanceOf(op.address)).to.eq(boostBalance);
+  //   });
 
-    describe("when limits are overflown", () => {
-      it("fails", async () => {
-        const baseAmount = 123456;
-        const boostAmount = 32;
+  //   describe("when limits are overflown", () => {
+  //     it("fails", async () => {
+  //       const baseAmount = 123456;
+  //       const boostAmount = 32;
 
-        await boardroom.stake(baseAmount, boostAmount);
-        await expect(boardroom.withdraw(baseAmount + 1, 0)).to.be.revertedWith(
-          "SafeMath: subtraction overflow"
-        );
-        await expect(boardroom.withdraw(0, boostAmount + 1)).to.be.revertedWith(
-          "SafeMath: subtraction overflow"
-        );
-      });
+  //       await boardroom.stake(baseAmount, boostAmount);
+  //       await expect(boardroom.withdraw(baseAmount + 1, 0)).to.be.revertedWith(
+  //         "SafeMath: subtraction overflow"
+  //       );
+  //       await expect(boardroom.withdraw(0, boostAmount + 1)).to.be.revertedWith(
+  //         "SafeMath: subtraction overflow"
+  //       );
+  //     });
+  //   });
+  // });
+
+  describe("#updateAccruals", () => {
+    async function randomlyAccrueReward() {
+      const stakers = [staker0, staker1, staker2, staker3];
+      for (const staker of stakers) {
+        if (Math.random() < 0.5) {
+          await boardroom.connect(staker).updateAccruals();
+        }
+      }
+    }
+    it("works in basic case", async () => {
+      const tick = 86400;
+      const stakers = [staker0, staker1, staker2, staker3];
+      for (const staker of stakers) {
+        await base.transfer(staker.address, 1000);
+        await base
+          .connect(staker)
+          .approve(boardroom.address, ethers.constants.MaxUint256);
+      }
+
+      // day 1
+      await boardroom.connect(staker0).stake(100, 0);
+      await boardroom.connect(staker1).stake(100, 0);
+      await fastForwardAndMine(ethers.provider, tick);
+      // day 2
+      await kbtc.transfer(boardroom.address, 20000);
+      await keth.transfer(boardroom.address, 2000);
+      await boardroom
+        .connect(emissionManagerMock)
+        .notifyTransfer(kbtc.address, 20000);
+      await boardroom
+        .connect(emissionManagerMock)
+        .notifyTransfer(keth.address, 2000);
+      await fastForwardAndMine(ethers.provider, tick);
+      // day 3
+      await boardroom.connect(staker2).stake(50, 0);
+      await fastForwardAndMine(ethers.provider, tick);
+      // day 4
+      await kbtc.transfer(boardroom.address, 30000);
+      await keth.transfer(boardroom.address, 3000);
+      await boardroom
+        .connect(emissionManagerMock)
+        .notifyTransfer(kbtc.address, 30000);
+      await boardroom
+        .connect(emissionManagerMock)
+        .notifyTransfer(keth.address, 3000);
+      await fastForwardAndMine(ethers.provider, tick);
+      // day 5
+      await boardroom.connect(staker3).stake(150, 0);
+      await fastForwardAndMine(ethers.provider, tick);
+      // day 6
+      await kbtc.transfer(boardroom.address, 20000);
+      await keth.transfer(boardroom.address, 2000);
+      await boardroom
+        .connect(emissionManagerMock)
+        .notifyTransfer(kbtc.address, 20000);
+      await boardroom
+        .connect(emissionManagerMock)
+        .notifyTransfer(keth.address, 2000);
+      await fastForwardAndMine(ethers.provider, tick);
+      // day 7
+      await kbtc.transfer(boardroom.address, 20000);
+      await keth.transfer(boardroom.address, 2000);
+      await boardroom
+        .connect(emissionManagerMock)
+        .notifyTransfer(kbtc.address, 20000);
+      await boardroom
+        .connect(emissionManagerMock)
+        .notifyTransfer(keth.address, 2000);
+      await fastForwardAndMine(ethers.provider, tick);
+      // final day
+      for (const staker of stakers) {
+        await boardroom.connect(staker).updateAccruals();
+      }
+
+      // staker0
+      expect(
+        (await boardroom.personRewardAccruals(kbtc.address, staker0.address))[1]
+      ).to.eq(BigNumber.from(32000));
+      expect(
+        (await boardroom.personRewardAccruals(keth.address, staker0.address))[1]
+      ).to.eq(BigNumber.from(3200));
+
+      // staker1
+      expect(
+        (await boardroom.personRewardAccruals(kbtc.address, staker1.address))[1]
+      ).to.eq(BigNumber.from(32000));
+      expect(
+        (await boardroom.personRewardAccruals(keth.address, staker1.address))[1]
+      ).to.eq(BigNumber.from(3200));
+
+      // staker2
+      expect(
+        (await boardroom.personRewardAccruals(kbtc.address, staker2.address))[1]
+      ).to.eq(BigNumber.from(11000));
+      expect(
+        (await boardroom.personRewardAccruals(keth.address, staker2.address))[1]
+      ).to.eq(BigNumber.from(1100));
+
+      // staker3
+      expect(
+        (await boardroom.personRewardAccruals(kbtc.address, staker3.address))[1]
+      ).to.eq(BigNumber.from(15000));
+      expect(
+        (await boardroom.personRewardAccruals(keth.address, staker3.address))[1]
+      ).to.eq(BigNumber.from(1500));
     });
   });
 });

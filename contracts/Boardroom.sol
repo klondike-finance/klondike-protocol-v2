@@ -38,10 +38,11 @@ contract Boardroom is
     }
 
     /// A set of PoolRewardSnapshots for every synthetic token
-    mapping(address => PoolRewardSnapshot[]) poolRewardSnapshots;
+    mapping(address => PoolRewardSnapshot[]) public poolRewardSnapshots;
     /// A set of records of personal accumulated income.
     /// The first key is token, the second is holder address.
-    mapping(address => mapping(address => PersonRewardAccrual)) personRewardAccruals;
+    mapping(address => mapping(address => PersonRewardAccrual))
+        public personRewardAccruals;
 
     /// Reward token formula param
     uint256 public immutable boostFactor;
@@ -193,7 +194,7 @@ contract Boardroom is
     /// Update accrued rewards for all tokens of sender
     function updateAccruals() public {
         address[] memory tokens = tokenManager.allTokens();
-        for (uint256 i = 0; i < tokens.length - 1; i++) {
+        for (uint256 i = 0; i < tokens.length; i++) {
             _updateAccrual(tokens[i], msg.sender);
         }
     }
@@ -201,7 +202,7 @@ contract Boardroom is
     /// Transfer all rewards to sender
     function claimRewards() public onePerBlock unpaused {
         address[] memory tokens = tokenManager.allTokens();
-        for (uint256 i = 0; i < tokens.length - 1; i++) {
+        for (uint256 i = 0; i < tokens.length; i++) {
             _claimReward(tokens[i]);
         }
     }
@@ -215,6 +216,10 @@ contract Boardroom is
         require(
             msg.sender == address(emissionManager),
             "Boardroom: can only be called by EmissionManager"
+        );
+        require(
+            rewardTokenSupply > 0,
+            "Boardroom: Cannot receive incoming reward when token balance is 0"
         );
         PoolRewardSnapshot[] storage tokenSnapshots =
             poolRewardSnapshots[token];
@@ -230,6 +235,7 @@ contract Boardroom is
                     .add(deltaRPSU)
             })
         );
+        emit IncomingBoardroomReward(msg.sender, token, amount);
     }
 
     // ------- Public, LockManager ----------
@@ -376,7 +382,8 @@ contract Boardroom is
         uint256 lastUserAccrualRPSU =
             lastAccrualSnapshot.accruedRewardPerShareUnit;
         uint256 deltaRPSU = lastOverallRPSU.sub(lastUserAccrualRPSU);
-        uint256 addedUserReward = rewardsTokenBalance(owner).mul(deltaRPSU);
+        uint256 addedUserReward =
+            rewardsTokenBalance(owner).mul(deltaRPSU).div(10**decimals);
         accrual.lastAccrualSnaphotId = tokenSnapshots.length - 1;
         accrual.accruedReward = accrual.accruedReward.add(addedUserReward);
         emit RewardAccrued(
@@ -412,6 +419,11 @@ contract Boardroom is
         address indexed syntheticTokenAddress,
         address indexed to,
         uint256 reward
+    );
+    event IncomingBoardroomReward(
+        address indexed from,
+        address indexed token,
+        uint256 amount
     );
     event RewardStaked(address indexed to, uint256 amount);
     event RewardWithdrawn(address indexed to, uint256 amount);
