@@ -192,7 +192,7 @@ contract Boardroom is
     }
 
     /// Update accrued rewards for all tokens of sender
-    function updateAccruals() public {
+    function updateAccruals() public unpaused {
         address[] memory tokens = tokenManager.allTokens();
         for (uint256 i = 0; i < tokens.length; i++) {
             _updateAccrual(tokens[i], msg.sender);

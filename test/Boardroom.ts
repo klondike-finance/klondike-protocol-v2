@@ -402,14 +402,71 @@ describe("Boardroom", () => {
         (await boardroom.personRewardAccruals(keth.address, staker3.address))[1]
       ).to.eq(BigNumber.from(1500));
     }
-    it("works in basic case with update at the end", async () => {
-      await basicTest(0);
+    // it("works in basic case with update at the end", async () => {
+    //   await basicTest(0);
+    // });
+    // it("works in basic case with random updates", async () => {
+    //   await basicTest(0.3);
+    // });
+    // it("works in basic case with each day updates", async () => {
+    //   await basicTest(1);
+    // });
+
+    it("works with random stakes and rewards", async () => {
+      const tick = 86400;
+      const stakers = [staker0, staker1, staker2, staker3];
+      for (const staker of stakers) {
+        await base.transfer(staker.address, 10000);
+        await base
+          .connect(staker)
+          .approve(boardroom.address, ethers.constants.MaxUint256);
+      }
+
+      const rewards = [0, 0, 0, 0];
+      const stakesAcc = [0, 0, 0, 0];
+      for (let i = 0; i < 10; i++) {
+        const stakes = [
+          Math.random(),
+          Math.random(),
+          Math.random(),
+          Math.random(),
+        ].map((x) => Math.floor(x * 100) + 1);
+        for (let k = 0; k < 4; k++) {
+          stakesAcc[k] += stakes[k];
+        }
+        const totalStakes = stakesAcc.reduce((acc, val) => acc + val);
+        const reward = Math.floor(Math.random() * 10000);
+        for (let j = 0; j < 4; j++) {
+          await boardroom.connect(stakers[j]).stake(stakes[j], 0);
+          rewards[j] += Math.floor((stakesAcc[j] * reward) / totalStakes);
+        }
+        await fastForwardAndMine(ethers.provider, tick);
+        await boardroom
+          .connect(emissionManagerMock)
+          .notifyTransfer(kbtc.address, reward);
+        for (let j = 0; j < 4; j++) {
+          await boardroom.connect(stakers[j]).updateAccruals();
+        }
+      }
+      for (let m = 0; m < 4; m++) {
+        expect(
+          (
+            await boardroom.personRewardAccruals(
+              kbtc.address,
+              stakers[m].address
+            )
+          )[1]
+        ).to.eq(BigNumber.from(rewards[m]));
+      }
     });
-    it("works in basic case with random updates", async () => {
-      await basicTest(0.3);
-    });
-    it("works in basic case with each day updates", async () => {
-      await basicTest(1);
+
+    describe("when paused", () => {
+      it("fails", async () => {
+        await boardroom.setPause(true);
+        await expect(boardroom.updateAccruals()).to.be.revertedWith(
+          "Boardroom operations are paused"
+        );
+      });
     });
   });
 });
