@@ -126,7 +126,7 @@ contract LockPool is
         require(reward > 0, "LockPool: Invalid daysLock or amount param");
         uint256 unlockDate = block.timestamp + daysLock * 86400;
 
-        stake(amount);
+        _stake(amount);
         utxos[msg.sender].push(UTXO(unlockDate, amount, 0));
         rewardsToken.mint(msg.sender, reward);
         boardroom.updateRewardsAfterLock(msg.sender);
@@ -156,7 +156,7 @@ contract LockPool is
             revert("LockPool: No tokens available");
         }
         boardroom.updateRewardsAfterLock(msg.sender);
-        withdraw(actualAmount);
+        _withdraw(actualAmount);
         emit Withdrawn(actualAmount);
     }
 

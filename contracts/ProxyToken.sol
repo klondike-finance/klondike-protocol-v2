@@ -27,13 +27,13 @@ contract ProxyToken {
         return _balances[account];
     }
 
-    function stake(uint256 amount) public virtual {
+    function _stake(uint256 amount) internal virtual {
         _totalSupply = _totalSupply.add(amount);
         _balances[msg.sender] = _balances[msg.sender].add(amount);
         innerToken.safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    function withdraw(uint256 amount) public virtual {
+    function _withdraw(uint256 amount) internal virtual {
         _totalSupply = _totalSupply.sub(amount);
         _balances[msg.sender] = _balances[msg.sender].sub(amount);
         innerToken.safeTransfer(msg.sender, amount);

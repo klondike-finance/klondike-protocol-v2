@@ -161,10 +161,10 @@ contract Boardroom is
         );
         updateAccruals();
         if (baseAmount > 0) {
-            _stakeBase(baseAmount);
+            _stakeBase(msg.sender, baseAmount);
         }
         if (boostAmount > 0) {
-            _stakeBoost(boostAmount);
+            _stakeBoost(msg.sender, boostAmount);
         }
         _updateRewardTokenBalance(msg.sender);
     }
@@ -183,10 +183,10 @@ contract Boardroom is
         );
         updateAccruals();
         if (baseAmount > 0) {
-            _withdrawBase(baseAmount);
+            _withdrawBase(msg.sender, baseAmount);
         }
         if (boostAmount > 0) {
-            _withdrawBoost(boostAmount);
+            _withdrawBoost(msg.sender, boostAmount);
         }
         _updateRewardTokenBalance(msg.sender);
     }
@@ -298,56 +298,44 @@ contract Boardroom is
 
     // ------- Internal ----------
 
-    function _stakeReward(uint256 amount) internal {
-        rewardTokenBalances[msg.sender] = rewardTokenBalances[msg.sender].add(
-            amount
-        );
+    function _stakeReward(address owner, uint256 amount) internal {
+        rewardTokenBalances[owner] = rewardTokenBalances[owner].add(amount);
         rewardTokenSupply = rewardTokenSupply.add(amount);
-        emit RewardStaked(msg.sender, amount);
+        emit RewardStaked(owner, amount);
     }
 
-    function _withdrawReward(uint256 amount) internal {
-        rewardTokenBalances[msg.sender] = rewardTokenBalances[msg.sender].sub(
-            amount
-        );
+    function _withdrawReward(address owner, uint256 amount) internal {
+        rewardTokenBalances[owner] = rewardTokenBalances[owner].sub(amount);
         rewardTokenSupply = rewardTokenSupply.sub(amount);
-        emit RewardWithdrawn(msg.sender, amount);
+        emit RewardWithdrawn(owner, amount);
     }
 
-    function _stakeBase(uint256 amount) internal {
-        baseTokenBalances[msg.sender] = baseTokenBalances[msg.sender].add(
-            amount
-        );
+    function _stakeBase(address owner, uint256 amount) internal {
+        baseTokenBalances[owner] = baseTokenBalances[owner].add(amount);
         baseTokenSupply = baseTokenSupply.add(amount);
-        base.transferFrom(msg.sender, address(this), amount);
-        emit BaseStaked(msg.sender, amount);
+        base.transferFrom(owner, address(this), amount);
+        emit BaseStaked(owner, amount);
     }
 
-    function _withdrawBase(uint256 amount) internal {
-        baseTokenBalances[msg.sender] = baseTokenBalances[msg.sender].sub(
-            amount
-        );
+    function _withdrawBase(address owner, uint256 amount) internal {
+        baseTokenBalances[owner] = baseTokenBalances[owner].sub(amount);
         baseTokenSupply = baseTokenSupply.sub(amount);
-        base.transfer(msg.sender, amount);
-        emit BaseWithdrawn(msg.sender, amount);
+        base.transfer(owner, amount);
+        emit BaseWithdrawn(owner, amount);
     }
 
-    function _stakeBoost(uint256 amount) internal {
-        boostTokenBalances[msg.sender] = boostTokenBalances[msg.sender].add(
-            amount
-        );
+    function _stakeBoost(address owner, uint256 amount) internal {
+        boostTokenBalances[owner] = boostTokenBalances[owner].add(amount);
         boostTokenSupply = boostTokenSupply.add(amount);
-        boost.transferFrom(msg.sender, address(this), amount);
-        emit BoostStaked(msg.sender, amount);
+        boost.transferFrom(owner, address(this), amount);
+        emit BoostStaked(owner, amount);
     }
 
-    function _withdrawBoost(uint256 amount) internal {
-        boostTokenBalances[msg.sender] = boostTokenBalances[msg.sender].sub(
-            amount
-        );
+    function _withdrawBoost(address owner, uint256 amount) internal {
+        boostTokenBalances[owner] = boostTokenBalances[owner].sub(amount);
         boostTokenSupply = boostTokenSupply.sub(amount);
-        boost.transfer(msg.sender, amount);
-        emit BoostWithdrawn(msg.sender, amount);
+        boost.transfer(owner, amount);
+        emit BoostWithdrawn(owner, amount);
     }
 
     function _claimReward(address syntheticTokenAddress) internal {
@@ -401,9 +389,9 @@ contract Boardroom is
             return;
         }
         if (newBalance > currentBalance) {
-            _stakeReward(newBalance.sub(currentBalance));
+            _stakeReward(owner, newBalance.sub(currentBalance));
         } else {
-            _withdrawReward(currentBalance.sub(newBalance));
+            _withdrawReward(owner, currentBalance.sub(newBalance));
         }
     }
 
