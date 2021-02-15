@@ -288,17 +288,190 @@ describe("Boardroom", () => {
   //   });
   // });
 
-  describe("#updateAccruals", () => {
-    async function randomlyAccrueReward(probabality: number) {
-      const stakers = [staker0, staker1, staker2, staker3];
-      for (const staker of stakers) {
-        if (Math.random() < probabality) {
-          await boardroom.connect(staker).updateAccruals();
-        }
-      }
-    }
+  // describe("#updateAccruals", () => {
+  //   async function randomlyAccrueReward(probabality: number) {
+  //     const stakers = [staker0, staker1, staker2, staker3];
+  //     for (const staker of stakers) {
+  //       if (Math.random() < probabality) {
+  //         await boardroom.connect(staker).updateAccruals();
+  //       }
+  //     }
+  //   }
 
-    async function basicTest(probability: number) {
+  //   async function basicTest(probability: number) {
+  //     const tick = 86400;
+  //     const stakers = [staker0, staker1, staker2, staker3];
+  //     for (const staker of stakers) {
+  //       await base.transfer(staker.address, 1000);
+  //       await base
+  //         .connect(staker)
+  //         .approve(boardroom.address, ethers.constants.MaxUint256);
+  //     }
+
+  //     // day 1
+  //     await boardroom.connect(staker0).stake(100, 0);
+  //     await boardroom.connect(staker1).stake(100, 0);
+  //     await fastForwardAndMine(ethers.provider, tick);
+  //     await randomlyAccrueReward(probability);
+  //     // day 2
+  //     await kbtc.transfer(boardroom.address, 20000);
+  //     await keth.transfer(boardroom.address, 2000);
+  //     await boardroom
+  //       .connect(emissionManagerMock)
+  //       .notifyTransfer(kbtc.address, 20000);
+  //     await boardroom
+  //       .connect(emissionManagerMock)
+  //       .notifyTransfer(keth.address, 2000);
+  //     await fastForwardAndMine(ethers.provider, tick);
+  //     await randomlyAccrueReward(probability);
+  //     // day 3
+  //     await boardroom.connect(staker2).stake(50, 0);
+  //     await fastForwardAndMine(ethers.provider, tick);
+  //     await randomlyAccrueReward(probability);
+  //     // day 4
+  //     await kbtc.transfer(boardroom.address, 30000);
+  //     await keth.transfer(boardroom.address, 3000);
+  //     await boardroom
+  //       .connect(emissionManagerMock)
+  //       .notifyTransfer(kbtc.address, 30000);
+  //     await boardroom
+  //       .connect(emissionManagerMock)
+  //       .notifyTransfer(keth.address, 3000);
+  //     await fastForwardAndMine(ethers.provider, tick);
+  //     await randomlyAccrueReward(probability);
+  //     // day 5
+  //     await boardroom.connect(staker3).stake(150, 0);
+  //     await fastForwardAndMine(ethers.provider, tick);
+  //     await randomlyAccrueReward(probability);
+  //     // day 6
+  //     await kbtc.transfer(boardroom.address, 20000);
+  //     await keth.transfer(boardroom.address, 2000);
+  //     await boardroom
+  //       .connect(emissionManagerMock)
+  //       .notifyTransfer(kbtc.address, 20000);
+  //     await boardroom
+  //       .connect(emissionManagerMock)
+  //       .notifyTransfer(keth.address, 2000);
+  //     await fastForwardAndMine(ethers.provider, tick);
+  //     await randomlyAccrueReward(probability);
+  //     // day 7
+  //     await kbtc.transfer(boardroom.address, 20000);
+  //     await keth.transfer(boardroom.address, 2000);
+  //     await boardroom
+  //       .connect(emissionManagerMock)
+  //       .notifyTransfer(kbtc.address, 20000);
+  //     await boardroom
+  //       .connect(emissionManagerMock)
+  //       .notifyTransfer(keth.address, 2000);
+  //     await fastForwardAndMine(ethers.provider, tick);
+  //     await randomlyAccrueReward(probability);
+  //     // final day
+  //     for (const staker of stakers) {
+  //       await boardroom.connect(staker).updateAccruals();
+  //     }
+
+  //     // staker0
+  //     expect(
+  //       (await boardroom.personRewardAccruals(kbtc.address, staker0.address))[1]
+  //     ).to.eq(BigNumber.from(32000));
+  //     expect(
+  //       (await boardroom.personRewardAccruals(keth.address, staker0.address))[1]
+  //     ).to.eq(BigNumber.from(3200));
+
+  //     // staker1
+  //     expect(
+  //       (await boardroom.personRewardAccruals(kbtc.address, staker1.address))[1]
+  //     ).to.eq(BigNumber.from(32000));
+  //     expect(
+  //       (await boardroom.personRewardAccruals(keth.address, staker1.address))[1]
+  //     ).to.eq(BigNumber.from(3200));
+
+  //     // staker2
+  //     expect(
+  //       (await boardroom.personRewardAccruals(kbtc.address, staker2.address))[1]
+  //     ).to.eq(BigNumber.from(11000));
+  //     expect(
+  //       (await boardroom.personRewardAccruals(keth.address, staker2.address))[1]
+  //     ).to.eq(BigNumber.from(1100));
+
+  //     // staker3
+  //     expect(
+  //       (await boardroom.personRewardAccruals(kbtc.address, staker3.address))[1]
+  //     ).to.eq(BigNumber.from(15000));
+  //     expect(
+  //       (await boardroom.personRewardAccruals(keth.address, staker3.address))[1]
+  //     ).to.eq(BigNumber.from(1500));
+  //   }
+  //   it("works in basic case with update at the end", async () => {
+  //     await basicTest(0);
+  //   });
+  //   it("works in basic case with random updates", async () => {
+  //     await basicTest(0.3);
+  //   });
+  //   it("works in basic case with each day updates", async () => {
+  //     await basicTest(1);
+  //   });
+
+  //   it("works with random stakes and rewards", async () => {
+  //     const tick = 86400;
+  //     const stakers = [staker0, staker1, staker2, staker3];
+  //     for (const staker of stakers) {
+  //       await base.transfer(staker.address, 10000);
+  //       await base
+  //         .connect(staker)
+  //         .approve(boardroom.address, ethers.constants.MaxUint256);
+  //     }
+
+  //     const rewards = [0, 0, 0, 0];
+  //     const stakesAcc = [0, 0, 0, 0];
+  //     for (let i = 0; i < 10; i++) {
+  //       const stakes = [
+  //         Math.random(),
+  //         Math.random(),
+  //         Math.random(),
+  //         Math.random(),
+  //       ].map((x) => Math.floor(x * 100) + 1);
+  //       for (let k = 0; k < 4; k++) {
+  //         stakesAcc[k] += stakes[k];
+  //       }
+  //       const totalStakes = stakesAcc.reduce((acc, val) => acc + val);
+  //       const reward = Math.floor(Math.random() * 10000);
+  //       for (let j = 0; j < 4; j++) {
+  //         await boardroom.connect(stakers[j]).stake(stakes[j], 0);
+  //         rewards[j] += Math.floor((stakesAcc[j] * reward) / totalStakes);
+  //       }
+  //       await fastForwardAndMine(ethers.provider, tick);
+  //       await boardroom
+  //         .connect(emissionManagerMock)
+  //         .notifyTransfer(kbtc.address, reward);
+  //       for (let j = 0; j < 4; j++) {
+  //         await boardroom.connect(stakers[j]).updateAccruals();
+  //       }
+  //     }
+  //     for (let m = 0; m < 4; m++) {
+  //       expect(
+  //         (
+  //           await boardroom.personRewardAccruals(
+  //             kbtc.address,
+  //             stakers[m].address
+  //           )
+  //         )[1]
+  //       ).to.eq(BigNumber.from(rewards[m]));
+  //     }
+  //   });
+
+  //   describe("when paused", () => {
+  //     it("fails", async () => {
+  //       await boardroom.setPause(true);
+  //       await expect(boardroom.updateAccruals()).to.be.revertedWith(
+  //         "Boardroom operations are paused"
+  //       );
+  //     });
+  //   });
+  // });
+
+  describe("#claimRewards", () => {
+    it("transfers all accrued rewards to owner", async () => {
       const tick = 86400;
       const stakers = [staker0, staker1, staker2, staker3];
       for (const staker of stakers) {
@@ -310,9 +483,8 @@ describe("Boardroom", () => {
 
       // day 1
       await boardroom.connect(staker0).stake(100, 0);
-      await boardroom.connect(staker1).stake(100, 0);
+      await boardroom.connect(staker1).stake(300, 0);
       await fastForwardAndMine(ethers.provider, tick);
-      await randomlyAccrueReward(probability);
       // day 2
       await kbtc.transfer(boardroom.address, 20000);
       await keth.transfer(boardroom.address, 2000);
@@ -322,148 +494,59 @@ describe("Boardroom", () => {
       await boardroom
         .connect(emissionManagerMock)
         .notifyTransfer(keth.address, 2000);
-      await fastForwardAndMine(ethers.provider, tick);
-      await randomlyAccrueReward(probability);
-      // day 3
-      await boardroom.connect(staker2).stake(50, 0);
-      await fastForwardAndMine(ethers.provider, tick);
-      await randomlyAccrueReward(probability);
-      // day 4
-      await kbtc.transfer(boardroom.address, 30000);
-      await keth.transfer(boardroom.address, 3000);
-      await boardroom
-        .connect(emissionManagerMock)
-        .notifyTransfer(kbtc.address, 30000);
-      await boardroom
-        .connect(emissionManagerMock)
-        .notifyTransfer(keth.address, 3000);
-      await fastForwardAndMine(ethers.provider, tick);
-      await randomlyAccrueReward(probability);
-      // day 5
-      await boardroom.connect(staker3).stake(150, 0);
-      await fastForwardAndMine(ethers.provider, tick);
-      await randomlyAccrueReward(probability);
-      // day 6
-      await kbtc.transfer(boardroom.address, 20000);
-      await keth.transfer(boardroom.address, 2000);
-      await boardroom
-        .connect(emissionManagerMock)
-        .notifyTransfer(kbtc.address, 20000);
-      await boardroom
-        .connect(emissionManagerMock)
-        .notifyTransfer(keth.address, 2000);
-      await fastForwardAndMine(ethers.provider, tick);
-      await randomlyAccrueReward(probability);
-      // day 7
-      await kbtc.transfer(boardroom.address, 20000);
-      await keth.transfer(boardroom.address, 2000);
-      await boardroom
-        .connect(emissionManagerMock)
-        .notifyTransfer(kbtc.address, 20000);
-      await boardroom
-        .connect(emissionManagerMock)
-        .notifyTransfer(keth.address, 2000);
-      await fastForwardAndMine(ethers.provider, tick);
-      await randomlyAccrueReward(probability);
-      // final day
-      for (const staker of stakers) {
-        await boardroom.connect(staker).updateAccruals();
-      }
+      await boardroom.connect(staker0).updateAccruals();
+      await boardroom.connect(staker1).updateAccruals();
+      expect(await kbtc.balanceOf(boardroom.address)).to.eq(20000);
+      expect(await keth.balanceOf(boardroom.address)).to.eq(2000);
+      expect(await kbtc.balanceOf(staker0.address)).to.eq(0);
+      expect(await keth.balanceOf(staker0.address)).to.eq(0);
+      expect(await kbtc.balanceOf(staker1.address)).to.eq(0);
+      expect(await keth.balanceOf(staker1.address)).to.eq(0);
 
-      // staker0
+      await expect(boardroom.connect(staker0).claimRewards())
+        .to.emit(boardroom, "RewardPaid")
+        .withArgs(kbtc.address, staker0.address, 5000)
+        .and.to.emit(boardroom, "RewardPaid")
+        .withArgs(keth.address, staker0.address, 500);
+      await expect(boardroom.connect(staker1).claimRewards())
+        .to.emit(boardroom, "RewardPaid")
+        .withArgs(kbtc.address, staker1.address, 15000)
+        .and.to.emit(boardroom, "RewardPaid")
+        .withArgs(keth.address, staker1.address, 1500);
+
       expect(
         (await boardroom.personRewardAccruals(kbtc.address, staker0.address))[1]
-      ).to.eq(BigNumber.from(32000));
+      ).to.eq(BigNumber.from(0));
       expect(
         (await boardroom.personRewardAccruals(keth.address, staker0.address))[1]
-      ).to.eq(BigNumber.from(3200));
-
-      // staker1
+      ).to.eq(BigNumber.from(0));
       expect(
         (await boardroom.personRewardAccruals(kbtc.address, staker1.address))[1]
-      ).to.eq(BigNumber.from(32000));
+      ).to.eq(BigNumber.from(0));
       expect(
         (await boardroom.personRewardAccruals(keth.address, staker1.address))[1]
-      ).to.eq(BigNumber.from(3200));
+      ).to.eq(BigNumber.from(0));
 
-      // staker2
-      expect(
-        (await boardroom.personRewardAccruals(kbtc.address, staker2.address))[1]
-      ).to.eq(BigNumber.from(11000));
-      expect(
-        (await boardroom.personRewardAccruals(keth.address, staker2.address))[1]
-      ).to.eq(BigNumber.from(1100));
+      expect(await kbtc.balanceOf(staker0.address)).to.eq(5000);
+      expect(await keth.balanceOf(staker0.address)).to.eq(500);
+      expect(await kbtc.balanceOf(staker1.address)).to.eq(15000);
+      expect(await keth.balanceOf(staker1.address)).to.eq(1500);
 
-      // staker3
-      expect(
-        (await boardroom.personRewardAccruals(kbtc.address, staker3.address))[1]
-      ).to.eq(BigNumber.from(15000));
-      expect(
-        (await boardroom.personRewardAccruals(keth.address, staker3.address))[1]
-      ).to.eq(BigNumber.from(1500));
-    }
-    // it("works in basic case with update at the end", async () => {
-    //   await basicTest(0);
-    // });
-    // it("works in basic case with random updates", async () => {
-    //   await basicTest(0.3);
-    // });
-    // it("works in basic case with each day updates", async () => {
-    //   await basicTest(1);
-    // });
+      expect(await kbtc.balanceOf(boardroom.address)).to.eq(0);
+      expect(await keth.balanceOf(boardroom.address)).to.eq(0);
 
-    it("works with random stakes and rewards", async () => {
-      const tick = 86400;
-      const stakers = [staker0, staker1, staker2, staker3];
-      for (const staker of stakers) {
-        await base.transfer(staker.address, 10000);
-        await base
-          .connect(staker)
-          .approve(boardroom.address, ethers.constants.MaxUint256);
-      }
+      await boardroom.connect(staker0).claimRewards();
+      await boardroom.connect(staker1).claimRewards();
 
-      const rewards = [0, 0, 0, 0];
-      const stakesAcc = [0, 0, 0, 0];
-      for (let i = 0; i < 10; i++) {
-        const stakes = [
-          Math.random(),
-          Math.random(),
-          Math.random(),
-          Math.random(),
-        ].map((x) => Math.floor(x * 100) + 1);
-        for (let k = 0; k < 4; k++) {
-          stakesAcc[k] += stakes[k];
-        }
-        const totalStakes = stakesAcc.reduce((acc, val) => acc + val);
-        const reward = Math.floor(Math.random() * 10000);
-        for (let j = 0; j < 4; j++) {
-          await boardroom.connect(stakers[j]).stake(stakes[j], 0);
-          rewards[j] += Math.floor((stakesAcc[j] * reward) / totalStakes);
-        }
-        await fastForwardAndMine(ethers.provider, tick);
-        await boardroom
-          .connect(emissionManagerMock)
-          .notifyTransfer(kbtc.address, reward);
-        for (let j = 0; j < 4; j++) {
-          await boardroom.connect(stakers[j]).updateAccruals();
-        }
-      }
-      for (let m = 0; m < 4; m++) {
-        expect(
-          (
-            await boardroom.personRewardAccruals(
-              kbtc.address,
-              stakers[m].address
-            )
-          )[1]
-        ).to.eq(BigNumber.from(rewards[m]));
-      }
+      expect(await kbtc.balanceOf(staker0.address)).to.eq(5000);
+      expect(await keth.balanceOf(staker0.address)).to.eq(500);
+      expect(await kbtc.balanceOf(staker1.address)).to.eq(15000);
+      expect(await keth.balanceOf(staker1.address)).to.eq(1500);
     });
-
     describe("when paused", () => {
       it("fails", async () => {
         await boardroom.setPause(true);
-        await expect(boardroom.updateAccruals()).to.be.revertedWith(
+        await expect(boardroom.claimRewards()).to.be.revertedWith(
           "Boardroom operations are paused"
         );
       });

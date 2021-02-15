@@ -155,6 +155,7 @@ contract LockPool is
         if (actualAmount == 0) {
             revert("LockPool: No tokens available");
         }
+        boardroom.updateRewardsAfterLock(msg.sender);
         withdraw(actualAmount);
         emit Withdrawn(actualAmount);
     }
