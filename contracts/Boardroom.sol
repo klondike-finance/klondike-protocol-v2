@@ -313,6 +313,7 @@ contract Boardroom is
             amount
         );
         baseTokenSupply = baseTokenSupply.add(amount);
+        base.transferFrom(msg.sender, address(this), amount);
         emit BaseStaked(msg.sender, amount);
     }
 
@@ -321,6 +322,7 @@ contract Boardroom is
             amount
         );
         baseTokenSupply = baseTokenSupply.sub(amount);
+        base.transfer(msg.sender, amount);
         emit BaseWithdrawn(msg.sender, amount);
     }
 
@@ -329,6 +331,7 @@ contract Boardroom is
             amount
         );
         boostTokenSupply = boostTokenSupply.add(amount);
+        boost.transferFrom(msg.sender, address(this), amount);
         emit BoostStaked(msg.sender, amount);
     }
 
@@ -337,6 +340,7 @@ contract Boardroom is
             amount
         );
         boostTokenSupply = boostTokenSupply.sub(amount);
+        boost.transfer(msg.sender, amount);
         emit BoostWithdrawn(msg.sender, amount);
     }
 

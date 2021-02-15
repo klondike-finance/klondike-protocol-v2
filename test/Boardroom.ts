@@ -12,7 +12,6 @@ describe("Boardroom", () => {
   let SyntheticToken: ContractFactory;
   let LockPool: ContractFactory;
   let TokenManagerMock: ContractFactory;
-  let EmissionManager: ContractFactory;
   let boardroom: Contract;
   let lockPool: Contract;
   let base: Contract;
@@ -40,7 +39,6 @@ describe("Boardroom", () => {
     SyntheticToken = await ethers.getContractFactory("SyntheticToken");
     LockPool = await ethers.getContractFactory("LockPool");
     TokenManagerMock = await ethers.getContractFactory("TokenManagerMock");
-    EmissionManager = await ethers.getContractFactory("EmissionManager");
   });
   beforeEach(async () => {
     base = await SyntheticToken.deploy("DROID", "DROID", 18);
@@ -65,6 +63,8 @@ describe("Boardroom", () => {
     await tokenManagerMock.addToken(kbtc.address);
     await tokenManagerMock.addToken(keth.address);
     boardroom = await createBoardroom();
+    await base.approve(boardroom.address, ethers.constants.MaxUint256);
+    await boost.approve(boardroom.address, ethers.constants.MaxUint256);
     await lockPool.setBoardroom(boardroom.address);
   });
 
@@ -81,85 +81,176 @@ describe("Boardroom", () => {
     );
   }
 
-  describe("#constructor", () => {
-    it("creates Boardroom", async () => {
-      await expect(
-        Boardroom.deploy(
-          base.address,
-          boost.address,
-          tokenManagerMock.address,
-          emissionManagerMock.address,
-          lockPool.address,
-          BOOST_FACTOR,
-          BOOST_DENOMINATOR,
-          await now()
-        )
-      ).to.not.be.reverted;
+  //   describe("#constructor", () => {
+  //     it("creates Boardroom", async () => {
+  //       await expect(
+  //         Boardroom.deploy(
+  //           base.address,
+  //           boost.address,
+  //           tokenManagerMock.address,
+  //           emissionManagerMock.address,
+  //           lockPool.address,
+  //           BOOST_FACTOR,
+  //           BOOST_DENOMINATOR,
+  //           await now()
+  //         )
+  //       ).to.not.be.reverted;
+  //     });
+  //     describe("when base and boost decimals are different", () => {
+  //       it("fails", async () => {
+  //         base = await SyntheticToken.deploy("DROID", "DROID", 17);
+  //         boost = await SyntheticToken.deploy("JEDI", "JEDI", 18);
+  //         await expect(createBoardroom()).to.be.revertedWith(
+  //           "Boardroom: Base and Boost decimals must be equal"
+  //         );
+  //       });
+  //     });
+  //   });
+
+  //   describe("#rewardsTokenBalance", () => {
+  //     describe("when only base token is staked", () => {
+  //       it("returns reward token equal to base token", async () => {
+  //         const amount = 12345;
+  //         await boardroom.stake(amount, 0);
+  //         expect(await boardroom.rewardsTokenBalance(op.address)).to.eq(amount);
+  //       });
+  //     });
+  //     describe("when base token is staked and locked in the lockPool", () => {
+  //       it("returns reward token equal to sum of tokens", async () => {
+  //         const amount = 12345;
+  //         const amountLock = 23456;
+  //         await boardroom.stake(amount, 0);
+  //         await lockPool.lock(amountLock, 7);
+  //         expect(await boardroom.rewardsTokenBalance(op.address)).to.eq(
+  //           amount + amountLock
+  //         );
+  //       });
+  //     });
+  //     describe("when boost token is staked", () => {
+  //       it("returns 0", async () => {
+  //         const amount = 12345;
+  //         await boardroom.stake(0, amount);
+  //         expect(await boardroom.rewardsTokenBalance(op.address)).to.eq(0);
+  //       });
+  //     });
+  //     describe("when base and boost token is staked", () => {
+  //       it("returns base + boostFactor * min(base, boost / boostDenominator)", async () => {
+  //         for (let i = 0; i < 20; i++) {
+  //           const amountBase = Math.floor(Math.random() * 10000);
+  //           const amountLock = Math.floor(Math.random() * 10000);
+  //           const amountBoost =
+  //             Math.floor(Math.random() * 10000) *
+  //             (Math.random() < 0.5 ? BOOST_DENOMINATOR : 1);
+  //           const actualAmountLock = (await lockPool.totalLocked(op.address))
+  //             .add(amountLock)
+  //             .toNumber();
+  //           const expectedBalance =
+  //             amountBase +
+  //             actualAmountLock +
+  //             BOOST_FACTOR *
+  //               Math.min(
+  //                 amountBase + actualAmountLock,
+  //                 Math.floor(amountBoost / BOOST_DENOMINATOR)
+  //               );
+  //           await boardroom.stake(amountBase, amountBoost);
+  //           await lockPool.lock(amountLock, 30);
+
+  //           expect(await boardroom.rewardsTokenBalance(op.address)).to.eq(
+  //             expectedBalance
+  //           );
+  //           await boardroom.withdraw(amountBase, amountBoost);
+  //         }
+  //       });
+  //     });
+  //   });
+
+  describe("#stake", () => {
+    it("stakes base and boost tokens", async () => {
+      const baseAmount = 123456;
+      const boostAmount = 32;
+
+      await boardroom.stake(baseAmount, 0);
+      expect(await boardroom.baseTokenBalances(op.address)).to.eq(baseAmount);
+
+      await boardroom.stake(0, boostAmount);
+      expect(await boardroom.boostTokenBalances(op.address)).to.eq(boostAmount);
+
+      await boardroom.stake(baseAmount, boostAmount);
+      expect(await boardroom.baseTokenBalances(op.address)).to.eq(
+        baseAmount * 2
+      );
+      expect(await boardroom.boostTokenBalances(op.address)).to.eq(
+        boostAmount * 2
+      );
     });
-    describe("when base and boost decimals are different", () => {
+
+    describe("when both amounts are 0", () => {
       it("fails", async () => {
-        base = await SyntheticToken.deploy("DROID", "DROID", 17);
-        boost = await SyntheticToken.deploy("JEDI", "JEDI", 18);
-        await expect(createBoardroom()).to.be.revertedWith(
-          "Boardroom: Base and Boost decimals must be equal"
+        await expect(boardroom.stake(0, 0)).to.be.revertedWith(
+          "Boardroom: one amount should be > 0"
         );
       });
     });
-  });
 
-  describe("#rewardsTokenBalance", () => {
-    describe("when only base token is staked", () => {
-      it("returns reward token equal to base token", async () => {
-        const amount = 12345;
-        await boardroom.stake(amount, 0);
-        expect(await boardroom.rewardsTokenBalance(op.address)).to.eq(amount);
-      });
-    });
-    describe("when base token is staked and locked in the lockPool", () => {
-      it("returns reward token equal to sum of tokens", async () => {
-        const amount = 12345;
-        const amountLock = 23456;
-        await boardroom.stake(amount, 0);
-        await lockPool.lock(amountLock, 7);
-        expect(await boardroom.rewardsTokenBalance(op.address)).to.eq(
-          amount + amountLock
+    describe("when there's not enough balance to stake", () => {
+      it("fails", async () => {
+        await boost.transfer(staker0.address, 1235);
+        const baseBalance = await base.balanceOf(op.address);
+        const boostBalance = await boost.balanceOf(op.address);
+
+        await expect(boardroom.stake(baseBalance + 1, 0)).to.be.revertedWith(
+          "ERC20: transfer amount exceeds balance"
         );
-      });
-    });
-    describe("when boost token is staked", () => {
-      it("returns 0", async () => {
-        const amount = 12345;
-        await boardroom.stake(0, amount);
-        expect(await boardroom.rewardsTokenBalance(op.address)).to.eq(0);
-      });
-    });
-    describe("when base and boost token is staked", () => {
-      it("returns base + boostFactor * min(base, boost / boostDenominator)", async () => {
-        for (let i = 0; i < 20; i++) {
-          const amountBase = Math.floor(Math.random() * 10000);
-          const amountLock = Math.floor(Math.random() * 10000);
-          const amountBoost =
-            Math.floor(Math.random() * 10000) *
-            (Math.random() < 0.5 ? BOOST_DENOMINATOR : 1);
-          const actualAmountLock = (await lockPool.totalLocked(op.address))
-            .add(amountLock)
-            .toNumber();
-          const expectedBalance =
-            amountBase +
-            actualAmountLock +
-            BOOST_FACTOR *
-              Math.min(
-                amountBase + actualAmountLock,
-                Math.floor(amountBoost / BOOST_DENOMINATOR)
-              );
-          await boardroom.stake(amountBase, amountBoost);
-          await lockPool.lock(amountLock, 30);
+        await expect(boardroom.stake(boostBalance + 1, 0)).to.be.revertedWith(
+          "ERC20: transfer amount exceeds balance"
+        );
 
-          expect(await boardroom.rewardsTokenBalance(op.address)).to.eq(
-            expectedBalance
-          );
-          await boardroom.withdraw(amountBase, amountBoost);
-        }
+        await expect(boardroom.stake(baseBalance, 0))
+          .to.emit(boardroom, "BaseStaked")
+          .withArgs(op.address, baseBalance);
+        await expect(boardroom.stake(0, boostBalance))
+          .to.emit(boardroom, "BoostStaked")
+          .withArgs(op.address, boostBalance);
+        expect(await base.balanceOf(op.address)).to.eq(0);
+        expect(await boost.balanceOf(op.address)).to.eq(0);
+      });
+    });
+
+    describe("when balance is not approved", () => {
+      it("fails", async () => {
+        await boost.transfer(staker0.address, 1235);
+        const baseBalance = await base.balanceOf(op.address);
+        const boostBalance = await boost.balanceOf(op.address);
+        await base.approve(boardroom.address, baseBalance.sub(1));
+        await boost.approve(boardroom.address, boostBalance.sub(1));
+
+        await expect(boardroom.stake(baseBalance, 0)).to.be.revertedWith(
+          "ERC20: transfer amount exceeds allowance"
+        );
+        await expect(boardroom.stake(0, boostBalance)).to.be.revertedWith(
+          "ERC20: transfer amount exceeds allowance"
+        );
+
+        await base.approve(boardroom.address, baseBalance);
+        await boost.approve(boardroom.address, boostBalance);
+
+        await expect(boardroom.stake(baseBalance, 0))
+          .to.emit(boardroom, "BaseStaked")
+          .withArgs(op.address, baseBalance);
+        await expect(boardroom.stake(0, boostBalance))
+          .to.emit(boardroom, "BoostStaked")
+          .withArgs(op.address, boostBalance);
+        expect(await base.balanceOf(op.address)).to.eq(0);
+        expect(await boost.balanceOf(op.address)).to.eq(0);
+      });
+    });
+
+    describe("when boardroom is paused", () => {
+      it("fails", async () => {
+        await boardroom.setPause(true);
+        await expect(boardroom.stake(123, 0)).to.be.revertedWith(
+          "Boardroom operations are paused"
+        );
       });
     });
   });
