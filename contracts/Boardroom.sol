@@ -44,9 +44,9 @@ contract Boardroom is
     mapping(address => mapping(address => PersonRewardAccrual)) personRewardAccruals;
 
     /// Reward token formula param
-    uint256 public immutable boostShareMultiplier;
+    uint256 public immutable boostFactor;
     /// Reward token formula param
-    uint256 public immutable boostTokenDenominator;
+    uint256 public immutable boostDenominator;
     /// Decimals for base, boost and rewards tokens;
     uint256 public immutable decimals;
     /// Pause
@@ -82,8 +82,8 @@ contract Boardroom is
     /// @param _tokenManager address of the TokenManager
     /// @param _emissionManager address of the EmissionManager
     /// @param _lockPool address of the LockPool
-    /// @param _boostShareMultiplier boost formula param
-    /// @param _boostTokenDenominator boost formula param
+    /// @param _boostFactor boost formula param
+    /// @param _boostDenominator boost formula param
     /// @param _start start of the pool date
     constructor(
         address _base,
@@ -91,8 +91,8 @@ contract Boardroom is
         address _tokenManager,
         address _emissionManager,
         address _lockPool,
-        uint256 _boostShareMultiplier,
-        uint256 _boostTokenDenominator,
+        uint256 _boostFactor,
+        uint256 _boostDenominator,
         uint256 _start
     ) public Timeboundable(_start, 0) {
         base = SyntheticToken(_base);
@@ -105,8 +105,8 @@ contract Boardroom is
         tokenManager = ITokenManager(_tokenManager);
         emissionManager = _emissionManager;
         lockPool = LockPool(_lockPool);
-        boostShareMultiplier = _boostShareMultiplier;
-        boostTokenDenominator = _boostTokenDenominator;
+        boostFactor = _boostFactor;
+        boostDenominator = _boostDenominator;
         address[] memory syntheticTokens = tokenManager.allTokens();
         for (uint256 i = 0; i < syntheticTokens.length; i++) {
             address token = syntheticTokens[i];
@@ -132,16 +132,14 @@ contract Boardroom is
 
     /// Get reward token balance for a user
     function rewardsTokenBalance(address owner) public view returns (uint256) {
-        uint256 baseBalance = baseTokenBalances[owner];
+        uint256 baseBalanceBoardroom = baseTokenBalances[owner];
         uint256 baseLockedBalance = lockPool.balanceOf(owner);
+        uint256 baseBalance = baseBalanceBoardroom.add(baseLockedBalance);
         uint256 boostBalance = boostTokenBalances[owner];
         return
-            baseBalance.add(baseLockedBalance).add(
-                boostShareMultiplier.mul(
-                    Math.min(
-                        baseBalance,
-                        boostBalance.div(boostTokenDenominator)
-                    )
+            baseBalance.add(
+                boostFactor.mul(
+                    Math.min(baseBalance, boostBalance.div(boostDenominator))
                 )
             );
     }
@@ -196,7 +194,7 @@ contract Boardroom is
     function updateAccruals() public {
         address[] memory tokens = tokenManager.allTokens();
         for (uint256 i = 0; i < tokens.length - 1; i++) {
-            _updateAccrual(tokens[i]);
+            _updateAccrual(tokens[i], msg.sender);
         }
     }
 
@@ -303,8 +301,10 @@ contract Boardroom is
     }
 
     function _withdrawReward(uint256 amount) internal {
-        rewardTokenBalances[msg.sender] += amount;
-        rewardTokenSupply += amount;
+        rewardTokenBalances[msg.sender] = rewardTokenBalances[msg.sender].sub(
+            amount
+        );
+        rewardTokenSupply = rewardTokenSupply.sub(amount);
         emit RewardWithdrawn(msg.sender, amount);
     }
 
@@ -317,9 +317,11 @@ contract Boardroom is
     }
 
     function _withdrawBase(uint256 amount) internal {
-        baseTokenBalances[msg.sender] += amount;
-        baseTokenSupply += amount;
-        emit BaseStaked(msg.sender, amount);
+        baseTokenBalances[msg.sender] = baseTokenBalances[msg.sender].sub(
+            amount
+        );
+        baseTokenSupply = baseTokenSupply.sub(amount);
+        emit BaseWithdrawn(msg.sender, amount);
     }
 
     function _stakeBoost(uint256 amount) internal {
@@ -331,8 +333,10 @@ contract Boardroom is
     }
 
     function _withdrawBoost(uint256 amount) internal {
-        boostTokenBalances[msg.sender] += amount;
-        boostTokenSupply += amount;
+        boostTokenBalances[msg.sender] = boostTokenBalances[msg.sender].sub(
+            amount
+        );
+        boostTokenSupply = boostTokenSupply.sub(amount);
         emit BoostWithdrawn(msg.sender, amount);
     }
 
@@ -349,9 +353,12 @@ contract Boardroom is
         }
     }
 
-    function _updateAccrual(address syntheticTokenAddress) internal {
+    function _updateAccrual(address syntheticTokenAddress, address owner)
+        internal
+    {
+        _updateRewardTokenBalance(owner);
         PersonRewardAccrual storage accrual =
-            personRewardAccruals[syntheticTokenAddress][msg.sender];
+            personRewardAccruals[syntheticTokenAddress][owner];
         PoolRewardSnapshot[] storage tokenSnapshots =
             poolRewardSnapshots[syntheticTokenAddress];
         if (accrual.lastAccrualSnaphotId == tokenSnapshots.length - 1) {
@@ -365,13 +372,12 @@ contract Boardroom is
         uint256 lastUserAccrualRPSU =
             lastAccrualSnapshot.accruedRewardPerShareUnit;
         uint256 deltaRPSU = lastOverallRPSU.sub(lastUserAccrualRPSU);
-        uint256 addedUserReward =
-            rewardsTokenBalance(msg.sender).mul(deltaRPSU);
+        uint256 addedUserReward = rewardsTokenBalance(owner).mul(deltaRPSU);
         accrual.lastAccrualSnaphotId = tokenSnapshots.length - 1;
         accrual.accruedReward = accrual.accruedReward.add(addedUserReward);
         emit RewardAccrued(
             syntheticTokenAddress,
-            msg.sender,
+            owner,
             addedUserReward,
             accrual.accruedReward
         );

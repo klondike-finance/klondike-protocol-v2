@@ -95,6 +95,20 @@ contract LockPool is
         }
     }
 
+    /// Total locked funds incl. available for unlock
+    /// @param owner owner of the tokens
+    function totalLocked(address owner) public view returns (uint256 amount) {
+        amount = 0;
+        UTXO[] storage ownerUtxos = utxos[owner];
+        uint256 start = firstUtxo[owner];
+        for (uint256 i = start; i < ownerUtxos.length; i++) {
+            UTXO storage utxo = ownerUtxos[i];
+            if (utxo.usedDate == 0) {
+                amount += utxo.amount;
+            }
+        }
+    }
+
     // ------- Public ----------
 
     /// Lock tokens and receive rewards
