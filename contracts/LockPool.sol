@@ -49,12 +49,10 @@ contract LockPool is
     constructor(
         address _stakingToken,
         address _rewardsToken,
-        address _boardroom,
         uint256 _start
     ) public Timeboundable(_start, 0) ProxyToken(_stakingToken) {
         stakingToken = SyntheticToken(_stakingToken);
         rewardsToken = SyntheticToken(_rewardsToken);
-        boardroom = IBoardroom(_boardroom);
     }
 
     // ------- Modifiers ----------
@@ -188,6 +186,13 @@ contract LockPool is
         emit Paused(msg.sender, _pauseLock);
     }
 
+    /// Sets the boardroom
+    /// @param _boardroom pause value
+    function setBoardroom(address _boardroom) public onlyOperator {
+        boardroom = IBoardroom(_boardroom);
+        emit UpdatedBoardroom(msg.sender, _boardroom);
+    }
+
     event Staked(
         address from,
         uint256 amountStaked,
@@ -202,4 +207,5 @@ contract LockPool is
     );
     event Migrated(address indexed operator, address target);
     event Paused(address indexed operator, bool pause);
+    event UpdatedBoardroom(address indexed operator, address boardroom);
 }

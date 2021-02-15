@@ -7,7 +7,7 @@ import "./access/ReentrancyGuardable.sol";
 import "./time/Timeboundable.sol";
 import "./LockPool.sol";
 import "./SyntheticToken.sol";
-import "./treasury/TokenManager.sol";
+import "./interfaces/ITokenManager.sol";
 import "./interfaces/IBoardroom.sol";
 
 /// Boardroom distributes token emission among shareholders
@@ -57,7 +57,7 @@ contract Boardroom is
     /// Boost token
     SyntheticToken public boost;
     /// TokenManager ref
-    TokenManager public tokenManager;
+    ITokenManager public tokenManager;
     /// EmissionManager ref
     address public emissionManager;
     /// LockPool (assume all tokens in LockPool are also locked in the Boardroom)
@@ -102,7 +102,7 @@ contract Boardroom is
             "Boardroom: Base and Boost decimals must be equal"
         );
         decimals = base.decimals();
-        tokenManager = TokenManager(_tokenManager);
+        tokenManager = ITokenManager(_tokenManager);
         emissionManager = _emissionManager;
         lockPool = LockPool(_lockPool);
         boostShareMultiplier = _boostShareMultiplier;
@@ -272,7 +272,7 @@ contract Boardroom is
     /// Updates TokenManager
     /// @param _tokenManager new TokenManager
     function setTokenManager(address _tokenManager) public onlyOwner {
-        tokenManager = TokenManager(_tokenManager);
+        tokenManager = ITokenManager(_tokenManager);
         emit UpdatedTokenManager(msg.sender, _tokenManager);
     }
 
