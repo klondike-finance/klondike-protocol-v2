@@ -289,15 +289,16 @@ describe("Boardroom", () => {
   // });
 
   describe("#updateAccruals", () => {
-    async function randomlyAccrueReward() {
+    async function randomlyAccrueReward(probabality: number) {
       const stakers = [staker0, staker1, staker2, staker3];
       for (const staker of stakers) {
-        if (Math.random() < 0.5) {
+        if (Math.random() < probabality) {
           await boardroom.connect(staker).updateAccruals();
         }
       }
     }
-    it("works in basic case", async () => {
+
+    async function basicTest(probability: number) {
       const tick = 86400;
       const stakers = [staker0, staker1, staker2, staker3];
       for (const staker of stakers) {
@@ -311,6 +312,7 @@ describe("Boardroom", () => {
       await boardroom.connect(staker0).stake(100, 0);
       await boardroom.connect(staker1).stake(100, 0);
       await fastForwardAndMine(ethers.provider, tick);
+      await randomlyAccrueReward(probability);
       // day 2
       await kbtc.transfer(boardroom.address, 20000);
       await keth.transfer(boardroom.address, 2000);
@@ -321,9 +323,11 @@ describe("Boardroom", () => {
         .connect(emissionManagerMock)
         .notifyTransfer(keth.address, 2000);
       await fastForwardAndMine(ethers.provider, tick);
+      await randomlyAccrueReward(probability);
       // day 3
       await boardroom.connect(staker2).stake(50, 0);
       await fastForwardAndMine(ethers.provider, tick);
+      await randomlyAccrueReward(probability);
       // day 4
       await kbtc.transfer(boardroom.address, 30000);
       await keth.transfer(boardroom.address, 3000);
@@ -334,9 +338,11 @@ describe("Boardroom", () => {
         .connect(emissionManagerMock)
         .notifyTransfer(keth.address, 3000);
       await fastForwardAndMine(ethers.provider, tick);
+      await randomlyAccrueReward(probability);
       // day 5
       await boardroom.connect(staker3).stake(150, 0);
       await fastForwardAndMine(ethers.provider, tick);
+      await randomlyAccrueReward(probability);
       // day 6
       await kbtc.transfer(boardroom.address, 20000);
       await keth.transfer(boardroom.address, 2000);
@@ -347,6 +353,7 @@ describe("Boardroom", () => {
         .connect(emissionManagerMock)
         .notifyTransfer(keth.address, 2000);
       await fastForwardAndMine(ethers.provider, tick);
+      await randomlyAccrueReward(probability);
       // day 7
       await kbtc.transfer(boardroom.address, 20000);
       await keth.transfer(boardroom.address, 2000);
@@ -357,6 +364,7 @@ describe("Boardroom", () => {
         .connect(emissionManagerMock)
         .notifyTransfer(keth.address, 2000);
       await fastForwardAndMine(ethers.provider, tick);
+      await randomlyAccrueReward(probability);
       // final day
       for (const staker of stakers) {
         await boardroom.connect(staker).updateAccruals();
@@ -393,6 +401,15 @@ describe("Boardroom", () => {
       expect(
         (await boardroom.personRewardAccruals(keth.address, staker3.address))[1]
       ).to.eq(BigNumber.from(1500));
+    }
+    it("works in basic case with update at the end", async () => {
+      await basicTest(0);
+    });
+    it("works in basic case with random updates", async () => {
+      await basicTest(0.3);
+    });
+    it("works in basic case with each day updates", async () => {
+      await basicTest(1);
     });
   });
 });
