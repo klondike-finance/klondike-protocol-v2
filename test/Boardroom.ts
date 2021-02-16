@@ -690,7 +690,7 @@ describe("Boardroom", () => {
     });
   });
 
-  describe("#setLockPool, #setBase, #setBoost, #setTokenManager, #setEmissionManager", () => {
+  describe("#setLockPool, #setBase, #setBoost, #setTokenManager, #setEmissionManager, #setBoostFactor, #setBoostDenominator", () => {
     describe("when called by Owner", () => {
       it("succeeds", async () => {
         await expect(boardroom.setLockPool(op.address)).to.not.be.reverted;
@@ -699,6 +699,8 @@ describe("Boardroom", () => {
         await expect(boardroom.setTokenManager(op.address)).to.not.be.reverted;
         await expect(boardroom.setEmissionManager(op.address)).to.not.be
           .reverted;
+        await expect(boardroom.setBoostFactor(105)).to.not.be.reverted;
+        await expect(boardroom.setBoostDenominator(110)).to.not.be.reverted;
       });
     });
     describe("when called not by Owner", () => {
@@ -711,6 +713,12 @@ describe("Boardroom", () => {
           "Ownable: caller is not the owner"
         );
         await expect(boardroom.setBoost(op.address)).to.be.revertedWith(
+          "Ownable: caller is not the owner"
+        );
+        await expect(boardroom.setBoostFactor(110)).to.be.revertedWith(
+          "Ownable: caller is not the owner"
+        );
+        await expect(boardroom.setBoostDenominator(110)).to.be.revertedWith(
           "Ownable: caller is not the owner"
         );
         await expect(boardroom.setTokenManager(op.address)).to.be.revertedWith(
