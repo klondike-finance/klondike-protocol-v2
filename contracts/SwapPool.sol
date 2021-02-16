@@ -5,9 +5,10 @@ import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
 
 import "./time/Timeboundable.sol";
 import "./SyntheticToken.sol";
+import "./access/Migratable.sol";
 
 /// @title A pool to swap one token for another
-contract SwapPool is Timeboundable {
+contract SwapPool is Timeboundable, Migratable {
     ERC20Burnable public inToken;
     SyntheticToken public outToken;
 

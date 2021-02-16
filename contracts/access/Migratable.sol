@@ -34,11 +34,11 @@ contract Migratable is Ownable {
             uint256 balance = token.balanceOf(address(this));
             if (balance > 0) {
                 token.transfer(target, balance);
-                emit MigratedBalance(address(token), target);
+                emit MigratedBalance(address(token), target, balance);
             }
         }
     }
 
-    event MigratedBalance(address indexed token, address target);
+    event MigratedBalance(address indexed token, address target, uint256 value);
     event MigratedOwnership(address indexed token, address target);
 }
