@@ -384,6 +384,31 @@ describe("Boardroom", () => {
       await fastForwardAndMine(ethers.provider, tick);
       await randomlyAccrueReward(probability);
       // final day
+      expect(
+        await boardroom.availableForWithdraw(kbtc.address, staker0.address)
+      ).to.eq(32000);
+      expect(
+        await boardroom.availableForWithdraw(keth.address, staker0.address)
+      ).to.eq(3200);
+      expect(
+        await boardroom.availableForWithdraw(kbtc.address, staker1.address)
+      ).to.eq(32000);
+      expect(
+        await boardroom.availableForWithdraw(keth.address, staker1.address)
+      ).to.eq(3200);
+      expect(
+        await boardroom.availableForWithdraw(kbtc.address, staker2.address)
+      ).to.eq(11000);
+      expect(
+        await boardroom.availableForWithdraw(keth.address, staker2.address)
+      ).to.eq(1100);
+      expect(
+        await boardroom.availableForWithdraw(kbtc.address, staker3.address)
+      ).to.eq(15000);
+      expect(
+        await boardroom.availableForWithdraw(keth.address, staker3.address)
+      ).to.eq(1500);
+
       for (const staker of stakers) {
         await boardroom.connect(staker).updateAccruals();
       }
@@ -467,14 +492,15 @@ describe("Boardroom", () => {
         }
       }
       for (let m = 0; m < 4; m++) {
-        expect(
-          (
-            await boardroom.personRewardAccruals(
-              kbtc.address,
-              stakers[m].address
-            )
-          )[1]
-        ).to.eq(BigNumber.from(rewards[m]));
+        const actual: BigNumber = (
+          await boardroom.personRewardAccruals(kbtc.address, stakers[m].address)
+        )[1];
+        const expected = BigNumber.from(rewards[m]);
+        const diff = actual.gt(expected)
+          ? actual.sub(expected)
+          : expected.sub(actual);
+
+        expect(diff.toNumber() <= 1).to.eq(true);
       }
     });
 

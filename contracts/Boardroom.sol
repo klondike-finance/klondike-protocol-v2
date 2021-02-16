@@ -126,6 +126,31 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
 
     // ------- Public ----------
 
+    /// Funds available for user to withdraw
+    /// @param syntheticTokenAddress the token we're looking up balance for
+    /// @param owner the owner of the token
+    function availableForWithdraw(address syntheticTokenAddress, address owner)
+        public
+        view
+        returns (uint256)
+    {
+        PersonRewardAccrual storage accrual =
+            personRewardAccruals[syntheticTokenAddress][owner];
+        PoolRewardSnapshot[] storage tokenSnapshots =
+            poolRewardSnapshots[syntheticTokenAddress];
+        PoolRewardSnapshot storage lastSnapshot =
+            tokenSnapshots[tokenSnapshots.length - 1];
+        uint256 lastOverallRPSU = lastSnapshot.accruedRewardPerShareUnit;
+        PoolRewardSnapshot storage lastAccrualSnapshot =
+            tokenSnapshots[accrual.lastAccrualSnaphotId];
+        uint256 lastUserAccrualRPSU =
+            lastAccrualSnapshot.accruedRewardPerShareUnit;
+        uint256 deltaRPSU = lastOverallRPSU.sub(lastUserAccrualRPSU);
+        uint256 addedUserReward =
+            rewardsTokenBalance(owner).mul(deltaRPSU).div(10**decimals);
+        return accrual.accruedReward.add(addedUserReward);
+    }
+
     /// Get reward token balance for a user
     function rewardsTokenBalance(address owner) public view returns (uint256) {
         uint256 baseBalanceBoardroom = baseTokenBalances[owner];
