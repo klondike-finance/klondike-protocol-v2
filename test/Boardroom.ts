@@ -263,11 +263,18 @@ describe("Boardroom", () => {
       const boostAmount = 32;
 
       await boardroom.stake(baseAmount, boostAmount);
-      await expect(boardroom.withdraw(baseAmount, boostAmount))
+      await expect(boardroom.withdraw(baseAmount / 2, boostAmount / 2))
         .to.emit(boardroom, "BaseWithdrawn")
-        .withArgs(op.address, baseAmount)
+        .withArgs(op.address, baseAmount / 2)
         .and.emit(boardroom, "BoostWithdrawn")
-        .withArgs(op.address, boostAmount);
+        .withArgs(op.address, boostAmount / 2);
+      await expect(boardroom.withdraw(baseAmount / 2, 0))
+        .to.emit(boardroom, "BaseWithdrawn")
+        .withArgs(op.address, baseAmount / 2);
+      await expect(boardroom.withdraw(0, boostAmount / 2))
+        .to.emit(boardroom, "BoostWithdrawn")
+        .withArgs(op.address, boostAmount / 2);
+
       expect(await base.balanceOf(op.address)).to.eq(baseBalance);
       expect(await boost.balanceOf(op.address)).to.eq(boostBalance);
     });
@@ -283,6 +290,17 @@ describe("Boardroom", () => {
         );
         await expect(boardroom.withdraw(0, boostAmount + 1)).to.be.revertedWith(
           "SafeMath: subtraction overflow"
+        );
+      });
+    });
+    describe("when both amounts are 0", () => {
+      it("fails", async () => {
+        const baseAmount = 123456;
+        const boostAmount = 32;
+
+        await boardroom.stake(baseAmount, boostAmount);
+        await expect(boardroom.withdraw(0, 0)).to.be.revertedWith(
+          "Boardroom: one amount should be > 0"
         );
       });
     });
@@ -585,36 +603,39 @@ describe("Boardroom", () => {
         BigNumber.from(200).mul(BigNumber.from(10).pow(18))
       );
     });
-  });
-
-  describe("when called not by EmissionManager", () => {
-    it("fails", async () => {
-      const tick = 86400;
-      const stakers = [staker0, staker1, staker2, staker3];
-      for (const staker of stakers) {
-        await base.transfer(staker.address, 1000);
-        await base
-          .connect(staker)
-          .approve(boardroom.address, ethers.constants.MaxUint256);
-      }
-
-      // day 1
-      await boardroom.connect(staker0).stake(100, 0);
-      await fastForwardAndMine(ethers.provider, tick);
-      // day 2
-      await kbtc.transfer(boardroom.address, 20000);
-      await expect(
-        boardroom.notifyTransfer(kbtc.address, 20000)
-      ).to.be.revertedWith("Boardroom: can only be called by EmissionManager");
-    });
-
-    describe("when called 0 is staked", () => {
+    describe("when called not by EmissionManager", () => {
       it("fails", async () => {
+        const tick = 86400;
+        const stakers = [staker0, staker1, staker2, staker3];
+        for (const staker of stakers) {
+          await base.transfer(staker.address, 1000);
+          await base
+            .connect(staker)
+            .approve(boardroom.address, ethers.constants.MaxUint256);
+        }
+
+        // day 1
+        await boardroom.connect(staker0).stake(100, 0);
+        await fastForwardAndMine(ethers.provider, tick);
+        // day 2
         await kbtc.transfer(boardroom.address, 20000);
         await expect(
           boardroom.notifyTransfer(kbtc.address, 20000)
         ).to.be.revertedWith(
           "Boardroom: can only be called by EmissionManager"
+        );
+      });
+    });
+
+    describe("when 0 is staked", () => {
+      it("fails", async () => {
+        await kbtc.transfer(boardroom.address, 20000);
+        await expect(
+          boardroom
+            .connect(emissionManagerMock)
+            .notifyTransfer(kbtc.address, 20000)
+        ).to.be.revertedWith(
+          "Boardroom: Cannot receive incoming reward when token balance is 0"
         );
       });
     });

@@ -496,6 +496,19 @@ describe("LockPool", () => {
       });
     });
 
+    describe("#totalLocked", () => {
+      it("returns the number of available for withdraw + locked funds", async () => {
+        await lockPool.lock(10000, 7);
+        await lockPool.lock(20000, 30);
+        await lockPool.lock(10000, 30);
+        await lockPool.lock(50000, 90);
+        await fastForwardAndMine(ethers.provider, 8 * 86400);
+        await lockPool.unlock();
+        await fastForwardAndMine(ethers.provider, 30 * 86400);
+        expect(await lockPool.totalLocked()).to.eq(80000);
+      });
+    });
+
     describe("#totalSupply", () => {
       it("returns the balance of all staked tokens", async () => {
         const [_, other] = await ethers.getSigners();
