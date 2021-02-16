@@ -8,22 +8,19 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "./TokenManager.sol";
 import "../time/Timeboundable.sol";
 import "../access/ReentrancyGuardable.sol";
+import "../access/Migratable.sol";
 import "../interfaces/IBondManager.sol";
-import "../interfaces/IMigrationTarget.sol";
 import "../interfaces/ITokenManager.sol";
 
 contract BondManager is
     IBondManager,
-    IMigrationTarget,
     ReentrancyGuardable,
     Operatable,
-    Timeboundable
+    Timeboundable,
+    Migratable
 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-
-    /// Name tag
-    string public constant override name = "BondManager";
 
     /// Bond data (key is synthetic token address, value is bond address)
     mapping(address => address) public override bondIndex;
@@ -216,28 +213,6 @@ contract BondManager is
         emit TokenManagerChanged(msg.sender, _tokenManager);
     }
 
-    /// Migrates to the new tokenManager
-    /// @param target new TokenManager
-    function migrate(IMigrationTarget target) public onlyOperator {
-        require(
-            keccak256(bytes(target.name())) == keccak256(bytes("BondManager")),
-            "BondManager: Migration target must be BondManager"
-        );
-        address[] memory tokens = tokenManager.allTokens();
-        for (uint32 i = 0; i < tokens.length; i++) {
-            if (tokens[i] != address(0)) {
-                SyntheticToken bondToken = SyntheticToken(bondIndex[tokens[i]]);
-                bondToken.transfer(
-                    address(target),
-                    bondToken.balanceOf(address(this))
-                );
-                bondToken.transferOperator(address(target));
-                bondToken.transferOwnership(address(target));
-            }
-        }
-        emit Migrated(msg.sender, address(target));
-    }
-
     // ------- Internal ----------
 
     /// Called when new token is added in TokenManager
@@ -300,6 +275,4 @@ contract BondManager is
     );
     /// Emitted each bonds are bought
     event SoldBonds(address indexed owner, uint256 amount);
-    /// Emitted when migrated
-    event Migrated(address indexed operator, address target);
 }
