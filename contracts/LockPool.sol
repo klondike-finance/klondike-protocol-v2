@@ -4,6 +4,7 @@ pragma solidity =0.6.6;
 import "./SyntheticToken.sol";
 import "./ProxyToken.sol";
 import "./time/Timeboundable.sol";
+import "./interfaces/IBoardroom.sol";
 import "./access/ReentrancyGuardable.sol";
 import "./access/Operatable.sol";
 
@@ -38,6 +39,8 @@ contract LockPool is
     SyntheticToken stakingToken;
     /// Token for rewards given immediately after lock
     SyntheticToken rewardsToken;
+    /// Boardroom
+    IBoardroom boardroom;
 
     /// Creates new lock pool
     /// @param _stakingToken Address of the token to be staked
@@ -57,6 +60,10 @@ contract LockPool is
     /// Checks if contract is ready to be used
     modifier initialized() {
         require(validPermissions(), "LockPool: token permissions are not set");
+        require(
+            address(boardroom) != address(0),
+            "LockPool: boardroom is not intialized"
+        );
         _;
     }
 
@@ -92,6 +99,20 @@ contract LockPool is
         }
     }
 
+    /// Total locked funds incl. available for unlock
+    /// @param owner owner of the tokens
+    function totalLocked(address owner) public view returns (uint256 amount) {
+        amount = 0;
+        UTXO[] storage ownerUtxos = utxos[owner];
+        uint256 start = firstUtxo[owner];
+        for (uint256 i = start; i < ownerUtxos.length; i++) {
+            UTXO storage utxo = ownerUtxos[i];
+            if (utxo.usedDate == 0) {
+                amount += utxo.amount;
+            }
+        }
+    }
+
     // ------- Public ----------
 
     /// Lock tokens and receive rewards
@@ -109,9 +130,10 @@ contract LockPool is
         require(reward > 0, "LockPool: Invalid daysLock or amount param");
         uint256 unlockDate = block.timestamp + daysLock * 86400;
 
-        stake(amount);
+        _stake(amount);
         utxos[msg.sender].push(UTXO(unlockDate, amount, 0));
         rewardsToken.mint(msg.sender, reward);
+        boardroom.updateRewardsAfterLock(msg.sender);
 
         emit Staked(msg.sender, amount, reward, daysLock);
     }
@@ -137,7 +159,8 @@ contract LockPool is
         if (actualAmount == 0) {
             revert("LockPool: No tokens available");
         }
-        withdraw(actualAmount);
+        boardroom.updateRewardsAfterLock(msg.sender);
+        _withdraw(actualAmount);
         emit Withdrawn(actualAmount);
     }
 
@@ -182,6 +205,13 @@ contract LockPool is
         emit Paused(msg.sender, _pauseLock);
     }
 
+    /// Sets the boardroom
+    /// @param _boardroom pause value
+    function setBoardroom(address _boardroom) public onlyOperator {
+        boardroom = IBoardroom(_boardroom);
+        emit UpdatedBoardroom(msg.sender, _boardroom);
+    }
+
     event Staked(
         address from,
         uint256 amountStaked,
@@ -196,4 +226,5 @@ contract LockPool is
     );
     event Migrated(address indexed operator, address target);
     event Paused(address indexed operator, bool pause);
+    event UpdatedBoardroom(address indexed operator, address boardroom);
 }

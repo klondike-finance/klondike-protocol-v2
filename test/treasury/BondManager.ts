@@ -371,7 +371,7 @@ describe("BondManager", () => {
         );
 
         const amount = 12345;
-        await synthetic.approve(manager.address, amount - 1);
+        await synthetic.approve(tokenManager.address, amount - 1);
         await expect(
           manager.buyBonds(synthetic.address, amount, 0)
         ).to.be.revertedWith("ERC20: burn amount exceeds allowance");

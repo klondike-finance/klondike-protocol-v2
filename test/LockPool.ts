@@ -8,17 +8,21 @@ describe("LockPool", () => {
   let op: SignerWithAddress;
   let LockPool: ContractFactory;
   let SyntheticToken: ContractFactory;
+  let BoardroomMock: ContractFactory;
   let droid: Contract;
   let jedi: Contract;
   let lockPool: Contract;
+  let boardroomMock: Contract;
 
   before(async () => {
     const [operator] = await ethers.getSigners();
     op = operator;
     LockPool = await ethers.getContractFactory("LockPool");
+    BoardroomMock = await ethers.getContractFactory("BoardroomMock");
     SyntheticToken = await ethers.getContractFactory("SyntheticToken");
   });
   beforeEach(async () => {
+    boardroomMock = await BoardroomMock.deploy();
     droid = await SyntheticToken.deploy("DROID", "DROID", 18);
     jedi = await SyntheticToken.deploy("JEDI", "JEDI", 18);
     await droid.mint(op.address, ETH.mul(100));
@@ -27,12 +31,14 @@ describe("LockPool", () => {
     await jedi.transferOperator(lockPool.address);
     await jedi.transferOwnership(lockPool.address);
     await droid.approve(lockPool.address, ethers.constants.MaxUint256);
+
     await lockPool.setRewardFactor(7, 100);
     await lockPool.setRewardFactor(30, 150);
     await lockPool.setRewardFactor(90, 200);
     await lockPool.setRewardFactor(180, 250);
     await lockPool.setRewardFactor(365, 300);
     await lockPool.setRewardFactor(1460, 450);
+    await lockPool.setBoardroom(boardroomMock.address);
   });
 
   describe("#constructor", () => {
@@ -242,6 +248,27 @@ describe("LockPool", () => {
       });
     });
 
+    describe("when boardroom is not set", () => {
+      it("fails", async () => {
+        droid = await SyntheticToken.deploy("DROID", "DROID", 18);
+        jedi = await SyntheticToken.deploy("JEDI", "JEDI", 18);
+        await droid.mint(op.address, ETH.mul(100));
+        await jedi.mint(op.address, ETH.mul(100));
+        lockPool = await LockPool.deploy(
+          droid.address,
+          jedi.address,
+          (await now()) + 100
+        );
+        await jedi.transferOperator(lockPool.address);
+        await jedi.transferOwnership(lockPool.address);
+        await droid.approve(lockPool.address, ethers.constants.MaxUint256);
+        await lockPool.setRewardFactor(7, 100);
+        await expect(lockPool.lock(100, 30)).to.be.revertedWith(
+          "LockPool: boardroom is not intialized"
+        );
+      });
+    });
+
     describe("when contract has not started", () => {
       it("fails", async () => {
         droid = await SyntheticToken.deploy("DROID", "DROID", 18);
@@ -257,6 +284,7 @@ describe("LockPool", () => {
         await jedi.transferOwnership(lockPool.address);
         await droid.approve(lockPool.address, ethers.constants.MaxUint256);
         await lockPool.setRewardFactor(7, 100);
+        await lockPool.setBoardroom(boardroomMock.address);
         await expect(lockPool.lock(100, 30)).to.be.revertedWith(
           "Timeboundable: Not started yet"
         );
@@ -465,6 +493,19 @@ describe("LockPool", () => {
         await lockPool.lock(10000, 7);
         await lockPool.lock(20000, 30);
         expect(await lockPool.balanceOf(op.address)).to.eq(30000);
+      });
+    });
+
+    describe("#totalLocked", () => {
+      it("returns the number of available for withdraw + locked funds", async () => {
+        await lockPool.lock(20000, 30);
+        await lockPool.lock(10000, 7);
+        await lockPool.lock(10000, 30);
+        await lockPool.lock(50000, 90);
+        await fastForwardAndMine(ethers.provider, 8 * 86400);
+        await lockPool.unlock();
+        await fastForwardAndMine(ethers.provider, 30 * 86400);
+        expect(await lockPool.totalLocked(op.address)).to.eq(80000);
       });
     });
 
