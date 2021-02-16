@@ -449,26 +449,6 @@ describe("LockPool", () => {
     });
   });
 
-  describe("#migrate", () => {
-    describe("when called by the Owner", () => {
-      it("transfers reward token ownership and operator", async () => {
-        await expect(lockPool.migrate(op.address))
-          .to.emit(lockPool, "Migrated")
-          .withArgs(op.address, op.address);
-        expect(await jedi.operator()).to.eq(op.address);
-        expect(await jedi.owner()).to.eq(op.address);
-      });
-    });
-    describe("when called by not Operator", () => {
-      it("fails", async () => {
-        const [_, other] = await ethers.getSigners();
-        await expect(
-          lockPool.connect(other).migrate(op.address)
-        ).to.be.revertedWith("Ownable: caller is not the owner");
-      });
-    });
-  });
-
   describe("#setRewardDays", () => {
     describe("when called by Operator", () => {
       it("sets the reward days", async () => {
@@ -518,6 +498,56 @@ describe("LockPool", () => {
         await droid.connect(other).approve(lockPool.address, 30000);
         await lockPool.connect(other).lock(30000, 30);
         expect(await lockPool.totalSupply()).to.eq(60000);
+      });
+    });
+  });
+
+  describe("#migrateOwnership", () => {
+    describe("when called by the Owner", () => {
+      it("transfers reward token ownership and operator", async () => {
+        const token = await lockPool.rewardsToken();
+        const [_, other] = await ethers.getSigners();
+        await expect(lockPool.migrateOwnership([token], other.address))
+          .to.emit(lockPool, "MigratedOwnership")
+          .withArgs(op.address, token, other.address);
+        expect(await jedi.operator()).to.eq(other.address);
+        expect(await jedi.owner()).to.eq(other.address);
+      });
+    });
+    describe("when called by not Owner", () => {
+      it("fails", async () => {
+        const [_, other] = await ethers.getSigners();
+        const token = await lockPool.rewardsToken();
+        await lockPool.transferOperator(other.address);
+        await expect(
+          lockPool.connect(other).migrateOwnership([token], op.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe("#migrateBalances", () => {
+    describe("when called by the Owner", () => {
+      it("transfers reward token balances", async () => {
+        const amount = 12345;
+        const token = await lockPool.rewardsToken();
+        await jedi.transfer(lockPool.address, amount);
+        const [_, other] = await ethers.getSigners();
+        await expect(lockPool.migrateBalances([token], other.address))
+          .to.emit(lockPool, "MigratedBalance")
+          .withArgs(op.address, token, other.address, amount);
+        expect(await jedi.balanceOf(lockPool.address)).to.eq(0);
+        expect(await jedi.balanceOf(other.address)).to.eq(amount);
+      });
+    });
+    describe("when called by not Owner", () => {
+      it("fails", async () => {
+        const [_, other] = await ethers.getSigners();
+        const token = await lockPool.rewardsToken();
+        await lockPool.transferOperator(other.address);
+        await expect(
+          lockPool.connect(other).migrateBalances([token], op.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
   });

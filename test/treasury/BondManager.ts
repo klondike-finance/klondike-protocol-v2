@@ -595,9 +595,19 @@ describe("BondManager", () => {
           )
         )
           .to.emit(manager, "MigratedBalance")
-          .withArgs(s1.address, manager2.address, INITIAL_MANAGER_BALANCE)
+          .withArgs(
+            op.address,
+            s1.address,
+            manager2.address,
+            INITIAL_MANAGER_BALANCE
+          )
           .and.to.emit(manager, "MigratedBalance")
-          .withArgs(s3.address, manager2.address, INITIAL_MANAGER_BALANCE);
+          .withArgs(
+            op.address,
+            s3.address,
+            manager2.address,
+            INITIAL_MANAGER_BALANCE
+          );
 
         expect(await s1.balanceOf(manager.address)).to.eq(0);
         expect(await s1.balanceOf(manager2.address)).to.eq(
@@ -672,9 +682,9 @@ describe("BondManager", () => {
           )
         )
           .to.emit(manager, "MigratedOwnership")
-          .withArgs(b1.address, manager2.address)
+          .withArgs(op.address, b1.address, manager2.address)
           .and.to.emit(manager, "MigratedOwnership")
-          .withArgs(b3.address, manager2.address);
+          .withArgs(op.address, b3.address, manager2.address);
 
         expect(await b1.operator()).to.eq(manager2.address);
         expect(await b1.owner()).to.eq(manager2.address);
