@@ -330,13 +330,13 @@ describe("LockPool", () => {
         // 1000
         await lockPool.lock(20000, 30);
         // 1001
-        await fastForwardAndMine(ethers.provider, 7 * 86400 - 1002);
+        await fastForwardAndMine(ethers.provider, 7 * 86400 - 1012);
         // 7 * 86400
         await expect(lockPool.unlock()).to.be.revertedWith(
           "LockPool: No tokens available"
         );
 
-        await fastForwardAndMine(ethers.provider, 1);
+        await fastForwardAndMine(ethers.provider, 11);
         // 7 * 86400 + 1
         await expect(lockPool.unlock()).to.not.be.reverted;
         expect(await droid.balanceOf(op.address)).to.eq(10000);
@@ -347,7 +347,7 @@ describe("LockPool", () => {
           await droid.balanceOf(op.address)
         );
 
-        await fastForwardAndMine(ethers.provider, (30 - 7) * 86400 - 3 + 1000);
+        await fastForwardAndMine(ethers.provider, (30 - 7) * 86400 - 23 + 1000);
         // 30 * 86400 + 1000
         await expect(lockPool.unlock()).to.be.revertedWith(
           "LockPool: No tokens available"
@@ -355,7 +355,7 @@ describe("LockPool", () => {
 
         expect(await droid.balanceOf(op.address)).to.eq(0);
 
-        await fastForwardAndMine(ethers.provider, 10);
+        await fastForwardAndMine(ethers.provider, 30);
         // 30 * 86400 + 1002
         await expect(lockPool.unlock()).to.not.be.reverted;
         expect(await droid.balanceOf(op.address)).to.eq(20000);
