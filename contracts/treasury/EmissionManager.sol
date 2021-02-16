@@ -33,11 +33,13 @@ contract EmissionManager is
     IBondManager public bondManager;
 
     /// Threshold for positive rebase
-    uint256 public threshold;
+    uint256 public threshold = 105;
+    /// Threshold for positive rebase
+    uint256 public maxRebase = 200;
     /// Development fund allocation rate (in percentage points)
-    uint256 public devFundRate;
+    uint256 public devFundRate = 2;
     /// Stable fund allocation rate (in percentage points)
-    uint256 public stableFundRate;
+    uint256 public stableFundRate = 69;
     /// Pauses positive rebases
     bool public pausePositiveRebase;
 
@@ -58,16 +60,6 @@ contract EmissionManager is
         _;
     }
 
-    // /// Checks if the synthetic token is managed by the TokenManager
-    // /// @param syntheticTokenAddress The address of the synthetic token
-    // modifier managedToken(address syntheticTokenAddress) {
-    //     require(
-    //         tokenManager.isManagedToken(syntheticTokenAddress),
-    //         "EmissionManager: Token is not managed"
-    //     );
-    //     _;
-    // }
-
     // --------- View ---------
 
     /// Checks if contract was initialized properly and ready for use
@@ -80,7 +72,8 @@ contract EmissionManager is
             (address(boardroom) != address(0)) &&
             (stableFundRate > 0) &&
             (devFundRate > 0) &&
-            (threshold > 100);
+            (threshold > 100) &&
+            (maxRebase > 100);
     }
 
     /// The amount for positive rebase of the synthetic token
@@ -103,6 +96,12 @@ contract EmissionManager is
         if (rebasePriceUndPerUnitSyn < thresholdUndPerUnitSyn) {
             return 0;
         }
+        uint256 maxRebaseAmountUndPerUnitSyn =
+            maxRebase.mul(oneUnderlyingUnit).div(100);
+        rebasePriceUndPerUnitSyn = Math.min(
+            rebasePriceUndPerUnitSyn,
+            maxRebaseAmountUndPerUnitSyn
+        );
         SyntheticToken syntheticToken = SyntheticToken(syntheticTokenAddress);
         uint256 supply =
             syntheticToken.totalSupply().sub(
@@ -191,6 +190,13 @@ contract EmissionManager is
         emit ThresholdChanged(msg.sender, _threshold);
     }
 
+    /// Set new maxRebase
+    /// @param _maxRebase New maxRebase
+    function setMaxRebase(uint256 _maxRebase) public onlyOwner {
+        maxRebase = _maxRebase;
+        emit MaxRebaseChanged(msg.sender, _maxRebase);
+    }
+
     // --------- Operator (immediate) ---------
 
     /// Pauses / unpauses positive rebases
@@ -272,6 +278,7 @@ contract EmissionManager is
     event DevFundRateChanged(address indexed operator, uint256 newRate);
     event StableFundRateChanged(address indexed operator, uint256 newRate);
     event ThresholdChanged(address indexed operator, uint256 newThreshold);
+    event MaxRebaseChanged(address indexed operator, uint256 newThreshold);
     event PositiveRebaseTotal(
         address indexed syntheticTokenAddress,
         uint256 amount
