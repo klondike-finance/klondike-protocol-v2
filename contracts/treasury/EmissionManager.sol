@@ -3,7 +3,7 @@ pragma solidity =0.6.6;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "./TokenManager.sol";
-import "../access/ReentrancyGuardable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../access/Operatable.sol";
 import "../time/Debouncable.sol";
 import "../time/Timeboundable.sol";
@@ -14,7 +14,7 @@ import "../interfaces/IBoardroom.sol";
 /// Emission manager expands supply when the price goes up
 contract EmissionManager is
     IEmissionManager,
-    ReentrancyGuardable,
+    ReentrancyGuard,
     Operatable,
     Debouncable,
     Timeboundable
@@ -119,7 +119,7 @@ contract EmissionManager is
     /// Makes positive rebases for all eligible tokens
     function makePositiveRebase()
         public
-        onePerBlock
+        nonReentrant
         initialized
         debounce
         inTimeBounds

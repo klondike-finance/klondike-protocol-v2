@@ -1,11 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.6.6;
 
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./SyntheticToken.sol";
 import "./ProxyToken.sol";
 import "./time/Timeboundable.sol";
 import "./interfaces/IBoardroom.sol";
-import "./access/ReentrancyGuardable.sol";
 import "./access/Operatable.sol";
 import "./access/Migratable.sol";
 
@@ -14,7 +14,7 @@ contract LockPool is
     Timeboundable,
     ProxyToken,
     Operatable,
-    ReentrancyGuardable,
+    ReentrancyGuard,
     Migratable
 {
     /// Marks the moment of staking. At staking usedDate is 0.
@@ -123,7 +123,7 @@ contract LockPool is
     function lock(uint256 amount, uint256 daysLock)
         public
         initialized
-        onePerBlock
+        nonReentrant
         inTimeBounds
     {
         require(!pauseLock, "LockPool: Locking is paused");
@@ -141,7 +141,7 @@ contract LockPool is
     }
 
     /// Withdraws all available tokens
-    function unlock() public onePerBlock inTimeBounds {
+    function unlock() public nonReentrant inTimeBounds {
         uint256 actualAmount = 0;
         UTXO[] storage ownerUtxos = utxos[msg.sender];
         uint256 first = firstUtxo[msg.sender];
@@ -174,7 +174,7 @@ contract LockPool is
     function setRewardFactor(uint256 daysLock, uint256 factor)
         public
         onlyOwner
-        onePerBlock
+        nonReentrant
     {
         rewardFactor[daysLock] = factor;
         bool dayExists = false;
