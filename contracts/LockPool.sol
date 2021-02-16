@@ -7,7 +7,7 @@ import "./ProxyToken.sol";
 import "./time/Timeboundable.sol";
 import "./interfaces/IBoardroom.sol";
 import "./access/Operatable.sol";
-import "./access/Migratable.sol";
+import "./access/MigratableOwnership.sol";
 
 /// Contract for locking tokens for some time and receiving rewards immediately
 contract LockPool is
@@ -15,7 +15,7 @@ contract LockPool is
     ProxyToken,
     Operatable,
     ReentrancyGuard,
-    Migratable
+    MigratableOwnership
 {
     /// Marks the moment of staking. At staking usedDate is 0.
     /// If UTXO is used for withdraw usedDate is the time of withdraw.
