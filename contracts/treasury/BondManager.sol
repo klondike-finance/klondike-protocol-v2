@@ -5,16 +5,16 @@ pragma solidity =0.6.6;
 
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./TokenManager.sol";
 import "../time/Timeboundable.sol";
-import "../access/ReentrancyGuardable.sol";
 import "../access/Migratable.sol";
 import "../interfaces/IBondManager.sol";
 import "../interfaces/ITokenManager.sol";
 
 contract BondManager is
     IBondManager,
-    ReentrancyGuardable,
+    ReentrancyGuard,
     Operatable,
     Timeboundable,
     Migratable
@@ -146,7 +146,7 @@ contract BondManager is
         address syntheticTokenAddress,
         uint256 amountOfSyntheticIn,
         uint256 minAmountBondsOut
-    ) public onePerBlock managedToken(syntheticTokenAddress) inTimeBounds {
+    ) public nonReentrant managedToken(syntheticTokenAddress) inTimeBounds {
         tokenManager.updateOracle(syntheticTokenAddress);
         require(
             !pauseBuyBonds,
@@ -182,7 +182,7 @@ contract BondManager is
         address syntheticTokenAddress,
         uint256 amountOfBondsIn,
         uint256 minAmountOfSyntheticOut
-    ) public managedToken(syntheticTokenAddress) onePerBlock inTimeBounds {
+    ) public managedToken(syntheticTokenAddress) nonReentrant inTimeBounds {
         SyntheticToken syntheticToken = SyntheticToken(syntheticTokenAddress); // trusted address since this is a managedToken
         SyntheticToken bondToken =
             SyntheticToken(bondIndex[syntheticTokenAddress]);

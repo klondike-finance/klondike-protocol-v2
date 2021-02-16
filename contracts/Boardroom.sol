@@ -3,7 +3,7 @@ pragma solidity =0.6.6;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./access/ReentrancyGuardable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./time/Timeboundable.sol";
 import "./LockPool.sol";
 import "./SyntheticToken.sol";
@@ -11,12 +11,7 @@ import "./interfaces/ITokenManager.sol";
 import "./interfaces/IBoardroom.sol";
 
 /// Boardroom distributes token emission among shareholders
-contract Boardroom is
-    IBoardroom,
-    ReentrancyGuardable,
-    Timeboundable,
-    Operatable
-{
+contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
     using SafeMath for uint256;
 
     /// Added each time reward to the Boardroom is added
@@ -151,7 +146,7 @@ contract Boardroom is
     /// @dev One of amounts should be > 0
     function stake(uint256 baseAmount, uint256 boostAmount)
         public
-        onePerBlock
+        nonReentrant
         inTimeBounds
         unpaused
     {
@@ -175,7 +170,7 @@ contract Boardroom is
     /// @dev One of amounts should be > 0
     function withdraw(uint256 baseAmount, uint256 boostAmount)
         public
-        onePerBlock
+        nonReentrant
     {
         require(
             (baseAmount > 0) || (boostAmount > 0),
@@ -200,7 +195,7 @@ contract Boardroom is
     }
 
     /// Transfer all rewards to sender
-    function claimRewards() public onePerBlock unpaused {
+    function claimRewards() public nonReentrant unpaused {
         address[] memory tokens = tokenManager.allTokens();
         for (uint256 i = 0; i < tokens.length; i++) {
             _claimReward(tokens[i]);
