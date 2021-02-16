@@ -564,65 +564,63 @@ describe("BondManager", () => {
     });
   });
 
-  describe("#migrate", () => {
-    describe("when called by Operator", () => {
-      describe("when target is TokenManager", () => {
-        it("migrates all token ownerships and operators to the new target", async () => {
-          manager = await BondManager.deploy(await now());
-          tokenManager = await TokenManager.deploy(factory.address);
-          emissionManager = await EmissionManagerMock.deploy();
-          await manager.setTokenManager(tokenManager.address);
-          await tokenManager.setBondManager(manager.address);
-          await tokenManager.setEmissionManager(emissionManager.address);
+  describe("#migrateBalances", () => {
+    describe("when called by Owner", () => {
+      it("migrates all bond token balances to the new target", async () => {
+        manager = await BondManager.deploy(await now());
+        tokenManager = await TokenManager.deploy(factory.address);
+        emissionManager = await EmissionManagerMock.deploy();
+        await manager.setTokenManager(tokenManager.address);
+        await tokenManager.setBondManager(manager.address);
+        await tokenManager.setEmissionManager(emissionManager.address);
 
-          await setupUniswap();
-          await setupUniswap();
-          const s2 = synthetic;
-          await setupUniswap();
-          await tokenManager.deleteToken(s2.address, op.address);
-          const tokenManager2 = await TokenManager.deploy(factory.address);
-          const manager2 = await BondManager.deploy(await now());
-          const emissionManager2 = await EmissionManagerMock.deploy();
-          await tokenManager2.setBondManager(manager2.address);
-          await tokenManager2.setEmissionManager(emissionManager2.address);
-          await manager2.setTokenManager(manager2.address);
+        await setupUniswap();
+        const s1 = synthetic;
+        await setupUniswap();
+        const s2 = synthetic;
+        await setupUniswap();
+        const s3 = synthetic;
+        await tokenManager.deleteToken(s2.address, op.address);
+        const tokenManager2 = await TokenManager.deploy(factory.address);
+        const manager2 = await BondManager.deploy(await now());
+        const emissionManager2 = await EmissionManagerMock.deploy();
+        await tokenManager2.setBondManager(manager2.address);
+        await tokenManager2.setEmissionManager(emissionManager2.address);
+        await manager2.setTokenManager(manager2.address);
 
-          await expect(manager.migrate(manager2.address))
-            .to.emit(manager, "Migrated")
-            .withArgs(op.address, manager2.address);
-          expect(await bond.operator()).to.eq(manager2.address);
-          expect(await bond.owner()).to.eq(manager2.address);
-        });
-      });
-      describe("when target is not TokenManager", () => {
-        it("fails", async () => {
-          manager = await BondManager.deploy(await now());
-          tokenManager = await TokenManager.deploy(factory.address);
-          emissionManager = await EmissionManagerMock.deploy();
-          await manager.setTokenManager(tokenManager.address);
-          await tokenManager.setBondManager(manager.address);
-          await tokenManager.setEmissionManager(emissionManager.address);
-
-          await setupUniswap();
-          const tokenManager2 = await TokenManager.deploy(factory.address);
-          const manager2 = await BondManager.deploy(await now());
-          const emissionManager2 = await EmissionManagerMock.deploy();
-          await tokenManager2.setBondManager(manager2.address);
-          await tokenManager2.setEmissionManager(emissionManager2.address);
-          await manager2.setTokenManager(manager2.address);
-
-          await expect(
-            manager.migrate(tokenManager2.address)
-          ).to.be.revertedWith(
-            "BondManager: Migration target must be BondManager"
+        await expect(
+          manager.migrateBalances(
+            [s1.address, s3.address, s2.address],
+            manager2.address
+          )
+        )
+          .to.emit(manager, "MigratedBalance")
+          .withArgs(
+            op.address,
+            s1.address,
+            manager2.address,
+            INITIAL_MANAGER_BALANCE
+          )
+          .and.to.emit(manager, "MigratedBalance")
+          .withArgs(
+            op.address,
+            s3.address,
+            manager2.address,
+            INITIAL_MANAGER_BALANCE
           );
-          await expect(manager.migrate(op.address)).to.be.revertedWith(
-            "function call to a non-contract account"
-          );
-        });
+
+        expect(await s1.balanceOf(manager.address)).to.eq(0);
+        expect(await s1.balanceOf(manager2.address)).to.eq(
+          INITIAL_MANAGER_BALANCE
+        );
+        expect(await s2.balanceOf(manager.address)).to.eq(0);
+        expect(await s3.balanceOf(manager.address)).to.eq(0);
+        expect(await s3.balanceOf(manager2.address)).to.eq(
+          INITIAL_MANAGER_BALANCE
+        );
       });
     });
-    describe("when called by not Operator", () => {
+    describe("when called not by Owner", () => {
       it("fails", async () => {
         const [_, other] = await ethers.getSigners();
         manager = await BondManager.deploy(await now());
@@ -639,10 +637,87 @@ describe("BondManager", () => {
         await manager2.setBondManager(bondManager2.address);
         await manager2.setEmissionManager(emissionManager2.address);
         await bondManager2.setTokenManager(manager2.address);
+        await manager.transferOperator(other.address);
 
         await expect(
-          manager.connect(other).migrate(manager2.address)
-        ).to.be.revertedWith("Only operator can call this method");
+          manager
+            .connect(other)
+            .migrateBalances([bond.address], manager2.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe("#migrateOwnership", () => {
+    describe("when called by Owner", () => {
+      it("migrates bond token ownership and operator to the new target", async () => {
+        manager = await BondManager.deploy(await now());
+        tokenManager = await TokenManager.deploy(factory.address);
+        emissionManager = await EmissionManagerMock.deploy();
+        await manager.setTokenManager(tokenManager.address);
+        await tokenManager.setBondManager(manager.address);
+        await tokenManager.setEmissionManager(emissionManager.address);
+
+        await setupUniswap();
+        const s1 = synthetic;
+        const b1 = bond;
+        await setupUniswap();
+        const s2 = synthetic;
+        const b2 = bond;
+        await setupUniswap();
+        const s3 = synthetic;
+        const b3 = bond;
+        await tokenManager.deleteToken(s2.address, op.address);
+        const tokenManager2 = await TokenManager.deploy(factory.address);
+        const manager2 = await BondManager.deploy(await now());
+        const emissionManager2 = await EmissionManagerMock.deploy();
+        await tokenManager2.setBondManager(manager2.address);
+        await tokenManager2.setEmissionManager(emissionManager2.address);
+        await manager2.setTokenManager(manager2.address);
+
+        await expect(
+          manager.migrateOwnership(
+            [b1.address, b3.address, b2.address],
+            manager2.address
+          )
+        )
+          .to.emit(manager, "MigratedOwnership")
+          .withArgs(op.address, b1.address, manager2.address)
+          .and.to.emit(manager, "MigratedOwnership")
+          .withArgs(op.address, b3.address, manager2.address);
+
+        expect(await b1.operator()).to.eq(manager2.address);
+        expect(await b1.owner()).to.eq(manager2.address);
+        expect(await b3.operator()).to.eq(manager2.address);
+        expect(await b3.owner()).to.eq(manager2.address);
+        expect(await b2.operator()).to.eq(op.address);
+        expect(await b2.owner()).to.eq(op.address);
+      });
+    });
+    describe("when called not by Owner", () => {
+      it("fails", async () => {
+        const [_, other] = await ethers.getSigners();
+        manager = await BondManager.deploy(await now());
+        tokenManager = await TokenManager.deploy(factory.address);
+        emissionManager = await EmissionManagerMock.deploy();
+        await manager.setTokenManager(tokenManager.address);
+        await tokenManager.setBondManager(manager.address);
+        await tokenManager.setEmissionManager(emissionManager.address);
+
+        await setupUniswap();
+        const manager2 = await TokenManager.deploy(factory.address);
+        const bondManager2 = await BondManager.deploy(await now());
+        const emissionManager2 = await EmissionManagerMock.deploy();
+        await manager2.setBondManager(bondManager2.address);
+        await manager2.setEmissionManager(emissionManager2.address);
+        await bondManager2.setTokenManager(manager2.address);
+        await manager.transferOperator(other.address);
+
+        await expect(
+          manager
+            .connect(other)
+            .migrateOwnership([bond.address], manager2.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
   });

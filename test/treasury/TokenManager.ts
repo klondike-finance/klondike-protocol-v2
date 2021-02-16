@@ -54,7 +54,8 @@ describe("TokenManager", () => {
   async function addPair(
     underlyingDecimals: number,
     syntheticDecimals: number,
-    bondDecimals?: number
+    bondDecimals?: number,
+    mintSynth: number = 0
   ) {
     const bondDecs = bondDecimals || syntheticDecimals;
     const { underlying: u, synthetic: s, pair } = await addUniswapPair(
@@ -77,6 +78,7 @@ describe("TokenManager", () => {
     );
     await underlying.transferOperator(manager.address);
     await underlying.transferOwnership(manager.address);
+    await synthetic.mint(manager.address, mintSynth);
     await synthetic.transferOperator(manager.address);
     await synthetic.transferOwnership(manager.address);
     await bond.transferOperator(bondManager.address);
@@ -923,75 +925,58 @@ describe("TokenManager", () => {
     });
   });
 
-  describe("#migrate", () => {
-    describe("when called by Operator", () => {
-      describe("when target is TokenManager", () => {
-        it("migrates all token ownerships and operators to the new target", async () => {
-          await addPair(8, 18);
-          await manager.addToken(
-            synthetic.address,
-            bond.address,
-            underlying.address,
-            oracle.address
-          );
-          await addPair(8, 18);
-          await manager.addToken(
-            synthetic.address,
-            bond.address,
-            underlying.address,
-            oracle.address
-          );
-          const s2 = synthetic;
-          await addPair(8, 18);
-          await manager.addToken(
-            synthetic.address,
-            bond.address,
-            underlying.address,
-            oracle.address
-          );
-          await manager.deleteToken(s2.address, op.address);
-          const manager2 = await TokenManager.deploy(factory.address);
-          const bondManager2 = await BondManager.deploy(await now());
-          const emissionManager2 = await EmissionManagerMock.deploy();
-          await manager2.setBondManager(bondManager2.address);
-          await manager2.setEmissionManager(emissionManager2.address);
-          await bondManager2.setTokenManager(manager2.address);
+  describe("#migrateBalances", () => {
+    describe("when called by Owner", () => {
+      it("migrates all token balances to the new target", async () => {
+        const [_, other] = await ethers.getSigners();
+        const amount = 12345;
+        await addPair(8, 18, 18, amount);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const s1 = synthetic;
+        await addPair(8, 18, 18, amount);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const s2 = synthetic;
+        await addPair(8, 18, 18, amount);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const s3 = synthetic;
+        await manager.deleteToken(s2.address, op.address);
 
-          await expect(manager.migrate(manager2.address))
-            .to.emit(manager, "Migrated")
-            .withArgs(op.address, manager2.address);
-          expect(await synthetic.operator()).to.eq(manager2.address);
-          expect(await synthetic.owner()).to.eq(manager2.address);
-        });
-      });
-      describe("when target is not TokenManager", () => {
-        it("fails", async () => {
-          await addPair(8, 18);
-          await manager.addToken(
-            synthetic.address,
-            bond.address,
-            underlying.address,
-            oracle.address
-          );
-          const manager2 = await TokenManager.deploy(factory.address);
-          const bondManager2 = await BondManager.deploy(await now());
-          const emissionManager2 = await EmissionManagerMock.deploy();
-          await manager2.setBondManager(bondManager2.address);
-          await manager2.setEmissionManager(emissionManager2.address);
-          await bondManager2.setTokenManager(manager2.address);
-
-          await expect(
-            manager.migrate(bondManager2.address)
-          ).to.be.revertedWith(
-            "TokenManager: Migration target must be TokenManager"
-          );
-          await expect(manager.migrate(op.address)).to.be.revertedWith(
-            "function call to a non-contract account"
-          );
-        });
+        await expect(
+          manager.migrateBalances(
+            [s2.address, s3.address, s1.address],
+            other.address
+          )
+        )
+          .to.emit(manager, "MigratedBalance")
+          .withArgs(op.address, s1.address, other.address, amount)
+          .and.to.emit(manager, "MigratedBalance")
+          .withArgs(op.address, s2.address, other.address, amount)
+          .and.to.emit(manager, "MigratedBalance")
+          .withArgs(op.address, s3.address, other.address, amount);
+        expect(await s1.balanceOf(manager.address)).to.eq(0);
+        expect(await s2.balanceOf(manager.address)).to.eq(0);
+        expect(await s3.balanceOf(manager.address)).to.eq(0);
+        expect(await s1.balanceOf(other.address)).to.eq(amount);
+        expect(await s2.balanceOf(other.address)).to.eq(amount);
+        expect(await s3.balanceOf(other.address)).to.eq(amount);
       });
     });
-    describe("when called by not Operator", () => {
+    describe("when called not by Owner", () => {
       it("fails", async () => {
         const [_, other] = await ethers.getSigners();
         await addPair(8, 18);
@@ -1007,10 +992,88 @@ describe("TokenManager", () => {
         await manager2.setBondManager(bondManager2.address);
         await manager2.setEmissionManager(emissionManager2.address);
         await bondManager2.setTokenManager(manager2.address);
+        await manager.transferOperator(other.address);
 
         await expect(
-          manager.connect(other).migrate(manager2.address)
-        ).to.be.revertedWith("Only operator can call this method");
+          manager
+            .connect(other)
+            .migrateBalances([synthetic.address], manager2.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe("#migrateOwnership", () => {
+    describe("when called by Owner", () => {
+      it("migrates all token ownerships and operators to the new target", async () => {
+        const [_, other] = await ethers.getSigners();
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const s1 = synthetic;
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const s2 = synthetic;
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const s3 = synthetic;
+        await manager.deleteToken(s2.address, op.address);
+
+        await expect(
+          manager.migrateOwnership(
+            [s2.address, s3.address, s1.address],
+            other.address
+          )
+        )
+          .to.emit(manager, "MigratedOwnership")
+          .withArgs(op.address, s1.address, other.address)
+          .and.to.emit(manager, "MigratedOwnership")
+          .withArgs(op.address, s3.address, other.address);
+        expect(await s1.operator()).to.eq(other.address);
+        expect(await s2.operator()).to.eq(op.address);
+        expect(await s3.operator()).to.eq(other.address);
+        expect(await s1.owner()).to.eq(other.address);
+        expect(await s2.owner()).to.eq(op.address);
+        expect(await s3.owner()).to.eq(other.address);
+      });
+    });
+    describe("when called not by Owner", () => {
+      it("fails", async () => {
+        const [_, other] = await ethers.getSigners();
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const manager2 = await TokenManager.deploy(factory.address);
+        const bondManager2 = await BondManager.deploy(await now());
+        const emissionManager2 = await EmissionManagerMock.deploy();
+        await manager2.setBondManager(bondManager2.address);
+        await manager2.setEmissionManager(emissionManager2.address);
+        await bondManager2.setTokenManager(manager2.address);
+        await manager.transferOperator(other.address);
+
+        await expect(
+          manager
+            .connect(other)
+            .migrateOwnership([synthetic.address], manager2.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
   });

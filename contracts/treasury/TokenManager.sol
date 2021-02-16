@@ -8,22 +8,19 @@ import "../libraries/UniswapLibrary.sol";
 import "../interfaces/IOracle.sol";
 import "../interfaces/ITokenManager.sol";
 import "../interfaces/IBondManager.sol";
-import "../interfaces/IMigrationTarget.sol";
 import "../interfaces/IEmissionManager.sol";
 import "../SyntheticToken.sol";
 import "../access/Operatable.sol";
+import "../access/Migratable.sol";
 
 /// TokenManager manages all tokens and their price data
-contract TokenManager is ITokenManager, Operatable, IMigrationTarget {
+contract TokenManager is ITokenManager, Operatable, Migratable {
     struct TokenData {
         SyntheticToken syntheticToken;
         ERC20 underlyingToken;
         IUniswapV2Pair pair;
         IOracle oracle;
     }
-
-    /// Name tag
-    string public constant override name = "TokenManager";
 
     /// Token data (key is synthetic token address)
     mapping(address => TokenData) public tokenIndex;
@@ -365,24 +362,6 @@ contract TokenManager is ITokenManager, Operatable, IMigrationTarget {
         );
         tokenIndex[syntheticTokenAddress].oracle = oracle;
         emit OracleUpdated(msg.sender, syntheticTokenAddress, oracleAddress);
-    }
-
-    /// Migrates to the new tokenManager
-    /// @param target new TokenManager
-    function migrate(IMigrationTarget target) public onlyOperator {
-        require(
-            keccak256(bytes(target.name())) == keccak256(bytes("TokenManager")),
-            "TokenManager: Migration target must be TokenManager"
-        );
-
-        for (uint32 i = 0; i < tokens.length; i++) {
-            if (tokens[i] != address(0)) {
-                TokenData memory data = tokenIndex[tokens[i]];
-                data.syntheticToken.transferOperator(address(target));
-                data.syntheticToken.transferOwnership(address(target));
-            }
-        }
-        emit Migrated(msg.sender, address(target));
     }
 
     // ------- Events ----------

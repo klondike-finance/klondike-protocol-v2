@@ -7,13 +7,15 @@ import "./time/Timeboundable.sol";
 import "./interfaces/IBoardroom.sol";
 import "./access/ReentrancyGuardable.sol";
 import "./access/Operatable.sol";
+import "./access/Migratable.sol";
 
 /// Contract for locking tokens for some time and receiving rewards immediately
 contract LockPool is
     Timeboundable,
     ProxyToken,
     Operatable,
-    ReentrancyGuardable
+    ReentrancyGuardable,
+    Migratable
 {
     /// Marks the moment of staking. At staking usedDate is 0.
     /// If UTXO is used for withdraw usedDate is the time of withdraw.
@@ -36,11 +38,11 @@ contract LockPool is
     bool public pauseLock;
 
     /// Token for lock
-    SyntheticToken stakingToken;
+    SyntheticToken public stakingToken;
     /// Token for rewards given immediately after lock
-    SyntheticToken rewardsToken;
+    SyntheticToken public rewardsToken;
     /// Boardroom
-    IBoardroom boardroom;
+    IBoardroom public boardroom;
 
     /// Creates new lock pool
     /// @param _stakingToken Address of the token to be staked
@@ -188,14 +190,6 @@ contract LockPool is
         emit UpdatedRewardFactor(msg.sender, daysLock, factor);
     }
 
-    /// Transfer rewardtoken ownership to target
-    /// @param target target to migrate to
-    function migrate(address target) public onlyOwner {
-        rewardsToken.transferOperator(target);
-        rewardsToken.transferOwnership(target);
-        emit Migrated(msg.sender, target);
-    }
-
     // ------- Public, Operator (instant) ----------
 
     /// Sets the pause for the lock
@@ -224,7 +218,6 @@ contract LockPool is
         uint256 daysLock,
         uint256 factor
     );
-    event Migrated(address indexed operator, address target);
     event Paused(address indexed operator, bool pause);
     event UpdatedBoardroom(address indexed operator, address boardroom);
 }
