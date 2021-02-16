@@ -498,8 +498,8 @@ describe("LockPool", () => {
 
     describe("#totalLocked", () => {
       it("returns the number of available for withdraw + locked funds", async () => {
-        await lockPool.lock(10000, 7);
         await lockPool.lock(20000, 30);
+        await lockPool.lock(10000, 7);
         await lockPool.lock(10000, 30);
         await lockPool.lock(50000, 90);
         await fastForwardAndMine(ethers.provider, 8 * 86400);
