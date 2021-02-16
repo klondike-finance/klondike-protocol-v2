@@ -505,7 +505,7 @@ describe("LockPool", () => {
         await fastForwardAndMine(ethers.provider, 8 * 86400);
         await lockPool.unlock();
         await fastForwardAndMine(ethers.provider, 30 * 86400);
-        expect(await lockPool.totalLocked()).to.eq(80000);
+        expect(await lockPool.totalLocked(op.address)).to.eq(80000);
       });
     });
 
