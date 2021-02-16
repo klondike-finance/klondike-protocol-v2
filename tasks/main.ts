@@ -19,6 +19,7 @@ import {
 } from "./treasury";
 import { task } from "hardhat/config";
 import { addLiquidity, getUniswapRouter } from "./uniswap";
+import { ethers } from "hardhat";
 
 const INITIAL_LIQUIDITY = ETH.mul(100);
 
@@ -27,35 +28,69 @@ task("main:deploy", "Deploys the system").setAction(async (_, hre) => {
 });
 
 export async function deploy(hre: HardhatRuntimeEnvironment) {
-  const underlyingName = "WBTC";
-  const bondName = deriveBondName(underlyingName);
-  const syntheticName = deriveSyntheticName(underlyingName);
-  const { klon, jedi, droid } = await deployTokens(
-    hre,
-    underlyingName,
-    INITIAL_LIQUIDITY
-  );
-  await addLiquidity(hre, underlyingName, syntheticName, BTC, ETH);
-  await oracleDeploy(hre, underlyingName, syntheticName);
-  const oracleName = deriveOracleName(underlyingName, syntheticName);
-  await deployTreasury(hre, 1);
+  // const underlyingName = "WBTC";
+  // const bondName = deriveBondName(underlyingName);
+  // const syntheticName = deriveSyntheticName(underlyingName);
+  // const { klon, jedi, droid } = await deployTokens(
+  //   hre,
+  //   underlyingName,
+  //   INITIAL_LIQUIDITY
+  // );
+  // await addLiquidity(hre, underlyingName, syntheticName, BTC, ETH);
+  // await oracleDeploy(hre, underlyingName, syntheticName);
+  // const oracleName = deriveOracleName(underlyingName, syntheticName);
+  // await deployTreasury(hre, 1);
 
-  const swapPool = await contractDeploy(
-    hre,
-    "SwapPool",
-    "KlonDroidSwapPool",
-    klon.address,
-    droid.address,
-    await now(hre),
-    0
-  );
-  await transferOwnership(hre, "Klon", swapPool.address);
+  // const swapPool = await contractDeploy(
+  //   hre,
+  //   "SwapPool",
+  //   "KlonDroidSwapPool",
+  //   klon.address,
+  //   droid.address,
+  //   await now(hre),
+  //   0
+  // );
+  // await transferOwnership(hre, "Klon", swapPool.address);
 
-  await deployLockPool(hre, klon, droid);
+  // await deployLockPool(hre, klon, droid);
 
   // await setTreasuryLinks(hre, 1, 1, 1);
   // await addTokens(hre, 1, syntheticName, underlyingName, bondName, oracleName);
   // await bindTokens(hre, 1, 1, syntheticName, bondName);
+  await deployBoardroom(hre);
+}
+
+async function deployBoardroom(hre: HardhatRuntimeEnvironment) {
+  const droid = await findExistingContract(hre, "Droid");
+  const jedi = await findExistingContract(hre, "Jedi");
+  const tokenManager = await findExistingContract(hre, "TokenManagerV1");
+  const emissionManager = await findExistingContract(hre, "EmissionManagerV1");
+  const lockPool = await findExistingContract(hre, "DroidJediLockPool");
+  const boostFactor = 4;
+  const boostDenominator = 1;
+  const boardroom = await contractDeploy(
+    hre,
+    "Boardroom",
+    "Boardroom",
+    droid.address,
+    jedi.address,
+    tokenManager.address,
+    emissionManager.address,
+    lockPool.address,
+    boostFactor,
+    boostDenominator,
+    await now(hre)
+  );
+  const [op] = await hre.ethers.getSigners();
+  console.log(
+    await lockPool.owner(),
+    await emissionManager.operator(),
+    op.address,
+    boardroom.address
+  );
+
+  await lockPool.setBoardroom(boardroom.address);
+  // await emissionManager.setBoardroom(boardroom.address);
 }
 
 async function deployLockPool(
