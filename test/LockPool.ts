@@ -126,19 +126,19 @@ describe("LockPool", () => {
         // 1000
         await lockPool.lock(20000, 30);
         // 1001
-        await fastForwardAndMine(ethers.provider, 7 * 86400 - 1001);
+        await fastForwardAndMine(ethers.provider, 7 * 86400 - 1021);
         // 7 * 86400
         expect(await lockPool.stakeAvailableForUnlock(op.address)).to.eq(0);
 
-        await fastForwardAndMine(ethers.provider, 1);
+        await fastForwardAndMine(ethers.provider, 21);
         // 7 * 86400 + 1
         expect(await lockPool.stakeAvailableForUnlock(op.address)).to.eq(10000);
 
-        await fastForwardAndMine(ethers.provider, (30 - 7) * 86400 - 1 + 1000);
+        await fastForwardAndMine(ethers.provider, (30 - 7) * 86400 - 21 + 1000);
         // 30 * 86400 + 1000
         expect(await lockPool.stakeAvailableForUnlock(op.address)).to.eq(10000);
 
-        await fastForwardAndMine(ethers.provider, 2);
+        await fastForwardAndMine(ethers.provider, 22);
         // 30 * 86400 + 1002
         expect(await lockPool.stakeAvailableForUnlock(op.address)).to.eq(30000);
 
