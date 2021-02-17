@@ -28,7 +28,6 @@ export async function deployTreasury(
     start,
     86400
   );
-  return { bondManager, tokenManager, emissionManager };
 }
 
 export async function setTreasuryLinks(
@@ -54,30 +53,55 @@ export async function setTreasuryLinks(
 
   let tx;
   console.log(`Setting bond manager for token manager`);
-  tx = await tokenManager.populateTransaction.setBondManager(
-    bondManager.address
-  );
-  await sendTransaction(hre, tx);
+  if (
+    (await tokenManager.bondManager()).toLowerCase() !==
+    bondManager.address.toLowerCase()
+  ) {
+    tx = await tokenManager.populateTransaction.setBondManager(
+      bondManager.address
+    );
+    await sendTransaction(hre, tx);
+  }
   console.log(`Setting emission manager for token manager`);
-  tx = await tokenManager.populateTransaction.setEmissionManager(
-    emissionManager.address
-  );
-  await sendTransaction(hre, tx);
+  if (
+    (await tokenManager.emissionManager()).toLowerCase() !==
+    emissionManager.address.toLowerCase()
+  ) {
+    tx = await tokenManager.populateTransaction.setEmissionManager(
+      emissionManager.address
+    );
+    await sendTransaction(hre, tx);
+  }
   console.log(`Setting token manager for bond manager`);
-  tx = await bondManager.populateTransaction.setTokenManager(
-    tokenManager.address
-  );
-  await sendTransaction(hre, tx);
+  if (
+    (await bondManager.tokenManager()).toLowerCase() !==
+    tokenManager.address.toLowerCase()
+  ) {
+    tx = await bondManager.populateTransaction.setTokenManager(
+      tokenManager.address
+    );
+    await sendTransaction(hre, tx);
+  }
   console.log(`Setting bond manager for emission manager`);
-  tx = await emissionManager.populateTransaction.setBondManager(
-    bondManager.address
-  );
-  await sendTransaction(hre, tx);
+  if (
+    (await emissionManager.bondManager()).toLowerCase() !==
+    bondManager.address.toLowerCase()
+  ) {
+    tx = await emissionManager.populateTransaction.setBondManager(
+      bondManager.address
+    );
+    await sendTransaction(hre, tx);
+  }
   console.log(`Setting token manager for emission manager`);
-  tx = await emissionManager.populateTransaction.setTokenManager(
-    tokenManager.address
-  );
-  await sendTransaction(hre, tx);
+  if (
+    (await emissionManager.tokenManager()).toLowerCase() !==
+    tokenManager.address.toLowerCase()
+  ) {
+    tx = await emissionManager.populateTransaction.setTokenManager(
+      tokenManager.address
+    );
+    await sendTransaction(hre, tx);
+  }
   console.log(`Done`);
 }
 

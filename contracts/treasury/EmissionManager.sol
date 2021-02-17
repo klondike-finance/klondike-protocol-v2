@@ -2,13 +2,15 @@
 pragma solidity =0.6.6;
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "./TokenManager.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../access/Operatable.sol";
 import "../time/Debouncable.sol";
 import "../time/Timeboundable.sol";
+import "../SyntheticToken.sol";
 import "../interfaces/IEmissionManager.sol";
 import "../interfaces/ITokenManager.sol";
+import "../interfaces/IBondManager.sol";
 import "../interfaces/IBoardroom.sol";
 
 /// Emission manager expands supply when the price goes up

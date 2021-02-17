@@ -6,6 +6,7 @@ import { HardhatUserConfig } from "hardhat/config";
 import { config as dotenv } from "dotenv";
 import "./tasks/token";
 import "./tasks/oracle";
+import "./tasks/deploy";
 import "./tasks/abi";
 import "./tasks/main";
 

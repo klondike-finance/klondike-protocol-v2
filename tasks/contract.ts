@@ -136,6 +136,12 @@ async function contractVerify(
   if (!entry) {
     throw `Contract \`${contractNameOrAddress}\` not found in registry`;
   }
+  if (!entry.name) {
+    console.log(
+      `${contractNameOrAddress}: contract name is undefined - skipping`
+    );
+    return;
+  }
   if (await contractVerified(hre, entry.address)) {
     console.log(`${contractNameOrAddress}: already verified - skipping`);
     return;
