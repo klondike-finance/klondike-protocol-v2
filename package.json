@@ -10,10 +10,10 @@
     "coverage": "hardhat coverage",
     "deploy:kovan": "rm -rf ./artifacts && hardhat compile && hardhat deploy --network kovan",
     "verify:kovan": "rm -rf ./artifacts && hardhat compile && hardhat contract:verify:all --network kovan",
-    "front:kovan": "harhat abi:generate --network kovan",
+    "front:kovan": "hardhat abi:generate --network kovan",
     "deploy:mainnet": "rm -rf ./artifacts && hardhat compile && hardhat deploy --network mainnet",
     "verify:mainnet": "rm -rf ./artifacts && hardhat compile && hardhat contract:verify:all --network mainnet",
-    "front:mainnet": "harhat abi:generate --network mainnet"
+    "front:mainnet": "hardhat abi:generate --network mainnet"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",

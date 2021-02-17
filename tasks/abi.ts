@@ -7,6 +7,9 @@ task("abi:generate").setAction(async (_, hre) => {
   const res: { [key: string]: any } = {};
   for (const registryName of contracts) {
     const { address, name } = getRegistryContract(hre, registryName);
+    if (!name) {
+      continue;
+    }
     const artifact = await hre.artifacts.readArtifact(name);
     res[registryName] = { address, abi: artifact.abi };
     writeFileSync(
