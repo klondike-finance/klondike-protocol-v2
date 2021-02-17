@@ -80,3 +80,14 @@ export function updateRegistry(
   REGISTRY.index[REGISTRY.data[key].address] = key;
   writeFileSync(root, JSON.stringify(REGISTRY.data, null, 2));
 }
+
+export function writeIfMissing(
+  hre: HardhatRuntimeEnvironment,
+  registryName: string,
+  defaultValue: any
+) {
+  initRegistry(hre);
+  if (!getRegistryContract(hre, registryName)) {
+    updateRegistry(hre, registryName, defaultValue);
+  }
+}

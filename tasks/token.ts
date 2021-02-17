@@ -1,4 +1,4 @@
-import { BigNumber, Contract } from "ethers";
+import { BigNumber, Contract, ethers } from "ethers";
 import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { contractDeploy, findExistingContract } from "./contract";
@@ -56,7 +56,10 @@ export async function mint(
   console.log(
     `Minting \`${registryNameOrAddress}\` token to \`${to}\`, value: ${value}...`
   );
-
+  if (value.eq(0)) {
+    console.log("Value is 0. Skipping...");
+    return;
+  }
   const tokenRegistryEntry = getRegistryContract(hre, registryNameOrAddress);
   if (!tokenRegistryEntry) {
     throw `Token not found: ${registryNameOrAddress}`;
@@ -79,92 +82,92 @@ export async function mint(
   console.log("Done");
 }
 
-export async function deployTokens(
-  hre: HardhatRuntimeEnvironment,
-  underlyingRegistryName: string,
-  initialLiquidityMint: BigNumber = BigNumber.from(0)
-) {
-  console.log(
-    `Deploying 3 tokens for ${underlyingRegistryName} with initial mint ${initialLiquidityMint.toString()}`
-  );
+// export async function deployTokens(
+//   hre: HardhatRuntimeEnvironment,
+//   underlyingRegistryName: string,
+//   initialLiquidityMint: BigNumber = BigNumber.from(0)
+// ) {
+//   console.log(
+//     `Deploying 3 tokens for ${underlyingRegistryName} with initial mint ${initialLiquidityMint.toString()}`
+//   );
 
-  const [operator] = await hre.ethers.getSigners();
-  let underlying;
-  if (isProd(hre)) {
-    underlying = await findExistingContract(hre, underlyingRegistryName);
-  } else {
-    underlying = await contractDeploy(
-      hre,
-      "SyntheticToken",
-      underlyingRegistryName,
-      underlyingRegistryName,
-      underlyingRegistryName,
-      8
-    );
-  }
-  const synthetic = await contractDeploy(
-    hre,
-    "SyntheticToken",
-    deriveSyntheticName(underlyingRegistryName),
-    deriveSyntheticName(underlyingRegistryName),
-    deriveSyntheticName(underlyingRegistryName),
-    18
-  );
-  const bond = await contractDeploy(
-    hre,
-    "SyntheticToken",
-    deriveBondName(underlyingRegistryName),
-    deriveBondName(underlyingRegistryName),
-    deriveBondName(underlyingRegistryName),
-    18
-  );
-  const klon = await contractDeploy(
-    hre,
-    "SyntheticToken",
-    "Klon",
-    "Klon",
-    "Klon",
-    18
-  );
+//   const [operator] = await hre.ethers.getSigners();
+//   let underlying;
+//   if (isProd(hre)) {
+//     underlying = await findExistingContract(hre, underlyingRegistryName);
+//   } else {
+//     underlying = await contractDeploy(
+//       hre,
+//       "SyntheticToken",
+//       underlyingRegistryName,
+//       underlyingRegistryName,
+//       underlyingRegistryName,
+//       8
+//     );
+//   }
+//   const synthetic = await contractDeploy(
+//     hre,
+//     "SyntheticToken",
+//     deriveSyntheticName(underlyingRegistryName),
+//     deriveSyntheticName(underlyingRegistryName),
+//     deriveSyntheticName(underlyingRegistryName),
+//     18
+//   );
+//   const bond = await contractDeploy(
+//     hre,
+//     "SyntheticToken",
+//     deriveBondName(underlyingRegistryName),
+//     deriveBondName(underlyingRegistryName),
+//     deriveBondName(underlyingRegistryName),
+//     18
+//   );
+//   const klon = await contractDeploy(
+//     hre,
+//     "SyntheticToken",
+//     "Klon",
+//     "Klon",
+//     "Klon",
+//     18
+//   );
 
-  const droid = await contractDeploy(
-    hre,
-    "SyntheticToken",
-    "Droid",
-    "Droid",
-    "Droid",
-    18
-  );
-  const jedi = await contractDeploy(
-    hre,
-    "SyntheticToken",
-    "Jedi",
-    "Jedi",
-    "Jedi",
-    18
-  );
+//   const droid = await contractDeploy(
+//     hre,
+//     "SyntheticToken",
+//     "Droid",
+//     "Droid",
+//     "Droid",
+//     18
+//   );
+//   const jedi = await contractDeploy(
+//     hre,
+//     "SyntheticToken",
+//     "Jedi",
+//     "Jedi",
+//     "Jedi",
+//     18
+//   );
 
-  if (isProd(hre)) {
-    await mint(
-      hre,
-      underlyingRegistryName,
-      operator.address,
-      initialLiquidityMint
-    );
-  } else {
-    await mint(
-      hre,
-      deriveSyntheticName(underlyingRegistryName),
-      operator.address,
-      ETH.mul(1000)
-    );
-    await mint(hre, underlyingRegistryName, operator.address, ETH.mul(1000));
-    await mint(hre, "Klon", operator.address, ETH.mul(1000));
-  }
-  console.log("Deployed 5 tokens");
+//   if (isProd(hre)) {
+//     await mint(
+//       hre,
+//       underlyingRegistryName,
+//       operator.address,
+//       initialLiquidityMint
+//     );
+//   } else {
+//     await mint(
+//       hre,
+//       deriveSyntheticName(underlyingRegistryName),
+//       operator.address,
+//       ETH.mul(1000)
+//     );
+//     await mint(hre, underlyingRegistryName, operator.address, ETH.mul(1000));
+//     await mint(hre, "Klon", operator.address, ETH.mul(1000));
+//   }
+//   console.log("Deployed 5 tokens");
 
-  return { synthetic, bond, underlying, droid, jedi, klon };
-}
+//   return { synthetic, bond, underlying, droid, jedi, klon };
+// }
 
 export function deriveSyntheticName(underlyingName: string) {
   return `K${underlyingName}`;
@@ -174,29 +177,65 @@ export function deriveBondName(underlyingName: string) {
   return `KB-${underlyingName}`;
 }
 
+export async function transferFullOwnership(
+  hre: HardhatRuntimeEnvironment,
+  ownerName: string,
+  targetName: string
+) {
+  await transferOperator(hre, ownerName, targetName);
+  await transferOwnership(hre, ownerName, targetName);
+}
+
 export async function transferOwnership(
   hre: HardhatRuntimeEnvironment,
-  tokenName: string,
-  target: string
+  ownerName: string,
+  targetName: string
 ) {
-  const token = await findExistingContract(hre, tokenName);
-  console.log(`Transferring operator of ${tokenName} to ${target}`);
-  const op = await token.operator();
-  if (op.toLowerCase() === target.toLowerCase()) {
+  const owner = await findExistingContract(hre, ownerName);
+  const target = await findExistingContract(hre, targetName);
+
+  console.log(`Transferring owner of ${ownerName} to ${target}`);
+  const ow = await owner.owner();
+  if (ow.toLowerCase() === target.toLowerCase()) {
+    console.log(`${target} is already an owner of ${ownerName}. Skipping...`);
+    return;
+  }
+  const [signer] = await hre.ethers.getSigners();
+  const contractOwner = await owner.owner();
+  if (contractOwner.toLowerCase() != signer.address.toLowerCase()) {
     console.log(
-      `${target} is already an operator of ${tokenName}. Skipping...`
+      `Tx sender \`${signer.address}\` is not the owner of \`${owner.address}\`. The owner is \`${contractOwner}\`. Skipping...`
     );
-  } else {
-    const tx = await token.populateTransaction.transferOperator(target);
-    await sendTransaction(hre, tx);
+    return;
   }
 
-  console.log(`Transferring owner of ${tokenName} to ${target}`);
-  const ow = await token.owner();
-  if (ow.toLowerCase() === target.toLowerCase()) {
-    console.log(`${target} is already an owner of ${tokenName}. Skipping...`);
-  } else {
-    const tx = await token.populateTransaction.transferOwnership(target);
-    await sendTransaction(hre, tx);
+  const tx = await owner.populateTransaction.transferOwnership(target);
+  await sendTransaction(hre, tx);
+}
+
+export async function transferOperator(
+  hre: HardhatRuntimeEnvironment,
+  ownerName: string,
+  targetName: string
+) {
+  const owner = await findExistingContract(hre, ownerName);
+  const target = await findExistingContract(hre, targetName);
+  console.log(`Transferring operator of ${ownerName} to ${target}`);
+  const op = await owner.operator();
+  if (op.toLowerCase() === target.toLowerCase()) {
+    console.log(
+      `${target} is already an operator of ${ownerName}. Skipping...`
+    );
+    return;
   }
+  const [signer] = await hre.ethers.getSigners();
+  const contractOwner = await owner.owner();
+  if (contractOwner.toLowerCase() != signer.address.toLowerCase()) {
+    console.log(
+      `Tx sender \`${signer.address}\` is not the owner of \`${owner.address}\`. The owner is \`${contractOwner}\`. Skipping...`
+    );
+    return;
+  }
+  const tx = await owner.populateTransaction.transferOperator(target);
+  await sendTransaction(hre, tx);
 }

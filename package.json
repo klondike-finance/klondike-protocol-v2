@@ -7,7 +7,8 @@
     "dev": "hardhat node",
     "test": "hardhat test",
     "compile": "hardhat compile",
-    "coverage": "hardhat coverage"
+    "coverage": "hardhat coverage",
+    "deploy": "rm -rf ./artifacts && hardhat compile && hardhat deploy"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",

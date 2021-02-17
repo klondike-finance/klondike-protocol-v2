@@ -55,6 +55,12 @@ contract LockPool is
     ) public Timeboundable(_start, 0) ProxyToken(_stakingToken) {
         stakingToken = SyntheticToken(_stakingToken);
         rewardsToken = SyntheticToken(_rewardsToken);
+        rewardFactor[7] = 100;
+        rewardFactor[30] = 100;
+        rewardFactor[90] = 100;
+        rewardFactor[180] = 100;
+        rewardFactor[365] = 100;
+        rewardFactor[1460] = 100;
     }
 
     // ------- Modifiers ----------

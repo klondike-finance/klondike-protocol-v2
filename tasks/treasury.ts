@@ -28,7 +28,6 @@ export async function deployTreasury(
     start,
     86400
   );
-  return { bondManager, tokenManager, emissionManager };
 }
 
 export async function setTreasuryLinks(
