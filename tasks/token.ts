@@ -192,12 +192,14 @@ export async function transferOwnership(
   targetName: string
 ) {
   const owner = await findExistingContract(hre, ownerName);
-  const target = await findExistingContract(hre, targetName);
+  const target = await getRegistryContract(hre, targetName);
 
-  console.log(`Transferring owner of ${ownerName} to ${target}`);
+  console.log(`Transferring owner of ${ownerName} to ${target.address}`);
   const ow = await owner.owner();
-  if (ow.toLowerCase() === target.toLowerCase()) {
-    console.log(`${target} is already an owner of ${ownerName}. Skipping...`);
+  if (ow.toLowerCase() === target.address.toLowerCase()) {
+    console.log(
+      `${target.address} is already an owner of ${ownerName}. Skipping...`
+    );
     return;
   }
   const [signer] = await hre.ethers.getSigners();
@@ -209,7 +211,7 @@ export async function transferOwnership(
     return;
   }
 
-  const tx = await owner.populateTransaction.transferOwnership(target);
+  const tx = await owner.populateTransaction.transferOwnership(target.address);
   await sendTransaction(hre, tx);
 }
 
@@ -219,12 +221,12 @@ export async function transferOperator(
   targetName: string
 ) {
   const owner = await findExistingContract(hre, ownerName);
-  const target = await findExistingContract(hre, targetName);
-  console.log(`Transferring operator of ${ownerName} to ${target}`);
+  const target = await getRegistryContract(hre, targetName);
+  console.log(`Transferring operator of ${ownerName} to ${target.address}`);
   const op = await owner.operator();
-  if (op.toLowerCase() === target.toLowerCase()) {
+  if (op.toLowerCase() === target.address.toLowerCase()) {
     console.log(
-      `${target} is already an operator of ${ownerName}. Skipping...`
+      `${target.address} is already an operator of ${ownerName}. Skipping...`
     );
     return;
   }
@@ -236,6 +238,6 @@ export async function transferOperator(
     );
     return;
   }
-  const tx = await owner.populateTransaction.transferOperator(target);
+  const tx = await owner.populateTransaction.transferOperator(target.address);
   await sendTransaction(hre, tx);
 }
