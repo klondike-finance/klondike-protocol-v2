@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.6.6;
 
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/lib/contracts/libraries/FixedPoint.sol";
@@ -14,7 +15,7 @@ import "./interfaces/IOracle.sol";
 /// Fixed window oracle that recomputes the average price for the entire period once every period
 /// @title Oracle
 /// @dev note that the price average is only guaranteed to be over at least 1 period, but may be over a longer period
-contract Oracle is Debouncable, Timeboundable, IOracle {
+contract Oracle is Debouncable, Timeboundable, IOracle, ReentrancyGuard {
     using FixedPoint for *;
 
     IUniswapV2Pair public immutable override pair;
@@ -60,7 +61,13 @@ contract Oracle is Debouncable, Timeboundable, IOracle {
 
     /// Updates oracle price
     /// @dev Works only once in a period, other times reverts
-    function update() external override commitableDebounce() inTimeBounds() {
+    function update()
+        external
+        override
+        debounce()
+        inTimeBounds()
+        nonReentrant()
+    {
         (
             uint256 price0Cumulative,
             uint256 price1Cumulative,
@@ -84,7 +91,6 @@ contract Oracle is Debouncable, Timeboundable, IOracle {
         price0CumulativeLast = price0Cumulative;
         price1CumulativeLast = price1Cumulative;
         blockTimestampLast = blockTimestamp;
-        _commitDebounce();
     }
 
     /// Get the price of token.

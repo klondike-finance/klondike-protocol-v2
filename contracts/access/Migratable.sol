@@ -2,26 +2,9 @@
 pragma solidity =0.6.6;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./Operatable.sol";
+import "./MigratableOwnership.sol";
 
-contract Migratable is Ownable {
-    /// Migrate ownership and operator of a set of tokens
-    /// @param tokens a set of tokens to transfer ownership and operator to target
-    /// @param target new owner and operator of the token
-    function migrateOwnership(address[] memory tokens, address target)
-        public
-        onlyOwner
-    {
-        for (uint256 i = 0; i < tokens.length; i++) {
-            Operatable token = Operatable(tokens[i]);
-            if (token.owner() == address(this)) {
-                token.transferOperator(target);
-                token.transferOwnership(target);
-                emit MigratedOwnership(msg.sender, address(token), target);
-            }
-        }
-    }
-
+contract Migratable is MigratableOwnership {
     /// Migrate balances of a set of tokens
     /// @param tokens a set of tokens to transfer balances to target
     /// @param target new owner of contract balances
@@ -49,10 +32,5 @@ contract Migratable is Ownable {
         address indexed token,
         address target,
         uint256 value
-    );
-    event MigratedOwnership(
-        address indexed owner,
-        address indexed token,
-        address target
     );
 }

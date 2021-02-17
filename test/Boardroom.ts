@@ -384,6 +384,31 @@ describe("Boardroom", () => {
       await fastForwardAndMine(ethers.provider, tick);
       await randomlyAccrueReward(probability);
       // final day
+      expect(
+        await boardroom.availableForWithdraw(kbtc.address, staker0.address)
+      ).to.eq(32000);
+      expect(
+        await boardroom.availableForWithdraw(keth.address, staker0.address)
+      ).to.eq(3200);
+      expect(
+        await boardroom.availableForWithdraw(kbtc.address, staker1.address)
+      ).to.eq(32000);
+      expect(
+        await boardroom.availableForWithdraw(keth.address, staker1.address)
+      ).to.eq(3200);
+      expect(
+        await boardroom.availableForWithdraw(kbtc.address, staker2.address)
+      ).to.eq(11000);
+      expect(
+        await boardroom.availableForWithdraw(keth.address, staker2.address)
+      ).to.eq(1100);
+      expect(
+        await boardroom.availableForWithdraw(kbtc.address, staker3.address)
+      ).to.eq(15000);
+      expect(
+        await boardroom.availableForWithdraw(keth.address, staker3.address)
+      ).to.eq(1500);
+
       for (const staker of stakers) {
         await boardroom.connect(staker).updateAccruals();
       }
@@ -467,14 +492,15 @@ describe("Boardroom", () => {
         }
       }
       for (let m = 0; m < 4; m++) {
-        expect(
-          (
-            await boardroom.personRewardAccruals(
-              kbtc.address,
-              stakers[m].address
-            )
-          )[1]
-        ).to.eq(BigNumber.from(rewards[m]));
+        const actual: BigNumber = (
+          await boardroom.personRewardAccruals(kbtc.address, stakers[m].address)
+        )[1];
+        const expected = BigNumber.from(rewards[m]);
+        const diff = actual.gt(expected)
+          ? actual.sub(expected)
+          : expected.sub(actual);
+
+        expect(diff.toNumber() <= 1).to.eq(true);
       }
     });
 
@@ -664,7 +690,7 @@ describe("Boardroom", () => {
     });
   });
 
-  describe("#setLockPool, #setBase, #setBoost, #setTokenManager, #setEmissionManager", () => {
+  describe("#setLockPool, #setBase, #setBoost, #setTokenManager, #setEmissionManager, #setBoostFactor, #setBoostDenominator", () => {
     describe("when called by Owner", () => {
       it("succeeds", async () => {
         await expect(boardroom.setLockPool(op.address)).to.not.be.reverted;
@@ -673,6 +699,8 @@ describe("Boardroom", () => {
         await expect(boardroom.setTokenManager(op.address)).to.not.be.reverted;
         await expect(boardroom.setEmissionManager(op.address)).to.not.be
           .reverted;
+        await expect(boardroom.setBoostFactor(105)).to.not.be.reverted;
+        await expect(boardroom.setBoostDenominator(110)).to.not.be.reverted;
       });
     });
     describe("when called not by Owner", () => {
@@ -685,6 +713,12 @@ describe("Boardroom", () => {
           "Ownable: caller is not the owner"
         );
         await expect(boardroom.setBoost(op.address)).to.be.revertedWith(
+          "Ownable: caller is not the owner"
+        );
+        await expect(boardroom.setBoostFactor(110)).to.be.revertedWith(
+          "Ownable: caller is not the owner"
+        );
+        await expect(boardroom.setBoostDenominator(110)).to.be.revertedWith(
           "Ownable: caller is not the owner"
         );
         await expect(boardroom.setTokenManager(op.address)).to.be.revertedWith(

@@ -16,30 +16,13 @@ abstract contract Debouncable {
     }
 
     /// Throws if the method was called earlier than debouncePeriod last time.
-    /// @dev !!! This modifier must be accompanied by the _commitDebounce(),
-    /// typically at the last line of the method.
-    modifier commitableDebounce() {
-        uint256 timeElapsed = block.timestamp - lastCalled;
-        require(
-            timeElapsed >= debouncePeriod,
-            "Debouncable: already called in this time slot"
-        );
-        _;
-    }
-
-    /// Throws if the method was called earlier than debouncePeriod last time.
     modifier debounce() {
         uint256 timeElapsed = block.timestamp - lastCalled;
         require(
             timeElapsed >= debouncePeriod,
             "Debouncable: already called in this time slot"
         );
-        _commitDebounce();
         _;
-    }
-
-    /// Save the time of the last call
-    function _commitDebounce() internal {
         lastCalled = block.timestamp;
     }
 }

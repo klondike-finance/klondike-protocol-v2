@@ -40,9 +40,9 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
         public personRewardAccruals;
 
     /// Reward token formula param
-    uint256 public immutable boostFactor;
+    uint256 public boostFactor;
     /// Reward token formula param
-    uint256 public immutable boostDenominator;
+    uint256 public boostDenominator;
     /// Decimals for base, boost and rewards tokens;
     uint256 public immutable decimals;
     /// Pause
@@ -125,6 +125,31 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
     }
 
     // ------- Public ----------
+
+    /// Funds available for user to withdraw
+    /// @param syntheticTokenAddress the token we're looking up balance for
+    /// @param owner the owner of the token
+    function availableForWithdraw(address syntheticTokenAddress, address owner)
+        public
+        view
+        returns (uint256)
+    {
+        PersonRewardAccrual storage accrual =
+            personRewardAccruals[syntheticTokenAddress][owner];
+        PoolRewardSnapshot[] storage tokenSnapshots =
+            poolRewardSnapshots[syntheticTokenAddress];
+        PoolRewardSnapshot storage lastSnapshot =
+            tokenSnapshots[tokenSnapshots.length - 1];
+        uint256 lastOverallRPSU = lastSnapshot.accruedRewardPerShareUnit;
+        PoolRewardSnapshot storage lastAccrualSnapshot =
+            tokenSnapshots[accrual.lastAccrualSnaphotId];
+        uint256 lastUserAccrualRPSU =
+            lastAccrualSnapshot.accruedRewardPerShareUnit;
+        uint256 deltaRPSU = lastOverallRPSU.sub(lastUserAccrualRPSU);
+        uint256 addedUserReward =
+            rewardsTokenBalance(owner).mul(deltaRPSU).div(10**decimals);
+        return accrual.accruedReward.add(addedUserReward);
+    }
 
     /// Get reward token balance for a user
     function rewardsTokenBalance(address owner) public view returns (uint256) {
@@ -282,6 +307,20 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
         emit UpdatedEmissionManager(msg.sender, _emissionManager);
     }
 
+    /// Updates BoostFactor
+    /// @param _boostFactor new boostFactor
+    function setBoostFactor(uint256 _boostFactor) public onlyOwner {
+        boostFactor = _boostFactor;
+        emit UpdatedBoostFactor(msg.sender, _boostFactor);
+    }
+
+    /// Updates BoostDenominator
+    /// @param _boostDenominator new boostDenominator
+    function setBoostDenominator(uint256 _boostDenominator) public onlyOwner {
+        boostDenominator = _boostDenominator;
+        emit UpdatedBoostDenominator(msg.sender, _boostDenominator);
+    }
+
     // ------- Public, Operator (multisig) ----------
 
     /// Set pause
@@ -426,4 +465,6 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
         address indexed operator,
         address newEmissionManager
     );
+    event UpdatedBoostFactor(address indexed operator, uint256 value);
+    event UpdatedBoostDenominator(address indexed operator, uint256 value);
 }

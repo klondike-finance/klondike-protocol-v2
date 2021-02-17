@@ -139,6 +139,31 @@ describe("EmissionManager", () => {
   });
 
   describe("#positiveRebaseAmount", () => {
+    describe("price move up > 200% and maxRebase is 200", () => {
+      it("returns only 2x rebase amount", async () => {
+        await addPair(8, 18);
+        await router.swapExactTokensForTokens(
+          BTC.mul(9),
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await tokenManager.updateOracle(synthetic.address);
+        await fastForwardAndMine(ethers.provider, 3600);
+        await tokenManager.updateOracle(synthetic.address);
+        const supply = await synthetic.totalSupply();
+        const expAmount = supply.mul(1);
+        const actualAmount = await manager.positiveRebaseAmount(
+          synthetic.address
+        );
+        const exp = expAmount.div(ETH).toNumber();
+        const act = actualAmount.div(ETH).toNumber();
+        const delta = Math.abs(exp / act - 1);
+
+        expect(delta).to.lte(0.01);
+      });
+    });
     describe("price move up 20% and threshold is 105", () => {
       it("returns the rebase amount", async () => {
         await addPair(8, 18);
@@ -587,7 +612,7 @@ describe("EmissionManager", () => {
     });
   });
 
-  describe("#setDevFund, #setStableFund, #setBoardroom, #setTokenManager, #setBondManager, #setDevFundRate, #setStableFundRate, #setThreshold", () => {
+  describe("#setDevFund, #setStableFund, #setBoardroom, #setTokenManager, #setBondManager, #setDevFundRate, #setStableFundRate, #setThreshold, #setMaxRebase", () => {
     beforeEach(async () => {
       await manager.transferOperator(devFund.address);
     });
@@ -605,6 +630,7 @@ describe("EmissionManager", () => {
         await expect(manager.setDevFundRate(op.address)).to.not.be.reverted;
         await expect(manager.setStableFundRate(op.address)).to.not.be.reverted;
         await expect(manager.setThreshold(op.address)).to.not.be.reverted;
+        await expect(manager.setMaxRebase(123)).to.not.be.reverted;
       });
     });
     describe("when called by Operator", () => {
@@ -632,6 +658,9 @@ describe("EmissionManager", () => {
         ).to.be.revertedWith("Ownable: caller is not the owner");
         await expect(
           manager.connect(devFund).setThreshold(op.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(
+          manager.connect(devFund).setMaxRebase(123)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
