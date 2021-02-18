@@ -16,7 +16,7 @@ import {
 } from "./token";
 import { deployTreasury, setTreasuryLinks } from "./treasury";
 import { UNISWAP_V2_FACTORY_ADDRESS } from "./uniswap";
-import { isProd, now, pairFor } from "./utils";
+import { isProd, now, pairFor, sendTransaction } from "./utils";
 
 const INITIAL_DROID_LIQUIDITY = 0;
 const INITIAL_JEDI_LIQUIDITY = BigNumber.from("1000000000000000000000000");
@@ -78,9 +78,30 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   const stableFund = await getRegistryContract(hre, "StableFund");
   const boardroom = await getRegistryContract(hre, "BoardroomV1");
   const emissionsManager = await findExistingContract(hre, "EmissionManagerV1");
-  await emissionsManager.setDevFund(devFund.address);
-  await emissionsManager.setStableFund(stableFund.address);
-  await emissionsManager.setBoardroom(boardroom.address);
+  const devFundAddress = await emissionsManager.devFund();
+  if (devFundAddress !== devFund.adrress) {
+    console.log("Setting devFund");
+    const tx = await emissionsManager.populateTransaction.setDevFund(
+      devFund.address
+    );
+    await sendTransaction(hre, tx);
+  }
+  const stableFundAddress = await emissionsManager.stableFund();
+  if (stableFundAddress !== stableFund.adrress) {
+    console.log("Setting stableFund");
+    const tx = await emissionsManager.populateTransaction.setStableFund(
+      stableFund.address
+    );
+    await sendTransaction(hre, tx);
+  }
+  const boardroomAddress = await emissionsManager.boardroom();
+  if (boardroomAddress !== boardroom.adrress) {
+    console.log("Setting boardroom");
+    const tx = await emissionsManager.populateTransaction.setBoardroom(
+      boardroom.address
+    );
+    await sendTransaction(hre, tx);
+  }
 }
 
 async function deployBoardroom(hre: HardhatRuntimeEnvironment) {
