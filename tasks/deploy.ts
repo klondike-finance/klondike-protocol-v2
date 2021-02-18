@@ -78,9 +78,12 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   const stableFund = await getRegistryContract(hre, "StableFund");
   const boardroom = await getRegistryContract(hre, "BoardroomV1");
   const emissionsManager = await findExistingContract(hre, "EmissionManagerV1");
+  const lockPool = await findExistingContract(hre, "DroidJediLockPool");
   const devFundAddress = await emissionsManager.devFund();
   if (devFundAddress.toLowerCase() !== devFund.address.toLowerCase()) {
-    console.log(`DevFund is ${devFundAddress}. Setting to ${devFund.address}`);
+    console.log(
+      `EmissionManager: DevFund is ${devFundAddress}. Setting to ${devFund.address}`
+    );
     const tx = await emissionsManager.populateTransaction.setDevFund(
       devFund.address
     );
@@ -89,7 +92,7 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   const stableFundAddress = await emissionsManager.stableFund();
   if (stableFundAddress.toLowerCase() !== stableFund.address.toLowerCase()) {
     console.log(
-      `StableFund is ${stableFundAddress}. Setting to ${stableFund.address}`
+      `EmissionManager: StableFund is ${stableFundAddress}. Setting to ${stableFund.address}`
     );
     const tx = await emissionsManager.populateTransaction.setStableFund(
       stableFund.address
@@ -99,9 +102,21 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   const boardroomAddress = await emissionsManager.boardroom();
   if (boardroomAddress.toLowerCase() !== boardroom.address.toLowerCase()) {
     console.log(
-      `Boardroom is ${boardroomAddress}. Setting to ${boardroom.address}`
+      `EmissionManager: Boardroom is ${boardroomAddress}. Setting to ${boardroom.address}`
     );
     const tx = await emissionsManager.populateTransaction.setBoardroom(
+      boardroom.address
+    );
+    await sendTransaction(hre, tx);
+  }
+  const lockPoolBoardroomAddress = await lockPool.boardroom();
+  if (
+    lockPoolBoardroomAddress.toLowerCase() !== boardroom.address.toLowerCase()
+  ) {
+    console.log(
+      `LockPool: Boardroom is ${lockPoolBoardroomAddress}. Setting to ${boardroom.address}`
+    );
+    const tx = await lockPool.populateTransaction.setBoardroom(
       boardroom.address
     );
     await sendTransaction(hre, tx);
@@ -134,6 +149,8 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   const klon = await findExistingContract(hre, "Klon");
   const droid = await findExistingContract(hre, "Droid");
   const jedi = await findExistingContract(hre, "Jedi");
+  const kwbtc = await findExistingContract(hre, "KWBTC");
+  const wbtc = await findExistingContract(hre, "WBTC");
   const multiSig = await getRegistryContract(hre, "MultisigWallet");
   await contractDeploy(
     hre,
@@ -142,15 +159,6 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
     droid.address,
     jedi.address,
     LOCK_POOL_START_DATE
-  );
-  await contractDeploy(
-    hre,
-    "SwapPool",
-    "KlonDroidSwapPool",
-    klon.address,
-    droid.address,
-    SWAP_POOL_START_DATE,
-    SWAP_POOL_END_DATE
   );
   await contractDeploy(
     hre,
@@ -183,6 +191,28 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
     pairFor(UNISWAP_V2_FACTORY_ADDRESS, jedi.address, daiAddress(hre)),
     REWARDS_POOL_INITIAL_DURATION
   );
+  await contractDeploy(
+    hre,
+    "RewardsPool",
+    "DroidDAILPDroidPool",
+    "JediDAILPDroidPool",
+    multiSig.address,
+    multiSig.address,
+    jedi.address,
+    pairFor(UNISWAP_V2_FACTORY_ADDRESS, jedi.address, daiAddress(hre)),
+    REWARDS_POOL_INITIAL_DURATION
+  );
+  await contractDeploy(
+    hre,
+    "RewardsPool",
+    "KWBTCWBTCLPDroidPool",
+    "KBTCWBTCLPDroidPool",
+    multiSig.address,
+    multiSig.address,
+    jedi.address,
+    pairFor(UNISWAP_V2_FACTORY_ADDRESS, kwbtc.address, wbtc.address),
+    REWARDS_POOL_INITIAL_DURATION
+  );
 }
 
 async function importExternalIntoRegistry(hre: HardhatRuntimeEnvironment) {
@@ -204,6 +234,7 @@ async function migrateRegistry(hre: HardhatRuntimeEnvironment) {
     throw `Network \`${hre.network.name}\` not found in \`tmp/deployed.v1.${hre.network.name}.json\``;
   }
   for (const tuple of [
+    ["WBTC", "SyntheticToken", "WBTC"],
     ["KBTC", "SyntheticToken", "KWBTC"],
     ["Kbond", "SyntheticToken", "KB-WBTC"],
     ["Klon", "SyntheticToken", "Klon"],
