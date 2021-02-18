@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.6.6;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./time/Timeboundable.sol";
 import "./SyntheticToken.sol";
@@ -9,7 +9,7 @@ import "./access/Migratable.sol";
 
 /// @title A pool to swap one token for another
 contract SwapPool is Timeboundable, Migratable {
-    ERC20Burnable public inToken;
+    IERC20 public inToken;
     SyntheticToken public outToken;
 
     /// Creates a new swap pool
@@ -23,14 +23,18 @@ contract SwapPool is Timeboundable, Migratable {
         uint256 _finish
     ) public Timeboundable(_start, _finish) {
         outToken = SyntheticToken(_outToken);
-        inToken = ERC20Burnable(_inToken);
+        inToken = IERC20(_inToken);
     }
 
     /// Swap inToken for outToken in the same amount
     /// @param amount Amount to swap
     /// @dev `inToken` should be approved (`amount` tokens) to this contract
     function swap(uint256 amount) external inTimeBounds {
-        inToken.burnFrom(msg.sender, amount);
+        inToken.transferFrom(
+            msg.sender,
+            0x000000000000000000000000000000000000dEaD,
+            amount
+        );
         outToken.mint(msg.sender, amount);
     }
 }

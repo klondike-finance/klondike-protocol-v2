@@ -7,6 +7,7 @@ describe("RewardsPool", () => {
 
   before(async () => {
     RewardsPool = await ethers.getContractFactory("RewardsPool");
+    ethers.constants.AddressZero;
   });
 
   describe("contstuctor", () => {

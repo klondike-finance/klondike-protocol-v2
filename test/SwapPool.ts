@@ -112,6 +112,10 @@ describe("SwapPool", () => {
           "Invalid inToken balance"
         ).to.eq(INITIAL_BALANCE - 100);
         expect(
+          await inToken.balanceOf("0x000000000000000000000000000000000000dEaD"),
+          "Invalid outToken balance"
+        ).to.eq(100);
+        expect(
           await outToken.balanceOf(op.address),
           "Invalid outToken balance"
         ).to.eq(100);
@@ -149,7 +153,7 @@ describe("SwapPool", () => {
       it("fails", async () => {
         await inToken.approve(pool.address, INITIAL_BALANCE * 100);
         await expect(pool.swap(INITIAL_BALANCE + 1)).to.be.revertedWith(
-          "ERC20: burn amount exceeds balance"
+          "ERC20: transfer amount exceeds balance"
         );
       });
     });
@@ -158,11 +162,11 @@ describe("SwapPool", () => {
         await inToken.approve(pool.address, Math.floor(INITIAL_BALANCE / 4));
         await expect(
           pool.swap(Math.floor(INITIAL_BALANCE / 2))
-        ).to.be.revertedWith("ERC20: burn amount exceeds allowance");
+        ).to.be.revertedWith("ERC20: transfer amount exceeds allowance");
       });
     });
     describe("when pool is not the operator of `inToken`", () => {
-      it("fails", async () => {
+      it("succeeds", async () => {
         inToken = await SyntheticToken.deploy("InToken", "IN", 18);
         outToken = await SyntheticToken.deploy("OutToken", "OUT", 18);
         await inToken.mint(op.address, INITIAL_BALANCE);
@@ -175,9 +179,7 @@ describe("SwapPool", () => {
         await outToken.transferOperator(pool.address);
         await inToken.approve(pool.address, INITIAL_BALANCE);
 
-        await expect(pool.swap(100)).to.be.revertedWith(
-          "Only operator can call this method"
-        );
+        await expect(pool.swap(100)).to.not.be.reverted;
       });
     });
     describe("when pool is not the operator of `outToken`", () => {
