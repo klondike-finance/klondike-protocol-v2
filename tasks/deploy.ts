@@ -79,24 +79,28 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   const boardroom = await getRegistryContract(hre, "BoardroomV1");
   const emissionsManager = await findExistingContract(hre, "EmissionManagerV1");
   const devFundAddress = await emissionsManager.devFund();
-  if (devFundAddress !== devFund.adrress) {
-    console.log("Setting devFund");
+  if (devFundAddress.toLowerCase() !== devFund.address.toLowerCase()) {
+    console.log(`DevFund is ${devFundAddress}. Setting to ${devFund.address}`);
     const tx = await emissionsManager.populateTransaction.setDevFund(
       devFund.address
     );
     await sendTransaction(hre, tx);
   }
   const stableFundAddress = await emissionsManager.stableFund();
-  if (stableFundAddress !== stableFund.adrress) {
-    console.log("Setting stableFund");
+  if (stableFundAddress.toLowerCase() !== stableFund.address.toLowerCase()) {
+    console.log(
+      `StableFund is ${stableFundAddress}. Setting to ${stableFund.address}`
+    );
     const tx = await emissionsManager.populateTransaction.setStableFund(
       stableFund.address
     );
     await sendTransaction(hre, tx);
   }
   const boardroomAddress = await emissionsManager.boardroom();
-  if (boardroomAddress !== boardroom.adrress) {
-    console.log("Setting boardroom");
+  if (boardroomAddress.toLowerCase() !== boardroom.address.toLowerCase()) {
+    console.log(
+      `Boardroom is ${boardroomAddress}. Setting to ${boardroom.address}`
+    );
     const tx = await emissionsManager.populateTransaction.setBoardroom(
       boardroom.address
     );
