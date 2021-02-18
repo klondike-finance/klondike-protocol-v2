@@ -2,11 +2,11 @@ import { expect } from "chai";
 import { ContractFactory, Wallet } from "ethers";
 import { ethers } from "hardhat";
 
-describe("StableTokenPool", () => {
-  let StableTokenPool: ContractFactory;
+describe("RewardsPool", () => {
+  let RewardsPool: ContractFactory;
 
   before(async () => {
-    StableTokenPool = await ethers.getContractFactory("StableTokenPool");
+    RewardsPool = await ethers.getContractFactory("RewardsPool");
   });
 
   describe("contstuctor", () => {
@@ -16,8 +16,9 @@ describe("StableTokenPool", () => {
       const rewardsToken = Wallet.createRandom().address;
       const rewardsDistribution = Wallet.createRandom().address;
       const rewardsDuration = 86400 * 5;
-      const stableTokenPool = await StableTokenPool.deploy(
+      const stableTokenPool = await RewardsPool.deploy(
         name,
+        rewardsDistribution,
         rewardsDistribution,
         rewardsToken,
         stakingToken,
@@ -41,26 +42,6 @@ describe("StableTokenPool", () => {
         await stableTokenPool.rewardsDuration(),
         "Invalid rewardsDuration"
       ).to.eq(rewardsDuration);
-    });
-  });
-
-  describe("setRewardsDuration", async () => {
-    it("disabled", async () => {
-      const name = "KBTCWBTCPool";
-      const stakingToken = Wallet.createRandom().address;
-      const rewardsToken = Wallet.createRandom().address;
-      const rewardsDistribution = Wallet.createRandom().address;
-      const rewardsDuration = 86400 * 5;
-      const stableTokenPool = await StableTokenPool.deploy(
-        name,
-        rewardsDistribution,
-        rewardsToken,
-        stakingToken,
-        rewardsDuration
-      );
-      await expect(
-        stableTokenPool.setRewardsDuration(86400)
-      ).to.be.revertedWith("Disabled");
     });
   });
 });
