@@ -15,12 +15,15 @@ import {
   transferOwnership,
 } from "./token";
 import { deployTreasury, setTreasuryLinks } from "./treasury";
-import { now } from "./utils";
+import { UNISWAP_V2_FACTORY_ADDRESS } from "./uniswap";
+import { isProd, now, pairFor, sendTransaction } from "./utils";
 
 const INITIAL_DROID_LIQUIDITY = 0;
-const INITIAL_JEDI_LIQUIDITY = 0;
+const INITIAL_JEDI_LIQUIDITY = BigNumber.from("1000000000000000000000000");
 const SWAP_POOL_START_DATE = Math.floor(new Date().getTime() / 1000);
+const SWAP_POOL_END_DATE = Math.floor(new Date().getTime() / 1000) + 86400 * 30;
 const LOCK_POOL_START_DATE = Math.floor(new Date().getTime() / 1000);
+const REWARDS_POOL_INITIAL_DURATION = 86400 * 7;
 const BOARDROOM_START_DATE = Math.floor(new Date().getTime() / 1000);
 const TREASURY_START_DATE = Math.floor(new Date().getTime() / 1000);
 const BOOST_FACTOR = 4;
@@ -29,6 +32,12 @@ const BOOST_DENOMINATOR = 500;
 task("deploy", "Deploys the system").setAction(async (_, hre) => {
   await deploy(hre);
 });
+
+function daiAddress(hre: HardhatRuntimeEnvironment) {
+  return isProd(hre)
+    ? "0x6b175474e89094c44da98b954eedeac495271d0f"
+    : "0xad80dc70c563d76be3940d73d42c0d70d4652f41";
+}
 
 export async function deploy(hre: HardhatRuntimeEnvironment) {
   console.log(`Deploying on network ${hre.network.name}`);
@@ -39,6 +48,7 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   );
 
   await migrateRegistry(hre);
+  await importExternalIntoRegistry(hre);
   await deployTokensAndMint(hre);
   await deployTreasury(hre, 1, TREASURY_START_DATE);
   await deploySpecificPools(hre);
@@ -68,9 +78,34 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   const stableFund = await getRegistryContract(hre, "StableFund");
   const boardroom = await getRegistryContract(hre, "BoardroomV1");
   const emissionsManager = await findExistingContract(hre, "EmissionManagerV1");
-  await emissionsManager.setDevFund(devFund.address);
-  await emissionsManager.setStableFund(stableFund.address);
-  await emissionsManager.setBoardroom(boardroom.address);
+  const devFundAddress = await emissionsManager.devFund();
+  if (devFundAddress.toLowerCase() !== devFund.address.toLowerCase()) {
+    console.log(`DevFund is ${devFundAddress}. Setting to ${devFund.address}`);
+    const tx = await emissionsManager.populateTransaction.setDevFund(
+      devFund.address
+    );
+    await sendTransaction(hre, tx);
+  }
+  const stableFundAddress = await emissionsManager.stableFund();
+  if (stableFundAddress.toLowerCase() !== stableFund.address.toLowerCase()) {
+    console.log(
+      `StableFund is ${stableFundAddress}. Setting to ${stableFund.address}`
+    );
+    const tx = await emissionsManager.populateTransaction.setStableFund(
+      stableFund.address
+    );
+    await sendTransaction(hre, tx);
+  }
+  const boardroomAddress = await emissionsManager.boardroom();
+  if (boardroomAddress.toLowerCase() !== boardroom.address.toLowerCase()) {
+    console.log(
+      `Boardroom is ${boardroomAddress}. Setting to ${boardroom.address}`
+    );
+    const tx = await emissionsManager.populateTransaction.setBoardroom(
+      boardroom.address
+    );
+    await sendTransaction(hre, tx);
+  }
 }
 
 async function deployBoardroom(hre: HardhatRuntimeEnvironment) {
@@ -99,13 +134,14 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   const klon = await findExistingContract(hre, "Klon");
   const droid = await findExistingContract(hre, "Droid");
   const jedi = await findExistingContract(hre, "Jedi");
+  const multiSig = await getRegistryContract(hre, "MultisigWallet");
   await contractDeploy(
     hre,
     "LockPool",
     "DroidJediLockPool",
     droid.address,
     jedi.address,
-    SWAP_POOL_START_DATE
+    LOCK_POOL_START_DATE
   );
   await contractDeploy(
     hre,
@@ -113,9 +149,50 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
     "KlonDroidSwapPool",
     klon.address,
     droid.address,
-    LOCK_POOL_START_DATE,
-    0
+    SWAP_POOL_START_DATE,
+    SWAP_POOL_END_DATE
   );
+  await contractDeploy(
+    hre,
+    "SwapPool",
+    "KlonDroidSwapPool",
+    klon.address,
+    droid.address,
+    SWAP_POOL_START_DATE,
+    SWAP_POOL_END_DATE
+  );
+  await contractDeploy(
+    hre,
+    "RewardsPool",
+    "DroidDAILPDroidPool",
+    "DroidDAILPDroidPool",
+    multiSig.address,
+    multiSig.address,
+    jedi.address,
+    pairFor(UNISWAP_V2_FACTORY_ADDRESS, droid.address, daiAddress(hre)),
+    REWARDS_POOL_INITIAL_DURATION
+  );
+  await contractDeploy(
+    hre,
+    "RewardsPool",
+    "DroidDAILPDroidPool",
+    "JediDAILPDroidPool",
+    multiSig.address,
+    multiSig.address,
+    jedi.address,
+    pairFor(UNISWAP_V2_FACTORY_ADDRESS, jedi.address, daiAddress(hre)),
+    REWARDS_POOL_INITIAL_DURATION
+  );
+}
+
+async function importExternalIntoRegistry(hre: HardhatRuntimeEnvironment) {
+  const entry = {
+    address: daiAddress(hre),
+    registryName: "DAI",
+    name: "SyntheticToken",
+    args: ["DAI", "DAI", 18],
+  };
+  writeIfMissing(hre, "DAI", entry);
 }
 
 async function migrateRegistry(hre: HardhatRuntimeEnvironment) {
@@ -148,9 +225,20 @@ async function migrateRegistry(hre: HardhatRuntimeEnvironment) {
 }
 
 async function deployTokensAndMint(hre: HardhatRuntimeEnvironment) {
+  const multiSig = await getRegistryContract(hre, "MultisigWallet");
   await contractDeploy(hre, "SyntheticToken", "Droid", "Droid", "Droid", 18);
   await contractDeploy(hre, "SyntheticToken", "Jedi", "Jedi", "Jedi", 18);
   const [op] = await hre.ethers.getSigners();
-  await mint(hre, "Droid", op.address, BigNumber.from(INITIAL_DROID_LIQUIDITY));
-  await mint(hre, "Jedi", op.address, BigNumber.from(INITIAL_JEDI_LIQUIDITY));
+  await mint(
+    hre,
+    "Droid",
+    multiSig.address,
+    BigNumber.from(INITIAL_DROID_LIQUIDITY)
+  );
+  await mint(
+    hre,
+    "Jedi",
+    multiSig.address,
+    BigNumber.from(INITIAL_JEDI_LIQUIDITY)
+  );
 }

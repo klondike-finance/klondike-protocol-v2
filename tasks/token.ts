@@ -21,7 +21,7 @@ task("token:mint", "Mints to an address")
     types.string
   )
   .addParam("to", "Address of the receiver", undefined, types.string)
-  .addParam("value", "Value to be minted", 0, types.int)
+  .addParam("value", "Value to be minted", "0", types.string)
   .addFlag(
     "force",
     "Force mint if balance non-zero. By default the task doesn't mint to an address with positive balance"
@@ -60,14 +60,9 @@ export async function mint(
     console.log("Value is 0. Skipping...");
     return;
   }
-  const tokenRegistryEntry = getRegistryContract(hre, registryNameOrAddress);
-  if (!tokenRegistryEntry) {
-    throw `Token not found: ${registryNameOrAddress}`;
-  }
-  const contract: Contract = await hre.ethers.getContractAt(
-    tokenRegistryEntry.name,
-    tokenRegistryEntry.address
-  );
+  const { name = "SyntheticToken", address = registryNameOrAddress } =
+    getRegistryContract(hre, registryNameOrAddress) || {};
+  const contract: Contract = await hre.ethers.getContractAt(name, address);
   const balance = await contract.balanceOf(to);
   if (balance > 0 && !force) {
     console.log(
