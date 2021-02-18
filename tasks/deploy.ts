@@ -78,9 +78,12 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   const stableFund = await getRegistryContract(hre, "StableFund");
   const boardroom = await getRegistryContract(hre, "BoardroomV1");
   const emissionsManager = await findExistingContract(hre, "EmissionManagerV1");
+  const lockPool = await findExistingContract(hre, "LockPool");
   const devFundAddress = await emissionsManager.devFund();
   if (devFundAddress.toLowerCase() !== devFund.address.toLowerCase()) {
-    console.log(`DevFund is ${devFundAddress}. Setting to ${devFund.address}`);
+    console.log(
+      `EmissionManager: DevFund is ${devFundAddress}. Setting to ${devFund.address}`
+    );
     const tx = await emissionsManager.populateTransaction.setDevFund(
       devFund.address
     );
@@ -89,7 +92,7 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   const stableFundAddress = await emissionsManager.stableFund();
   if (stableFundAddress.toLowerCase() !== stableFund.address.toLowerCase()) {
     console.log(
-      `StableFund is ${stableFundAddress}. Setting to ${stableFund.address}`
+      `EmissionManager: StableFund is ${stableFundAddress}. Setting to ${stableFund.address}`
     );
     const tx = await emissionsManager.populateTransaction.setStableFund(
       stableFund.address
@@ -99,9 +102,21 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   const boardroomAddress = await emissionsManager.boardroom();
   if (boardroomAddress.toLowerCase() !== boardroom.address.toLowerCase()) {
     console.log(
-      `Boardroom is ${boardroomAddress}. Setting to ${boardroom.address}`
+      `EmissionManager: Boardroom is ${boardroomAddress}. Setting to ${boardroom.address}`
     );
     const tx = await emissionsManager.populateTransaction.setBoardroom(
+      boardroom.address
+    );
+    await sendTransaction(hre, tx);
+  }
+  const lockPoolBoardroomAddress = await lockPool.boardroom();
+  if (
+    lockPoolBoardroomAddress.toLowerCase() !== boardroom.address.toLowerCase()
+  ) {
+    console.log(
+      `LockPool: Boardroom is ${lockPoolBoardroomAddress}. Setting to ${boardroom.address}`
+    );
+    const tx = await lockPool.populateTransaction.setBoardroom(
       boardroom.address
     );
     await sendTransaction(hre, tx);
