@@ -78,7 +78,7 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   const stableFund = await getRegistryContract(hre, "StableFund");
   const boardroom = await getRegistryContract(hre, "BoardroomV1");
   const emissionsManager = await findExistingContract(hre, "EmissionManagerV1");
-  const lockPool = await findExistingContract(hre, "LockPool");
+  const lockPool = await findExistingContract(hre, "DroidJediLockPool");
   const devFundAddress = await emissionsManager.devFund();
   if (devFundAddress.toLowerCase() !== devFund.address.toLowerCase()) {
     console.log(
