@@ -3,7 +3,11 @@ import { readFileSync } from "fs";
 import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { contractDeploy, findExistingContract } from "./contract";
-import { updateRegistry, writeIfMissing } from "./registry";
+import {
+  getRegistryContract,
+  updateRegistry,
+  writeIfMissing,
+} from "./registry";
 import {
   mint,
   transferFullOwnership,
@@ -60,6 +64,11 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
 
 async function setLinks(hre: HardhatRuntimeEnvironment) {
   await setTreasuryLinks(hre, 1, 1, 1);
+  const devFund = await getRegistryContract(hre, "DevFund");
+  const stableFund = await getRegistryContract(hre, "StableFund");
+  const emissionsManager = await findExistingContract(hre, "EmissionManagerV1");
+  await emissionsManager.setDevFund(devFund.address);
+  await emissionsManager.setStableFund(stableFund.address);
 }
 
 async function deployBoardroom(hre: HardhatRuntimeEnvironment) {
