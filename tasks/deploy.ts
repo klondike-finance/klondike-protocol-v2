@@ -66,9 +66,11 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   await setTreasuryLinks(hre, 1, 1, 1);
   const devFund = await getRegistryContract(hre, "DevFund");
   const stableFund = await getRegistryContract(hre, "StableFund");
+  const boardroom = await getRegistryContract(hre, "BoardroomV1");
   const emissionsManager = await findExistingContract(hre, "EmissionManagerV1");
   await emissionsManager.setDevFund(devFund.address);
   await emissionsManager.setStableFund(stableFund.address);
+  await emissionsManager.setBoardroom(boardroom.address);
 }
 
 async function deployBoardroom(hre: HardhatRuntimeEnvironment) {
