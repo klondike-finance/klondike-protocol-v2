@@ -746,4 +746,27 @@ describe("Boardroom", () => {
       });
     });
   });
+
+  describe("#availableForWithdraw", () => {
+    describe("when token is not initialized", () => {
+      it("returns 0", async () => {
+        expect(
+          await boardroom.availableForWithdraw(kbtc.address, op.address)
+        ).to.eq(0);
+      });
+    });
+    describe("when token is initialized, and something is staked", () => {
+      it("returns distibuted amount", async () => {
+        const amount = 10000000;
+        await boardroom.stake(1, 0);
+        await kbtc.transfer(boardroom.address, amount);
+        await boardroom
+          .connect(emissionManagerMock)
+          .notifyTransfer(kbtc.address, amount);
+        expect(
+          await boardroom.availableForWithdraw(kbtc.address, op.address)
+        ).to.eq(amount);
+      });
+    });
+  });
 });
