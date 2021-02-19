@@ -103,17 +103,6 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
         lockPool = LockPool(_lockPool);
         boostFactor = _boostFactor;
         boostDenominator = _boostDenominator;
-        address[] memory syntheticTokens = tokenManager.allTokens();
-        for (uint256 i = 0; i < syntheticTokens.length; i++) {
-            address token = syntheticTokens[i];
-            poolRewardSnapshots[token].push(
-                PoolRewardSnapshot({
-                    timestamp: block.timestamp,
-                    addedSyntheticReward: 0,
-                    accruedRewardPerShareUnit: 0
-                })
-            );
-        }
     }
 
     // ------- Modifiers ----------
@@ -138,8 +127,11 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
             personRewardAccruals[syntheticTokenAddress][owner];
         PoolRewardSnapshot[] storage tokenSnapshots =
             poolRewardSnapshots[syntheticTokenAddress];
+        if (tokenSnapshots.length == 0) {
+            return 0;
+        }
         PoolRewardSnapshot storage lastSnapshot =
-            tokenSnapshots[tokenSnapshots.length - 1];
+            tokenSnapshots[tokenSnapshots.length.sub(1)];
         uint256 lastOverallRPSU = lastSnapshot.accruedRewardPerShareUnit;
         PoolRewardSnapshot storage lastAccrualSnapshot =
             tokenSnapshots[accrual.lastAccrualSnaphotId];
@@ -393,6 +385,15 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
             personRewardAccruals[syntheticTokenAddress][owner];
         PoolRewardSnapshot[] storage tokenSnapshots =
             poolRewardSnapshots[syntheticTokenAddress];
+        if (tokenSnapshots.length == 0) {
+            tokenSnapshots.push(
+                PoolRewardSnapshot({
+                    timestamp: block.timestamp,
+                    addedSyntheticReward: 0,
+                    accruedRewardPerShareUnit: 0
+                })
+            );
+        }
         if (accrual.lastAccrualSnaphotId == tokenSnapshots.length - 1) {
             return;
         }
