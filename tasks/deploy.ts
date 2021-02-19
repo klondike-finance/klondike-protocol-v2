@@ -172,8 +172,8 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   await contractDeploy(
     hre,
     "RewardsPool",
-    "DroidDAILPDroidPool",
-    "DroidDAILPDroidPool",
+    "DroidDAILPJediPool",
+    "DroidDAILPJediPool",
     multiSig.address,
     multiSig.address,
     jedi.address,
@@ -183,8 +183,8 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   await contractDeploy(
     hre,
     "RewardsPool",
-    "DroidDAILPDroidPool",
-    "JediDAILPDroidPool",
+    "JediDAILPJediPool",
+    "JediDAILPJediPool",
     multiSig.address,
     multiSig.address,
     jedi.address,
@@ -194,19 +194,8 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   await contractDeploy(
     hre,
     "RewardsPool",
-    "DroidDAILPDroidPool",
-    "JediDAILPDroidPool",
-    multiSig.address,
-    multiSig.address,
-    jedi.address,
-    pairFor(UNISWAP_V2_FACTORY_ADDRESS, jedi.address, daiAddress(hre)),
-    REWARDS_POOL_INITIAL_DURATION
-  );
-  await contractDeploy(
-    hre,
-    "RewardsPool",
-    "KWBTCWBTCLPDroidPool",
-    "KBTCWBTCLPDroidPool",
+    "KWBTCWBTCLPJediPool",
+    "KBTCWBTCLPJediPool",
     multiSig.address,
     multiSig.address,
     jedi.address,
