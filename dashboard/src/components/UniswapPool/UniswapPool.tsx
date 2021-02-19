@@ -30,7 +30,7 @@ const UniswapPool = ({ token0, token1, pair }: PropsType) => {
   }, [pair]);
   return (
     <Grid item xs={12} md={6} lg={6}>
-      <Card variant="outlined">
+      <Card>
         <CardHeader title={name}>{name}</CardHeader>
         <CardContent>
           {error && <Alert severity="error">{`Error fetching pair data: ${error}`}</Alert>}

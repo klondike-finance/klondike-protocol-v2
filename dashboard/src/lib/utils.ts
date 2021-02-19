@@ -21,3 +21,15 @@ export function pairFor(factory: string, token0: string, token1: string) {
     ).slice(26)
   );
 }
+
+export function buildIndex(deployments: { [key: string]: any }) {
+  const idx: { [key: string]: any } = {};
+  for (const key in deployments) {
+    idx[deployments[key].address] = key;
+  }
+  return idx;
+}
+
+export function etherscanLink() {
+  return process.env.REACT_APP_NETWORK === 'mainnet' ? 'https://etherscan.io' : 'https://kovan.etherscan.io';
+}
