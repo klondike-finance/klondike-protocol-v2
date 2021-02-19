@@ -1,25 +1,15 @@
-import {
-  AppBar,
-  Button,
-  createMuiTheme,
-  CssBaseline,
-  IconButton,
-  Tab,
-  Tabs,
-  ThemeProvider,
-  Typography,
-  withTheme,
-} from '@material-ui/core';
-import React from 'react';
-import { BrowserRouter as Router, Switch, Route, Link } from 'react-router-dom';
+import { AppBar, createMuiTheme, CssBaseline, ThemeProvider, withTheme } from '@material-ui/core';
+import React, { useCallback } from 'react';
+import { ethers } from 'ethers';
+import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 import Toolbar from './components/Toolbar';
 import UniswapPage from './pages/UniswapPage';
-import './App.css';
 import PoolsPage from './pages/PoolsPage';
 import FundsPage from './pages/FundsPage';
 import ManagersPage from './pages/Managers';
 import styled from 'styled-components';
-import { green, purple } from '@material-ui/core/colors';
+import { getDeployments } from './lib/utils';
+import './App.css';
 
 const theme = createMuiTheme({
   palette: {
@@ -35,14 +25,23 @@ const theme = createMuiTheme({
   },
 });
 
+export const EthereumContext: React.Context<{
+  deployments?: { [key: string]: any };
+  provider?: ethers.providers.Web3Provider;
+}> = React.createContext({});
+
 function App() {
+  const deployments = useCallback(getDeployments, []);
+  const provider = useCallback(() => new ethers.providers.Web3Provider((window as any).ethereum), []);
   return (
-    <Router>
-      <CssBaseline />
-      <ThemeProvider theme={theme}>
-        <ThemedInner />
-      </ThemeProvider>
-    </Router>
+    <EthereumContext.Provider value={{ deployments: deployments(), provider: provider() }}>
+      <Router>
+        <CssBaseline />
+        <ThemeProvider theme={theme}>
+          <ThemedInner />
+        </ThemeProvider>
+      </Router>
+    </EthereumContext.Provider>
   );
 }
 
