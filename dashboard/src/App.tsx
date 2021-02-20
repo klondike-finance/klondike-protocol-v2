@@ -8,7 +8,7 @@ import PoolsPage from './pages/PoolsPage';
 import FundsPage from './pages/FundsPage';
 import ManagersPage from './pages/Managers';
 import styled from 'styled-components';
-import { buildIndex, getDeployments } from './lib/utils';
+import { buildIndex, getDeployments, getRegistry } from './lib/utils';
 import './App.css';
 
 const theme = createMuiTheme({
@@ -27,19 +27,21 @@ const theme = createMuiTheme({
 
 export const EthereumContext: React.Context<{
   deployments?: { [key: string]: any };
+  registry?: { [key: string]: any };
   provider?: ethers.providers.Web3Provider;
   addressIndex?: { [key: string]: any };
 }> = React.createContext({});
 
 function App() {
   const deployments = useCallback(getDeployments, []);
+  const registry = useCallback(getRegistry, []);
   const provider = useCallback(() => new ethers.providers.Web3Provider((window as any).ethereum), []);
   const addressIndex = useCallback(() => {
-    return buildIndex(deployments());
-  }, [deployments()]);
+    return buildIndex(registry());
+  }, [registry()]);
   return (
     <EthereumContext.Provider
-      value={{ deployments: deployments(), provider: provider(), addressIndex: addressIndex() }}
+      value={{ deployments: deployments(), provider: provider(), addressIndex: addressIndex(), registry: registry() }}
     >
       <Router>
         <CssBaseline />

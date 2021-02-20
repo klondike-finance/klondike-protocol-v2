@@ -3,6 +3,7 @@ import { Alert } from '@material-ui/lab';
 import { ethers } from 'ethers';
 import { useContext, useEffect, useState } from 'react';
 import { EthereumContext } from '../../App';
+import { toDate } from '../../lib/utils';
 import Entry from '../Entry';
 
 type PropsType = { name: string };
@@ -17,33 +18,36 @@ const RewardPool = ({ name }: PropsType) => {
       const { address, abi } = deployments[name];
       const pool = new ethers.Contract(address, abi, provider);
       try {
-        const lastTimeRewardApplicable = await pool.lastTimeRewardApplicable();
-        const lastUpdateTime = await pool.lastUpdateTime();
         const owner = await pool.owner();
-        const paused = await pool.paused();
-        const periodFinish = await pool.periodFinish();
-        const rewardPerToken = await pool.rewardPerToken();
-        const rewardPerTokenStored = await pool.rewardPerTokenStored();
-        const rewardRate = await pool.rewardRate();
         const rewardsDistribution = await pool.rewardsDistribution();
-        const rewardsDuration = await pool.rewardsDuration();
         const rewardsToken = await pool.rewardsToken();
         const stakingToken = await pool.stakingToken();
+        const periodFinish = toDate(await pool.periodFinish());
+        const rewardsDuration = await pool.rewardsDuration();
+        const rewardRate = await pool.rewardRate();
+        const rewardPerToken = await pool.rewardPerToken();
+        const rewardPerTokenStored = await pool.rewardPerTokenStored();
         const totalSupply = await pool.totalSupply();
+        const lastTimeRewardApplicable = await pool.lastTimeRewardApplicable();
+        const lastUpdateTime = await pool.lastUpdateTime();
+        const paused = await pool.paused();
         const values = {
-          lastTimeRewardApplicable,
-          lastUpdateTime,
           owner,
-          paused,
-          periodFinish,
-          rewardPerToken,
-          rewardPerTokenStored,
-          rewardRate,
           rewardsDistribution,
-          rewardsDuration,
           rewardsToken,
           stakingToken,
+          blank1: null,
+          periodFinish,
+          rewardsDuration,
+          blank2: null,
+          rewardRate,
+          rewardPerToken,
+          rewardPerTokenStored,
           totalSupply,
+          blank3: null,
+          lastTimeRewardApplicable,
+          lastUpdateTime,
+          paused,
         };
         setData(values);
       } catch (e) {
