@@ -1,15 +1,13 @@
 import { Grid } from '@material-ui/core';
-import RewardPool from '../../components/RewardPool';
+import SwapPool from '../../components/SwapPool';
 
-const PoolsPage = () => {
+const SwapPoolsPage = () => {
   const pools = ['KWBTCWBTCLPJediPool', 'DroidDAILPJediPool', 'JediDAILPJediPool'];
   return (
     <Grid container spacing={3}>
-      {pools.map((name) => (
-        <RewardPool key={name} name={name} />
-      ))}
+      <SwapPool />
     </Grid>
   );
 };
 
-export default PoolsPage;
+export default SwapPoolsPage;

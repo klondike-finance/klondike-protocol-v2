@@ -1,15 +1,16 @@
 import { AppBar, createMuiTheme, CssBaseline, ThemeProvider, withTheme } from '@material-ui/core';
 import React, { useCallback } from 'react';
 import { ethers } from 'ethers';
-import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Switch, Route, Redirect } from 'react-router-dom';
 import Toolbar from './components/Toolbar';
 import UniswapPage from './pages/UniswapPage';
-import PoolsPage from './pages/PoolsPage';
+import RewardPoolsPage from './pages/RewardPoolsPage';
 import FundsPage from './pages/FundsPage';
 import ManagersPage from './pages/Managers';
 import styled from 'styled-components';
 import { buildIndex, getDeployments, getRegistry } from './lib/utils';
 import './App.css';
+import SwapPoolsPage from './pages/SwapPoolsPage';
 
 const theme = createMuiTheme({
   palette: {
@@ -62,10 +63,11 @@ const Inner = (props: any) => {
       <div className="app-container">
         <Switch>
           <Route path="/uniswap" component={UniswapPage} />
-          <Route path="/pools" component={PoolsPage} />
+          <Route path="/reward_pools" component={RewardPoolsPage} />
+          <Route path="/swap_pools" component={SwapPoolsPage} />
           <Route path="/funds" component={FundsPage} />
           <Route path="/managers" component={ManagersPage} />
-          <Route component={UniswapPage} />
+          <Redirect to="/uniswap" />
         </Switch>
       </div>
     </StyledInner>
