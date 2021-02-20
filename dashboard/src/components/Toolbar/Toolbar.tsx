@@ -9,9 +9,10 @@ const routes: { [key: string]: number } = {
   '/swap_pools': 2,
   '/managers': 3,
   '/funds': 4,
+  '/tokens': 5,
 };
 
-const reverseRoutes = ['/uniswap', '/reward_pools', '/swap_pools', '/managers', '/funds'];
+const reverseRoutes = ['/uniswap', '/reward_pools', '/swap_pools', '/managers', '/funds', '/tokens'];
 
 const Toolbar = ({ history, location }: { history: History; location: Location }) => {
   function handleChange(_: any, value: number) {
@@ -26,6 +27,7 @@ const Toolbar = ({ history, location }: { history: History; location: Location }
         <Tab label="Swap Pools" />
         <Tab label="Managers" />
         <Tab label="Funds" />
+        <Tab label="Tokens" />
       </Tabs>
     </ToolbarUI>
   );
