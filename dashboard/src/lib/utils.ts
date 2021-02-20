@@ -45,5 +45,6 @@ export function etherscanLink() {
 }
 
 export function toDate(ethTime: BigNumber) {
+  if (ethTime.gt(11613807565)) return 'Never';
   return new Date(ethTime.toNumber() * 1000).toISOString();
 }
