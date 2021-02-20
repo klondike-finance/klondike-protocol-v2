@@ -70,6 +70,7 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
   await transferOwnership(hre, "BondManagerV1", "Timelock");
   await transferOperator(hre, "EmissionManagerV1", "MultisigWallet");
   await transferOwnership(hre, "EmissionManagerV1", "Timelock");
+  await transferOwnership(hre, "KlonDroidSwapPool", "Timelock");
 }
 
 async function setLinks(hre: HardhatRuntimeEnvironment) {

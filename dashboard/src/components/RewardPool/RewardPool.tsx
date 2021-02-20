@@ -22,7 +22,7 @@ const RewardPool = ({ name }: PropsType) => {
         const rewardsDistribution = await pool.rewardsDistribution();
         const rewardsToken = await pool.rewardsToken();
         const stakingToken = await pool.stakingToken();
-        const periodFinish = toDate(await pool.periodFinish());
+        const periodFinish = await pool.periodFinish();
         const rewardsDuration = await pool.rewardsDuration();
         const rewardRate = await pool.rewardRate();
         const rewardPerToken = await pool.rewardPerToken();
@@ -37,8 +37,8 @@ const RewardPool = ({ name }: PropsType) => {
           rewardsToken,
           stakingToken,
           blank1: null,
-          periodFinish,
-          rewardsDuration,
+          periodFinish: parseInt(periodFinish) === 0 ? 'Never' : toDate(periodFinish),
+          rewardsDuration: `${rewardsDuration / 86400} days`,
           blank2: null,
           rewardRate,
           rewardPerToken,
@@ -59,7 +59,7 @@ const RewardPool = ({ name }: PropsType) => {
   return (
     <Grid item xs={12} md={6} lg={6}>
       <Card>
-        <CardHeader title={name} />
+        <CardHeader title={name} subheader={deployments && <Entry v={deployments[name].address} />} />
         <CardContent>
           {error && <Alert severity="error">{`Error fetching pair data: ${error}`}</Alert>}
           {!data && !error && <CircularProgress />}

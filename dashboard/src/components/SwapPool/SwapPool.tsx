@@ -41,7 +41,10 @@ const SwapPool = () => {
   return (
     <Grid item xs={12} md={6} lg={6}>
       <Card>
-        <CardHeader title={'KlonDroid Swap Pool'} />
+        <CardHeader
+          title={'KlonDroid Swap Pool'}
+          subheader={deployments && <Entry v={deployments['KlonDroidSwapPool'].address} />}
+        />
         <CardContent>
           {error && <Alert severity="error">{`Error fetching pair data: ${error}`}</Alert>}
           {!data && !error && <CircularProgress />}
