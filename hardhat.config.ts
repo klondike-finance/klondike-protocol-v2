@@ -8,7 +8,7 @@ import "./tasks/token";
 import "./tasks/oracle";
 import "./tasks/deploy";
 import "./tasks/abi";
-import "./tasks/main";
+import "./tasks/multisig";
 
 dotenv();
 
