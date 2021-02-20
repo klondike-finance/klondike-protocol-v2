@@ -10,6 +10,8 @@ import { isProd } from "./utils";
 import { ethers } from "ethers";
 import { loadFixture } from "ethereum-waffle";
 
+const DEFAULT_TIMELOCK_DELAY = 300;
+
 task("multisig:generate")
   .addParam(
     "name",
@@ -35,7 +37,7 @@ task("multisig:timelock")
   .addParam(
     "eta",
     "Time for execution in secs",
-    Math.floor(new Date().getTime() / 1000),
+    Math.floor(new Date().getTime() / 1000) + DEFAULT_TIMELOCK_DELAY,
     types.int
   )
   .addParam(
@@ -67,6 +69,7 @@ task("multisig:timelock")
     console.log("-----------------------");
     console.log("");
     console.log(`Signature: ${signature}`);
+    console.log(`Args: ${JSON.stringify(targs)}`);
     console.log(`Eta: ${eta}`);
     console.log("");
     console.log("-----------------------");
