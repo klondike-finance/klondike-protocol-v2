@@ -61,6 +61,12 @@ contract LockPool is
         rewardFactor[180] = 100;
         rewardFactor[365] = 100;
         rewardFactor[1460] = 100;
+        rewardDays.push(7);
+        rewardDays.push(30);
+        rewardDays.push(90);
+        rewardDays.push(180);
+        rewardDays.push(365);
+        rewardDays.push(1460);
     }
 
     // ------- Modifiers ----------
