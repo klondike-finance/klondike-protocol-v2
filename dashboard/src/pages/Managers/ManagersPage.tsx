@@ -1,5 +1,6 @@
 import { Grid } from '@material-ui/core';
 import BondManager from '../../components/BondManager';
+import EmissionManager from '../../components/EmissionManager';
 import TokenManager from '../../components/TokenManager';
 
 const ManagersPage = () => {
@@ -7,6 +8,7 @@ const ManagersPage = () => {
     <Grid container spacing={3}>
       <TokenManager />
       <BondManager />
+      <EmissionManager />
     </Grid>
   );
 };
