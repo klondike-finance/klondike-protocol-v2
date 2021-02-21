@@ -23,11 +23,13 @@ const INITIAL_JEDI_LIQUIDITY = BigNumber.from("1000000000000000000000000");
 const SWAP_POOL_START_DATE = Math.floor(new Date().getTime() / 1000);
 const SWAP_POOL_END_DATE = Math.floor(new Date().getTime() / 1000) + 86400 * 30;
 const LOCK_POOL_START_DATE = Math.floor(new Date().getTime() / 1000);
+const ORACLE_START_DATE = Math.floor(new Date().getTime() / 1000);
 const REWARDS_POOL_INITIAL_DURATION = 86400 * 7;
 const BOARDROOM_START_DATE = Math.floor(new Date().getTime() / 1000);
 const TREASURY_START_DATE = Math.floor(new Date().getTime() / 1000);
 const BOOST_FACTOR = 4;
 const BOOST_DENOMINATOR = 500;
+const ORACLE_PERIOD = 120;
 
 task("deploy", "Deploys the system").setAction(async (_, hre) => {
   await deploy(hre);
@@ -51,6 +53,7 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await importExternalIntoRegistry(hre);
   await deployTokensAndMint(hre);
   await deployTreasury(hre, 1, TREASURY_START_DATE);
+  await addV1Token(hre);
   await deploySpecificPools(hre);
   await deployBoardroom(hre);
   await setLinks(hre);
@@ -71,6 +74,37 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
   await transferOperator(hre, "EmissionManagerV1", "MultisigWallet");
   await transferOwnership(hre, "EmissionManagerV1", "Timelock");
   await transferOwnership(hre, "KlonDroidSwapPool", "Timelock");
+}
+
+async function addV1Token(hre: HardhatRuntimeEnvironment) {
+  console.log("Adding WBTC token...");
+  const kwbtc = await findExistingContract(hre, "KWBTC");
+  const kbwbtc = await findExistingContract(hre, "KB-WBTC");
+  const wbtc = await findExistingContract(hre, "WBTC");
+  const tokenManager = await findExistingContract(hre, "TokenManagerV1");
+  const oracle = await contractDeploy(
+    hre,
+    "Oracle",
+    "KWBTCWBTCOracle",
+    UNISWAP_V2_FACTORY_ADDRESS,
+    kwbtc.address,
+    wbtc.address,
+    ORACLE_PERIOD,
+    ORACLE_START_DATE
+  );
+  const isManagedToken = await tokenManager.isManagedToken(kwbtc.address);
+  if (isManagedToken) {
+    console.log(`KWBTC is already managed. Skipping...`);
+    return;
+  }
+  console.log(`Adding KBTC token to TokenManager...`);
+  const tx = await tokenManager.populateTransaction.addToken(
+    kwbtc.address,
+    kbwbtc.address,
+    wbtc.address,
+    oracle.address
+  );
+  await sendTransaction(hre, tx);
 }
 
 async function setLinks(hre: HardhatRuntimeEnvironment) {
