@@ -3,7 +3,7 @@ import { Alert } from '@material-ui/lab';
 import { ethers, BigNumber } from 'ethers';
 import { useContext, useEffect, useState } from 'react';
 import { EthereumContext } from '../../App';
-import { toDate } from '../../lib/utils';
+import { toDate, toDecimal } from '../../lib/utils';
 import Entry from '../Entry';
 
 type PropsType = { name: string };
@@ -18,8 +18,15 @@ const Token = ({ name }: PropsType) => {
       const { address, abi } = deployments[name];
       const token = new ethers.Contract(address, abi, provider);
       try {
-        const owner = await token.owner();
-        const operator = await token.operator();
+        let owner = ethers.constants.AddressZero;
+        try {
+          owner = await token.owner();
+        } catch (e) {}
+        let operator = ethers.constants.AddressZero;
+        try {
+          operator = await token.operator();
+        } catch (e) {}
+
         const totalSupply = await token.totalSupply();
         const decimals = await token.decimals();
 
@@ -28,7 +35,7 @@ const Token = ({ name }: PropsType) => {
           operator,
           blank1: null,
           decimals,
-          totalSupply,
+          totalSupply: toDecimal(totalSupply, decimals),
         };
         setData(values);
       } catch (e) {

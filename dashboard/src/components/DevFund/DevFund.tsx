@@ -3,7 +3,7 @@ import { Alert } from '@material-ui/lab';
 import { ethers } from 'ethers';
 import { useContext, useEffect, useState } from 'react';
 import { EthereumContext } from '../../App';
-import { toDate } from '../../lib/utils';
+import { toDate, toDecimal } from '../../lib/utils';
 import Entry from '../Entry';
 import devfundabi from '../../data/devfundabi.json';
 
@@ -25,7 +25,7 @@ const DevFund = () => {
           owner,
           operator,
           blank1: null,
-          kbtc: balanceKWBTC.toNumber() / 10 ** 8,
+          kbtc: toDecimal(balanceKWBTC, 18),
         };
         setData(values);
       } catch (e) {

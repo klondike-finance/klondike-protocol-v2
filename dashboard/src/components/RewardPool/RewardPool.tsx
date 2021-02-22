@@ -3,7 +3,7 @@ import { Alert } from '@material-ui/lab';
 import { ethers } from 'ethers';
 import { useContext, useEffect, useState } from 'react';
 import { EthereumContext } from '../../App';
-import { toDate } from '../../lib/utils';
+import { toDate, toDecimal } from '../../lib/utils';
 import Entry from '../Entry';
 
 type PropsType = { name: string };
@@ -28,6 +28,13 @@ const RewardPool = ({ name }: PropsType) => {
         const rewardPerToken = await pool.rewardPerToken();
         const rewardPerTokenStored = await pool.rewardPerTokenStored();
         const totalSupply = await pool.totalSupply();
+
+        const stakingTokenContract = new ethers.Contract(stakingToken, deployments['Droid'].abi, provider);
+        const stakingTokenDecimals = await stakingTokenContract.decimals();
+        const rewardsTokenContract = new ethers.Contract(rewardsToken, deployments['Droid'].abi, provider);
+        const rewardTokenBalance = await rewardsTokenContract.balanceOf(address);
+        const rewardTokenDecimals = await rewardsTokenContract.decimals();
+        const stakeTokenDecimals = await rewardsTokenContract.decimals();
         const lastTimeRewardApplicable = await pool.lastTimeRewardApplicable();
         const lastUpdateTime = await pool.lastUpdateTime();
         const paused = await pool.paused();
@@ -40,13 +47,14 @@ const RewardPool = ({ name }: PropsType) => {
           periodFinish: parseInt(periodFinish) === 0 ? 'Never' : toDate(periodFinish),
           rewardsDuration: `${rewardsDuration / 86400} days`,
           blank2: null,
-          rewardRate,
-          rewardPerToken,
-          rewardPerTokenStored,
-          totalSupply,
+          rewardRate: toDecimal(rewardRate, rewardTokenDecimals),
+          rewardPerToken: toDecimal(rewardPerToken, rewardTokenDecimals),
+          rewardPerTokenStored: toDecimal(rewardPerTokenStored, rewardTokenDecimals),
+          rewardTokenBalance: toDecimal(rewardTokenBalance, rewardTokenDecimals),
+          totalStaked: toDecimal(totalSupply, stakingTokenDecimals),
           blank3: null,
-          lastTimeRewardApplicable,
-          lastUpdateTime,
+          lastTimeRewardApplicable: toDate(lastTimeRewardApplicable),
+          lastUpdateTime: toDate(lastUpdateTime),
           paused,
         };
         setData(values);

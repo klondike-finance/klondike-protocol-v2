@@ -3,7 +3,7 @@ import { Alert } from '@material-ui/lab';
 import { ethers, BigNumber } from 'ethers';
 import { useContext, useEffect, useState } from 'react';
 import { EthereumContext } from '../../App';
-import { toDate } from '../../lib/utils';
+import { toDate, toDecimal } from '../../lib/utils';
 import Entry from '../Entry';
 import stablefundabi from '../../data/stablefundabi.json';
 
@@ -27,7 +27,7 @@ const StableFund = () => {
         const trader = await pool.trader();
 
         const balanceKWBTC = await kwbtc.balanceOf(registry['StableFund'].address);
-        const balanceWBTC = await kwbtc.balanceOf(registry['StableFund'].address);
+        const balanceWBTC = await wbtc.balanceOf(registry['StableFund'].address);
 
         const migrated = await pool.migrated();
 
@@ -41,8 +41,8 @@ const StableFund = () => {
           tokenB,
           trader,
           blank2: null,
-          WBTC: balanceWBTC.toNumber() / 10 ** 8,
-          KBTC: balanceKWBTC.div(BigNumber.from(10).pow(10)).toNumber() / 10 ** 8,
+          WBTC: toDecimal(balanceWBTC, 8),
+          KBTC: toDecimal(balanceKWBTC, 18),
           blank3: null,
           migrated,
         };
