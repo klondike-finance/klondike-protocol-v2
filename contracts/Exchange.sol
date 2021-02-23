@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./access/Operatable.sol";
-import "./treasury/TokenManager.sol";
+import "./interfaces/ITokenManager.sol";
 import "./libraries/UniswapLibrary.sol";
 
 contract Exchange is Operatable {
@@ -21,7 +21,11 @@ contract Exchange is Operatable {
     }
     mapping(address => mapping(address => OraclePair)) public oracleIndex;
     TokenPair[] public tokens;
-    TokenManager public tokenManager;
+    ITokenManager public tokenManager;
+
+    constructor(address _tokenManager) public {
+        tokenManager = ITokenManager(_tokenManager);
+    }
 
     function addPair(address tokenA, address tokenB, address oracleA, address oracleB) public onlyOperator {
         (address token0, address token1) = UniswapLibrary.sortTokens(tokenA, tokenB);
@@ -29,6 +33,10 @@ contract Exchange is Operatable {
         oracleIndex[tokenA][tokenB] = OraclePair({oracle0: AggregatorV3Interface(oracleA), oracle1: AggregatorV3Interface(oracleB)});
         oracleIndex[tokenB][tokenA] = OraclePair({oracle0: AggregatorV3Interface(oracleB), oracle1: AggregatorV3Interface(oracleA)});
     }
+    function setTokenManager(address _tokenManager) public onlyOperator {
+        tokenManager = ITokenManager(_tokenManager);
+    }
+
     function validPermissions() public view returns (bool) {
         return tokenManager.isTokenAdmin(address(this));
     }
