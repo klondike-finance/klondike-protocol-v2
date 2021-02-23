@@ -1153,4 +1153,79 @@ describe("TokenManager", () => {
       });
     });
   });
+
+  describe("allTokenAdmins", () => {
+    describe("when initialized", () => {
+      it("consists of bondManager and emissionManager", async () => {
+        const admins = Array.from(await manager.allTokenAdmins());
+        expect(admins.sort()).to.eql(
+          [bondManager.address, emissionManager.address].sort()
+        );
+      });
+    });
+  });
+  describe("#deleteTokenAdmin", () => {
+    describe("when token address is not in the admins list", () => {
+      it("does nothing", async () => {
+        const [_, other] = await ethers.getSigners();
+        const admins1 = await manager.allTokenAdmins();
+        expect(admins1.length).to.eq(2);
+        await manager.deleteTokenAdmin(other.address);
+        const admins2 = await manager.allTokenAdmins();
+        expect(admins1).to.eql(admins2);
+      });
+    });
+    describe("when token address is in the admins list", () => {
+      it("zeroes out token manager", async () => {
+        let admins = await manager.allTokenAdmins();
+        expect(admins.length).to.eq(2);
+        await manager.deleteTokenAdmin(bondManager.address);
+        admins = Array.from(await manager.allTokenAdmins());
+        expect(admins.sort()).to.eql([
+          ethers.constants.AddressZero,
+          emissionManager.address,
+        ]);
+      });
+    });
+    describe("when called not by the owner", () => {
+      it("fails", async () => {
+        const [_, other] = await ethers.getSigners();
+        await manager.transferOperator(other.address);
+        await expect(
+          manager.connect(other).deleteTokenAdmin(other.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+  describe("#addTokenAdmin", () => {
+    describe("when token address is not in the admins list", () => {
+      it("adds token to managers", async () => {
+        const [_, other] = await ethers.getSigners();
+        let admins = await manager.allTokenAdmins();
+        expect(admins.length).to.eq(2);
+        await manager.addTokenAdmin(other.address);
+        admins = await manager.allTokenAdmins();
+        expect(admins.length).to.eq(3);
+        expect(admins[2]).to.eq(other.address);
+      });
+    });
+    describe("when token address is in the admins list", () => {
+      it("does nothing", async () => {
+        let admins = await manager.allTokenAdmins();
+        expect(admins.length).to.eq(2);
+        await manager.addTokenAdmin(bondManager.address);
+        admins = await manager.allTokenAdmins();
+        expect(admins.length).to.eq(2);
+      });
+    });
+    describe("when called not by the owner", () => {
+      it("fails", async () => {
+        const [_, other] = await ethers.getSigners();
+        await manager.transferOperator(other.address);
+        await expect(
+          manager.connect(other).addTokenAdmin(other.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
 });
