@@ -17,6 +17,14 @@ interface ITokenManager is ISmelter {
         view
         returns (bool);
 
+    /// Checks if the address is token admin
+    /// @param admin The address of the potential admin to check
+    /// @return True if address is admin
+    function isTokenAdmin(address admin)
+        external
+        view
+        returns (bool);
+
     /// Address of the underlying token
     /// @param syntheticTokenAddress The address of the synthetic token
     function underlyingToken(address syntheticTokenAddress)
