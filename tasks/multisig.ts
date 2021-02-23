@@ -78,7 +78,19 @@ task("multisig:timelock")
 
 task("timelock:generate:migration")
   .addParam("eta", "Time for execution in secs", undefined, types.int)
-  .setAction(async ({ eta }, hre) => {
+  .addParam(
+    "method",
+    "Timelock method: queueTransaction | executeTransaction",
+    undefined,
+    types.string
+  )
+  .setAction(async ({ eta, method }, hre) => {
+    if (method !== "queueTransaction" && method !== "executeTransaction") {
+      console.log(
+        "Method must be either queueTransaction or executeTransaction"
+      );
+      return;
+    }
     const contracts = getMergedContracts(hre) as any;
     const bondManager = contracts["BondManagerV1"];
     const timelock = contracts["Timelock"];
@@ -88,17 +100,12 @@ task("timelock:generate:migration")
     console.log("Contract:");
     console.log(getMultisig(hre));
     console.log("-----------------------");
+    await printTimelockGenerate(hre, method, eta, "Treasury", "migrate", [
+      bondManager.address,
+    ]);
     await printTimelockGenerate(
       hre,
-      "queueTransaction",
-      eta,
-      "Treasury",
-      "migrate",
-      [bondManager.address]
-    );
-    await printTimelockGenerate(
-      hre,
-      "queueTransaction",
+      method,
       eta,
       "BondManagerV1",
       "migrateOwnership",
@@ -106,7 +113,7 @@ task("timelock:generate:migration")
     );
     await printTimelockGenerate(
       hre,
-      "queueTransaction",
+      method,
       eta,
       "BondManagerV1",
       "migrateOwnership",

@@ -10,6 +10,28 @@ const Entry = ({ k, v }: { k?: string; v: string }) => {
   if (v === null) {
     return <Container>&nbsp;</Container>;
   }
+  if (Array.isArray(v)) {
+    return (
+      <ArrayContainer>
+        <div>{k}:</div>
+        {v.map((value) => {
+          const name = addressIndex[value.toLowerCase()] || 'Unknown';
+          return (
+            <span>
+              {`${name} (`}
+              <Link
+                href={`${etherscanLink()}/address/${value}`}
+                target="_blank"
+                color="textSecondary"
+              >{`${value}`}</Link>
+              {')'}
+            </span>
+          );
+        })}
+        <div>----------</div>
+      </ArrayContainer>
+    );
+  }
   const value = v.toString();
   if (value.startsWith('0x')) {
     if (!k) {
@@ -33,6 +55,11 @@ const Entry = ({ k, v }: { k?: string; v: string }) => {
 
 const Container = styled.div`
   display: flex;
+`;
+
+const ArrayContainer = styled.div`
+  display: flex;
+  flex-direction: column;
 `;
 
 export default Entry;

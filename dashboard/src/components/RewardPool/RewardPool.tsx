@@ -34,7 +34,6 @@ const RewardPool = ({ name }: PropsType) => {
         const rewardsTokenContract = new ethers.Contract(rewardsToken, deployments['Droid'].abi, provider);
         const rewardTokenBalance = await rewardsTokenContract.balanceOf(address);
         const rewardTokenDecimals = await rewardsTokenContract.decimals();
-        const stakeTokenDecimals = await rewardsTokenContract.decimals();
         const lastTimeRewardApplicable = await pool.lastTimeRewardApplicable();
         const lastUpdateTime = await pool.lastUpdateTime();
         const paused = await pool.paused();
