@@ -108,6 +108,7 @@ export async function addLiquidity(
   const to = receiver || operator.address;
 
   const router = await getUniswapRouter(hre);
+  console.log("Calling actual addLiquidity...");
 
   const tx = await router.populateTransaction.addLiquidity(
     tokenAAddress,

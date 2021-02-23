@@ -2,7 +2,9 @@ import { BigNumber, Contract, ethers } from "ethers";
 import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { contractDeploy, findExistingContract } from "./contract";
+import { oracleDeploy } from "./oracle";
 import { getRegistryContract } from "./registry";
+import { addLiquidity } from "./uniswap";
 import { ETH, isProd, sendTransaction } from "./utils";
 
 task("token:deploy", "Deploys a new synthetic token")
@@ -29,6 +31,53 @@ task("token:mint", "Mints to an address")
   .setAction(async ({ name, to, value, force }, hre) => {
     await mint(hre, name, to, BigNumber.from(value), force);
   });
+
+task("token:deploy:triple", "deploy token, bond and oracle")
+  .addParam(
+    "synName",
+    "Name of the token synthetic token",
+    undefined,
+    types.string
+  )
+  .addParam("bondName", "Name of the bond", undefined, types.string)
+  .addParam("underlying", "Address of the underlying", undefined, types.string)
+  .addParam(
+    "synLiquidity",
+    "Amount of the synthetic liquidity",
+    undefined,
+    types.string
+  )
+  .addParam(
+    "synUniswapLiquidity",
+    "Amount of the synthetic liquidity",
+    undefined,
+    types.string
+  )
+  .addParam(
+    "undUniswapLiquidity",
+    "Amount of the underlying liquidity",
+    undefined,
+    types.string
+  )
+  .setAction(
+    async (
+      { synName, bondName, underlying, synLiquidity, synUniswapLiquidity, undUniswapLiquidity },
+      hre
+    ) => {
+      const [op] = await hre.ethers.getSigners();
+      await tokenDeploy(hre, synName, synName);
+      await mint(hre, synName, op.address, BigNumber.from(synLiquidity))
+      await tokenDeploy(hre, bondName, bondName);
+      await addLiquidity(
+        hre,
+        synName,
+        underlying,
+        BigNumber.from(synUniswapLiquidity),
+        BigNumber.from(undUniswapLiquidity)
+      );
+      await oracleDeploy(hre, synName, underlying);
+    }
+  );
 
 export async function tokenDeploy(
   hre: HardhatRuntimeEnvironment,
