@@ -52,10 +52,7 @@
   },
   "Timelock": {
     "address": "0x2209791425a1ef8bc8f18f56695172d5bc570986",
-    "args": [
-      "0xa1960d4F5213B2EeE14b8350d82E96CaB04d9DB7",
-      "120"
-    ],
+    "args": ["0xa1960d4F5213B2EeE14b8350d82E96CaB04d9DB7", "120"],
     "name": null,
     "registryName": "Timelock"
   },
@@ -63,113 +60,90 @@
     "address": "0xad80dc70c563d76be3940d73d42c0d70d4652f41",
     "registryName": "DAI",
     "name": "SyntheticToken",
-    "args": [
-      "DAI",
-      "DAI",
-      18
-    ]
+    "args": ["DAI", "DAI", 18]
   },
   "Droid": {
     "registryName": "Droid",
     "name": "SyntheticToken",
-    "address": "0xd5b452c35c25082798edb658ea12d411a8adb465",
-    "args": [
-      "Droid",
-      "Droid",
-      18
-    ]
+    "address": "0x7d7d58087d0c1c3d7c66e34cffce12ff24ba7557",
+    "args": ["Droid", "Droid", 18]
   },
   "Jedi": {
     "registryName": "Jedi",
     "name": "SyntheticToken",
-    "address": "0x8425f56ac386ac116062e3595e36eaf61aab96b5",
-    "args": [
-      "Jedi",
-      "Jedi",
-      18
-    ]
+    "address": "0x8842c9adec5910a3b8460513504eb582647b71cb",
+    "args": ["Jedi", "Jedi", 18]
   },
   "TokenManagerV1": {
     "registryName": "TokenManagerV1",
     "name": "TokenManager",
-    "address": "0xae2cd331e02fa9762d3a417af1bece06ca888f80",
-    "args": [
-      "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
-    ]
+    "address": "0x8cce49bcf978c2f2d0c6b18c2ae9f56140d4493c",
+    "args": ["0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"]
   },
   "BondManagerV1": {
     "registryName": "BondManagerV1",
     "name": "BondManager",
-    "address": "0x51c7ee58abc2a3d129488948b028f7cee25394af",
-    "args": [
-      1613727726
-    ]
+    "address": "0xf7d4d4469e4fd21c99cdaad10ef5076f2aa6b7a4",
+    "args": [1614102549]
   },
   "EmissionManagerV1": {
     "registryName": "EmissionManagerV1",
     "name": "EmissionManager",
-    "address": "0xf252c5e40f9863caa186b08ea75b36acf7f02598",
-    "args": [
-      1613727726,
-      86400
-    ]
+    "address": "0xed63ba7bdda626acb97d7f9dec0d249a56ed8b94",
+    "args": [1614102549, 86400]
   },
   "DroidJediLockPool": {
     "registryName": "DroidJediLockPool",
     "name": "LockPool",
-    "address": "0xe46645f3fde2a04ff18c4c052d3dd630b9656809",
-    "args": [
-      "0xd5b452c35c25082798edb658ea12d411a8adb465",
-      "0x8425f56ac386ac116062e3595e36eaf61aab96b5",
-      1613727726
-    ]
+    "address": "0x7d8f2449dcf0c758add774964ee3913574a7695d",
+    "args": ["0x7d7d58087d0c1c3d7c66e34cffce12ff24ba7557", "0x8842c9adec5910a3b8460513504eb582647b71cb", 1614102549]
   },
   "KlonDroidSwapPool": {
     "registryName": "KlonDroidSwapPool",
     "name": "SwapPool",
-    "address": "0x60ca2b81adf958e12337514f7c9abd0dafbffefb",
+    "address": "0xede74ad6388e48c6c779a333daa1cd4e3dbb755a",
     "args": [
       "0x01d091d8e3d5f9cfed79740b0aa6e5f67003f4cd",
-      "0xd5b452c35c25082798edb658ea12d411a8adb465",
-      1613727726,
-      1616319726
+      "0x7d7d58087d0c1c3d7c66e34cffce12ff24ba7557",
+      1614102549,
+      1616694549
     ]
   },
   "DroidDAILPJediPool": {
     "registryName": "DroidDAILPJediPool",
     "name": "RewardsPool",
-    "address": "0xcb40168610cb34f715b2014ba5da6cc966222b0a",
+    "address": "0x94903e6c2fb893e1bad459c5e255a150d4a6ca44",
     "args": [
       "DroidDAILPJediPool",
       "0xa1960d4f5213b2eee14b8350d82e96cab04d9db7",
       "0xa1960d4f5213b2eee14b8350d82e96cab04d9db7",
-      "0x8425f56ac386ac116062e3595e36eaf61aab96b5",
-      "0x2f36a69fa857ac12d0e853f38282c819f43f0279",
+      "0x8842c9adec5910a3b8460513504eb582647b71cb",
+      "0xce149462cc41f79005566f756d7d19eb1b4a93cf",
       604800
     ]
   },
   "JediDAILPJediPool": {
     "registryName": "JediDAILPJediPool",
     "name": "RewardsPool",
-    "address": "0xfb082dba4c3d2710d82a9a662d848c2438f6f30d",
+    "address": "0x1249745a72c6a54758c0933c306b7ada4313a793",
     "args": [
       "JediDAILPJediPool",
       "0xa1960d4f5213b2eee14b8350d82e96cab04d9db7",
       "0xa1960d4f5213b2eee14b8350d82e96cab04d9db7",
-      "0x8425f56ac386ac116062e3595e36eaf61aab96b5",
-      "0x3d25682f5ce55cd2456941d930bacf48779bd994",
+      "0x8842c9adec5910a3b8460513504eb582647b71cb",
+      "0xa2e105e3bf3521ad74fc31e957e6b9e86dc5629e",
       604800
     ]
   },
   "KWBTCWBTCLPJediPool": {
     "registryName": "KWBTCWBTCLPJediPool",
     "name": "RewardsPool",
-    "address": "0xe5c3ed85d8b44710d6271bcf56c34a001d802611",
+    "address": "0xe30cccf201d449b959b2429becca9a04a667ffb7",
     "args": [
       "KBTCWBTCLPJediPool",
       "0xa1960d4f5213b2eee14b8350d82e96cab04d9db7",
       "0xa1960d4f5213b2eee14b8350d82e96cab04d9db7",
-      "0x8425f56ac386ac116062e3595e36eaf61aab96b5",
+      "0x8842c9adec5910a3b8460513504eb582647b71cb",
       "0xf3a18c31a8e659f5fc1c7d4de304b598eda95a1f",
       604800
     ]
@@ -177,16 +151,58 @@
   "BoardroomV1": {
     "registryName": "BoardroomV1",
     "name": "Boardroom",
-    "address": "0x4d6d7a34784a2068e71071a88d876dee2a41a682",
+    "address": "0x3e9beb7b570f12257add66cb12f3d9f2884d3232",
     "args": [
-      "0xd5b452c35c25082798edb658ea12d411a8adb465",
-      "0x8425f56ac386ac116062e3595e36eaf61aab96b5",
-      "0xae2cd331e02fa9762d3a417af1bece06ca888f80",
-      "0xf252c5e40f9863caa186b08ea75b36acf7f02598",
-      "0xe46645f3fde2a04ff18c4c052d3dd630b9656809",
+      "0x7d7d58087d0c1c3d7c66e34cffce12ff24ba7557",
+      "0x8842c9adec5910a3b8460513504eb582647b71cb",
+      "0x8cce49bcf978c2f2d0c6b18c2ae9f56140d4493c",
+      "0xed63ba7bdda626acb97d7f9dec0d249a56ed8b94",
+      "0x7d8f2449dcf0c758add774964ee3913574a7695d",
       4,
       500,
-      1613727726
+      1614102549
+    ]
+  },
+  "KWBTCWBTCOracle": {
+    "registryName": "KWBTCWBTCOracle",
+    "name": "Oracle",
+    "address": "0x582fe7abcd522cccbc00800f8cd6531df4035bc8",
+    "args": [
+      "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
+      "0x0d5c208a66d238de91ab35ace9e68a4dbec649d6",
+      "0x2371d4019051580d8d4ab78d96a8cee9b36cfc1c",
+      120,
+      1614102549
+    ]
+  },
+  "ExchangeV1": {
+    "registryName": "ExchangeV1",
+    "name": "Exchange",
+    "address": "0xa425396bcdee6d2265daa4a37839964561dcf6da",
+    "args": ["0x8cce49bcf978c2f2d0c6b18c2ae9f56140d4493c"]
+  },
+  "KUSD": {
+    "registryName": "KUSD",
+    "name": "SyntheticToken",
+    "address": "0x04f9d1c9e666fce3a2ba0dbd06e9f5b01d93c5a5",
+    "args": ["KUSD", "KUSD", 18]
+  },
+  "KB-USD": {
+    "registryName": "KB-USD",
+    "name": "SyntheticToken",
+    "address": "0xabbf97f1ee4d4e6e3f9e1dfb818f6af6e42162a7",
+    "args": ["KB-USD", "KB-USD", 18]
+  },
+  "DAIKUSDOracle": {
+    "registryName": "DAIKUSDOracle",
+    "name": "Oracle",
+    "address": "0x7ca8283f719290f686019eb5749c7e3e77bd0574",
+    "args": [
+      "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
+      "0x04f9d1c9e666fce3a2ba0dbd06e9f5b01d93c5a5",
+      "0xad80dc70c563d76be3940d73d42c0d70d4652f41",
+      3600,
+      1614104742
     ]
   }
 }

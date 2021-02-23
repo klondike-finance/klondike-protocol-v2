@@ -56,7 +56,5 @@ export function toDecimal(num: BigNumber | string, decimals: number) {
   while (str.length < decimals + 1) {
     str = `0${str}`;
   }
-  console.log(num.toString());
-
   return `${str.slice(0, str.length - decimals)}.${str.slice(str.length - decimals)}`;
 }
