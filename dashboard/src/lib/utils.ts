@@ -50,3 +50,13 @@ export function toDate(ethTime: BigNumber) {
   if (ethTime.gt(11613807565)) return 'Never';
   return new Date(ethTime.toNumber() * 1000).toISOString();
 }
+
+export function toDecimal(num: BigNumber | string, decimals: number) {
+  let str = num.toString();
+  while (str.length < decimals + 1) {
+    str = `0${str}`;
+  }
+  console.log(num.toString());
+
+  return `${str.slice(0, str.length - decimals)}.${str.slice(str.length - decimals)}`;
+}

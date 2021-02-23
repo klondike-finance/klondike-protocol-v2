@@ -7,6 +7,7 @@ import UniswapPage from './pages/UniswapPage';
 import RewardPoolsPage from './pages/RewardPoolsPage';
 import FundsPage from './pages/FundsPage';
 import ManagersPage from './pages/Managers';
+import TokensPage from './pages/TokensPage';
 import styled from 'styled-components';
 import { buildIndex, getDeployments, getRegistry } from './lib/utils';
 import './App.css';
@@ -67,6 +68,7 @@ const Inner = (props: any) => {
           <Route path="/swap_pools" component={SwapPoolsPage} />
           <Route path="/funds" component={FundsPage} />
           <Route path="/managers" component={ManagersPage} />
+          <Route path="/tokens" component={TokensPage} />
           <Redirect to="/uniswap" />
         </Switch>
       </div>
