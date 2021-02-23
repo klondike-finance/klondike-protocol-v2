@@ -100,17 +100,12 @@ task("timelock:generate:migration")
     console.log("Contract:");
     console.log(getMultisig(hre));
     console.log("-----------------------");
+    await printTimelockGenerate(hre, method, eta, "Treasury", "migrate", [
+      bondManager.address,
+    ]);
     await printTimelockGenerate(
       hre,
-      "queueTransaction",
-      eta,
-      "Treasury",
-      "migrate",
-      [bondManager.address]
-    );
-    await printTimelockGenerate(
-      hre,
-      "queueTransaction",
+      method,
       eta,
       "BondManagerV1",
       "migrateOwnership",
@@ -118,7 +113,7 @@ task("timelock:generate:migration")
     );
     await printTimelockGenerate(
       hre,
-      "queueTransaction",
+      method,
       eta,
       "BondManagerV1",
       "migrateOwnership",

@@ -21,6 +21,7 @@ const TokenManager = () => {
         const bondManager = await pool.bondManager();
         const emissionManager = await pool.emissionManager();
         const allTokens = await pool.allTokens();
+        const allTokenAdmins = await pool.allTokenAdmins();
         const isInitialized = await pool.isInitialized();
         const validTokenPermissions = await pool.validTokenPermissions();
         const uniswapFactory = await pool.uniswapFactory();
@@ -28,6 +29,7 @@ const TokenManager = () => {
         const values = {
           owner,
           operator,
+          allTokenAdmins,
           bondManager,
           emissionManager,
           uniswapFactory,
