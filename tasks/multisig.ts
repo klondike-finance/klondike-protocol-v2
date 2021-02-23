@@ -9,6 +9,7 @@ import deploymentsV2Mainnet from "../tmp/deployments.mainnet.json";
 import { isProd } from "./utils";
 import { ethers } from "ethers";
 import { loadFixture } from "ethereum-waffle";
+import { findExistingContract } from "./contract";
 
 const DEFAULT_TIMELOCK_DELAY = 300;
 
@@ -79,12 +80,88 @@ task("multisig:timelock")
     console.log(calldata);
   });
 
+task("timelock:generate:migration")
+  .addParam("eta", "Time for execution in secs", undefined, types.int)
+  .setAction(async ({ eta }, hre) => {
+    const contracts = getMergedContracts(hre) as any;
+    const bondManager = contracts["BondManagerV1"];
+    const timelock = contracts["Timelock"];
+    const kbtc = contracts["KWBTC"];
+    const klon = contracts["Klon"];
+    const tokenManager = contracts["TokenManagerV1"];
+    console.log("Contract:");
+    console.log(getMultisig(hre));
+    console.log("-----------------------");
+    await printTimelockGenerate(
+      hre,
+      "queueTransaction",
+      eta,
+      "Treasury",
+      "migrate",
+      [bondManager.address]
+    );
+    await printTimelockGenerate(
+      hre,
+      "queueTransaction",
+      eta,
+      "BondManagerV1",
+      "migrateOwnership",
+      [[kbtc.address], tokenManager.address]
+    );
+    await printTimelockGenerate(
+      hre,
+      "queueTransaction",
+      eta,
+      "BondManagerV1",
+      "migrateOwnership",
+      [[klon.address], timelock.address]
+    );
+  });
+
+task("multisig:generate:distribute")
+  .addParam("fund", "Fund name", undefined, types.string)
+  .addParam("value", "Value to distribute", undefined, types.int)
+  .setAction(async ({ fund, value }, hre) => {
+    if (value === 0) {
+      console.log("Value is 0. Exiting...");
+      return;
+    }
+    const contracts = getMergedContracts(hre) as any;
+    console.log("Contract:");
+    console.log(getMultisig(hre));
+    console.log("-----------------------");
+    const contract = contracts[fund];
+    await printCallData(hre, "Jedi", "transfer", [contract.address, value]);
+    await printCallData(hre, fund, "notifyRewardAmount", [value]);
+  });
+
 function getMultisig(hre: HardhatRuntimeEnvironment) {
   const contracts = getMergedContracts(hre) as any;
   const url = isProd(hre)
     ? "https://etherscan.io"
     : "https://kovan.etherscan.io";
   return `${url}/address/${contracts["MultiSigWallet"].address}#writeContract`;
+}
+
+async function printCallData(
+  hre: HardhatRuntimeEnvironment,
+  name: string,
+  methodName: string,
+  args: any[]
+) {
+  const { calldata, address, signature } = await getCallData(
+    hre,
+    name,
+    methodName,
+    args
+  );
+  console.log("Method:");
+  console.log(`${name}#${signature}`);
+  console.log("Address:");
+  console.log(address);
+  console.log(`Data:`);
+  console.log(calldata);
+  console.log("-----------------------");
 }
 
 async function getCallData(
@@ -114,6 +191,31 @@ async function getCallData(
     .join(",")})`;
 
   return { calldata, address: contractEntry.address, signature };
+}
+
+async function printTimelockGenerate(
+  hre: HardhatRuntimeEnvironment,
+  timelockMethod: string,
+  eta: number,
+  name: string,
+  methodName: string,
+  args: any[]
+) {
+  const { calldata, address, signature } = await timelockGenerate(
+    hre,
+    timelockMethod,
+    eta,
+    name,
+    methodName,
+    args
+  );
+  console.log("Method:");
+  console.log(`${name}#${signature}`);
+  console.log("Address:");
+  console.log(address);
+  console.log(`Data:`);
+  console.log(calldata);
+  console.log("-----------------------");
 }
 
 async function timelockGenerate(
