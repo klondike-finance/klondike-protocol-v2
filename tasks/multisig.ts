@@ -2,10 +2,6 @@ import { writeFileSync } from "fs";
 import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getAllRegistryContracts, getRegistryContract } from "./registry";
-import deploymentsV1Kovan from "../tmp/deployments.v1.kovan.json";
-import deploymentsV1Mainnet from "../tmp/deployments.v1.mainnet.json";
-import deploymentsV2Kovan from "../tmp/deployments.kovan.json";
-import deploymentsV2Mainnet from "../tmp/deployments.mainnet.json";
 import { isProd } from "./utils";
 import { ethers } from "ethers";
 import { loadFixture } from "ethereum-waffle";
@@ -253,6 +249,11 @@ async function timelockGenerate(
 }
 
 function getMergedContracts(hre: HardhatRuntimeEnvironment) {
+  const deploymentsV1Kovan = require("../tmp/deployments.v1.kovan.json");
+  const deploymentsV1Mainnet = require("../tmp/deployments.v1.mainnet.json");
+  const deploymentsV2Kovan = require("../tmp/deployments.kovan.json");
+  const deploymentsV2Mainnet = require("../tmp/deployments.mainnet.json");
+
   return isProd(hre)
     ? { ...deploymentsV1Mainnet, ...deploymentsV2Mainnet }
     : { ...deploymentsV1Kovan, ...deploymentsV2Kovan };
