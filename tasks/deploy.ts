@@ -53,10 +53,10 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await importExternalIntoRegistry(hre);
   await deployTokensAndMint(hre);
   await deployTreasury(hre, 1, TREASURY_START_DATE);
-  await addV1Token(hre);
   await deploySpecificPools(hre);
   await deployBoardroom(hre);
   await setLinks(hre);
+  await addV1Token(hre);
   await transferOwnerships(hre);
 }
 
