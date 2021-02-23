@@ -668,6 +668,7 @@ describe("TokenManager", () => {
   describe("#burnSyntheticFrom", () => {
     describe("when called by BondManager and token is approved to TokenManager", () => {
       it("burns syntetic token", async () => {
+        const [_, other, another] = await ethers.getSigners();
         await addPair(8, 18);
         await manager.addToken(
           synthetic.address,
@@ -687,6 +688,25 @@ describe("TokenManager", () => {
         expect(await synthetic.balanceOf(op.address)).to.eq(
           balance.sub(amount)
         );
+        await manager.setBondManager(other.address);
+        await synthetic.approve(manager.address, amount);
+        await expect(
+          manager
+            .connect(other)
+            .burnSyntheticFrom(synthetic.address, op.address, amount)
+        )
+          .to.emit(synthetic, "Transfer")
+          .withArgs(op.address, ethers.constants.AddressZero, amount);
+        await manager.addTokenAdmin(another.address);
+        await synthetic.approve(manager.address, amount);
+        await expect(
+          manager
+            .connect(another)
+            .burnSyntheticFrom(synthetic.address, op.address, amount)
+        )
+          .to.emit(synthetic, "Transfer")
+          .withArgs(op.address, ethers.constants.AddressZero, amount);
+        await manager.setBondManager(bondManager.address);
       });
     });
     describe("when token in not approved in full", () => {
@@ -792,25 +812,85 @@ describe("TokenManager", () => {
   });
 
   describe("#mintSynthetic", () => {
-    it("mints synthetic token", async () => {
-      await addPair(8, 18);
-      await manager.addToken(
-        synthetic.address,
-        bond.address,
-        underlying.address,
-        oracle.address
-      );
-      const amount = 12345;
-      const balance = await synthetic.balanceOf(op.address);
-      await manager.setEmissionManager(op.address);
-      await expect(manager.mintSynthetic(synthetic.address, op.address, amount))
-        .to.emit(synthetic, "Transfer")
-        .withArgs(ethers.constants.AddressZero, op.address, amount);
-      expect(await synthetic.balanceOf(op.address)).to.eq(balance.add(amount));
-      await manager.setEmissionManager(emissionManager.address);
+    describe("when called by EmissionManager", () => {
+      it("mints synthetic token", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const amount = 12345;
+        const balance = await synthetic.balanceOf(op.address);
+        await manager.setEmissionManager(op.address);
+        await expect(
+          manager.mintSynthetic(synthetic.address, op.address, amount)
+        )
+          .to.emit(synthetic, "Transfer")
+          .withArgs(ethers.constants.AddressZero, op.address, amount);
+        expect(await synthetic.balanceOf(op.address)).to.eq(
+          balance.add(amount)
+        );
+        await manager.setEmissionManager(emissionManager.address);
+      });
+    });
+    describe("when called by BondManager", () => {
+      it("mints synthetic token", async () => {
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const amount = 12345;
+        const balance = await synthetic.balanceOf(op.address);
+        await manager.setBondManager(op.address);
+        await expect(
+          manager.mintSynthetic(synthetic.address, op.address, amount)
+        )
+          .to.emit(synthetic, "Transfer")
+          .withArgs(ethers.constants.AddressZero, op.address, amount);
+        expect(await synthetic.balanceOf(op.address)).to.eq(
+          balance.add(amount)
+        );
+        await manager.setBondManager(bondManager.address);
+      });
     });
 
-    describe("when called not by EmissionManager", () => {
+    describe("when called by tokenAdmin", () => {
+      it("mints synthetic token", async () => {
+        const [_, other] = await ethers.getSigners();
+        await addPair(8, 18);
+        await manager.addToken(
+          synthetic.address,
+          bond.address,
+          underlying.address,
+          oracle.address
+        );
+        const amount = 12345;
+        const balance = await synthetic.balanceOf(op.address);
+        await expect(
+          manager
+            .connect(other)
+            .mintSynthetic(synthetic.address, op.address, amount)
+        ).to.be.revertedWith("TokenManager: Must be called by token admin");
+        await manager.addTokenAdmin(other.address);
+        await expect(
+          manager
+            .connect(other)
+            .mintSynthetic(synthetic.address, op.address, amount)
+        )
+          .to.emit(synthetic, "Transfer")
+          .withArgs(ethers.constants.AddressZero, op.address, amount);
+        expect(await synthetic.balanceOf(op.address)).to.eq(
+          balance.add(amount)
+        );
+      });
+    });
+
+    describe("when called not by EmissionManager or BondManager", () => {
       it("fails", async () => {
         await addPair(8, 18);
         await manager.addToken(
