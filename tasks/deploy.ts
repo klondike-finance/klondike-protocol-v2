@@ -57,7 +57,13 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await deployBoardroom(hre);
   await setLinks(hre);
   await addV1Token(hre);
+  await deployExchange(hre);
   await transferOwnerships(hre);
+}
+
+async function deployExchange(hre: HardhatRuntimeEnvironment) {
+  const tokenManager = await findExistingContract(hre, "TokenManagerV1");
+  await contractDeploy(hre, "Exchange", "ExchangeV1", tokenManager.address);
 }
 
 async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
