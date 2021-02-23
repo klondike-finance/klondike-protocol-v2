@@ -719,9 +719,7 @@ describe("TokenManager", () => {
         await synthetic.approve(manager.address, amount);
         await expect(
           manager.burnSyntheticFrom(synthetic.address, op.address, amount)
-        ).to.be.revertedWith(
-          "TokenManager: Only BondManager can call this function"
-        );
+        ).to.be.revertedWith("TokenManager: Must be called by token admin");
       });
     });
   });
@@ -823,9 +821,7 @@ describe("TokenManager", () => {
         );
         await expect(
           manager.mintSynthetic(synthetic.address, op.address, 123)
-        ).to.be.revertedWith(
-          "TokenManager: Only EmissionManager can call this function"
-        );
+        ).to.be.revertedWith("TokenManager: Must be called by token admin");
       });
     });
   });
