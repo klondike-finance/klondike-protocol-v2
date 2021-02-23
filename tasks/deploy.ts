@@ -55,6 +55,7 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await deployBoardrooms(hre);
   await setLinks(hre);
   await addV1Token(hre);
+  await deployExchange(hre);
   await transferOwnerships(hre);
 }
 
@@ -94,6 +95,11 @@ async function transferPoolOwnership(
   console.log("Nominating new owner");
   const tx = await owner.populateTransaction.nominateNewOwner(target.address);
   await sendTransaction(hre, tx);
+}
+
+async function deployExchange(hre: HardhatRuntimeEnvironment) {
+  const tokenManager = await findExistingContract(hre, "TokenManagerV1");
+  await contractDeploy(hre, "Exchange", "ExchangeV1", tokenManager.address);
 }
 
 async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
