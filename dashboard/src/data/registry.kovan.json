@@ -62,17 +62,17 @@
     "name": "SyntheticToken",
     "args": ["DAI", "DAI", 18]
   },
-  "Droid": {
-    "registryName": "Droid",
-    "name": "SyntheticToken",
-    "address": "0x49cd26bc027dce3b8bfa5a9c27c619d37f662e5a",
-    "args": ["Droid", "Droid", 18]
-  },
   "Jedi": {
     "registryName": "Jedi",
     "name": "SyntheticToken",
-    "address": "0xa5cec71605441518561138f90dbe19e2126ce76a",
+    "address": "0x49cd26bc027dce3b8bfa5a9c27c619d37f662e5a",
     "args": ["Jedi", "Jedi", 18]
+  },
+  "Droid": {
+    "registryName": "Droid",
+    "name": "SyntheticToken",
+    "address": "0xa5cec71605441518561138f90dbe19e2126ce76a",
+    "args": ["Droid", "Droid", 18]
   },
   "TokenManagerV1": {
     "registryName": "TokenManagerV1",
@@ -92,14 +92,14 @@
     "address": "0xd44639c93094c11a9709b8c67ce52f819f838e88",
     "args": [1614106718, 86400]
   },
-  "DroidJediLockPool": {
-    "registryName": "DroidJediLockPool",
+  "JediDroidLockPool": {
+    "registryName": "JediDroidLockPool",
     "name": "LockPool",
     "address": "0x036c2edef28626560331df0c2891923186a425e3",
     "args": ["0x49cd26bc027dce3b8bfa5a9c27c619d37f662e5a", "0xa5cec71605441518561138f90dbe19e2126ce76a", 1614106718]
   },
-  "KlonDroidSwapPool": {
-    "registryName": "KlonDroidSwapPool",
+  "KlonJediSwapPool": {
+    "registryName": "KlonJediSwapPool",
     "name": "SwapPool",
     "address": "0xbb6c284492523063e6d7c3fa2089e492fa39ac92",
     "args": [
@@ -109,12 +109,12 @@
       1616698718
     ]
   },
-  "DroidDAILPJediPool": {
-    "registryName": "DroidDAILPJediPool",
+  "JediDAILPDroidPool": {
+    "registryName": "JediDAILPDroidPool",
     "name": "RewardsPool",
     "address": "0xa7ef1ba0398663b67ddf1e30d498217e483d869f",
     "args": [
-      "DroidDAILPJediPool",
+      "JediDAILPDroidPool",
       "0x32c2b4cd91a81ec475f75857faf814d3459be1f4",
       "0x32c2b4cd91a81ec475f75857faf814d3459be1f4",
       "0xa5cec71605441518561138f90dbe19e2126ce76a",
@@ -122,12 +122,12 @@
       604800
     ]
   },
-  "JediDAILPJediPool": {
-    "registryName": "JediDAILPJediPool",
+  "DroidDAILPDroidPool": {
+    "registryName": "DroidDAILPDroidPool",
     "name": "RewardsPool",
     "address": "0x1bc764edbbd12a362a8cf73c4a15b789aca5e00c",
     "args": [
-      "JediDAILPJediPool",
+      "DroidDAILPDroidPool",
       "0x32c2b4cd91a81ec475f75857faf814d3459be1f4",
       "0x32c2b4cd91a81ec475f75857faf814d3459be1f4",
       "0xa5cec71605441518561138f90dbe19e2126ce76a",
@@ -135,12 +135,12 @@
       604800
     ]
   },
-  "KWBTCWBTCLPJediPool": {
-    "registryName": "KWBTCWBTCLPJediPool",
+  "KWBTCWBTCLPDroidPool": {
+    "registryName": "KWBTCWBTCLPDroidPool",
     "name": "RewardsPool",
     "address": "0x1b1ce45682900a5b5fdd255c7a3161c2ab3b66ca",
     "args": [
-      "KBTCWBTCLPJediPool",
+      "KBTCWBTCLPDroidPool",
       "0x32c2b4cd91a81ec475f75857faf814d3459be1f4",
       "0x32c2b4cd91a81ec475f75857faf814d3459be1f4",
       "0xa5cec71605441518561138f90dbe19e2126ce76a",

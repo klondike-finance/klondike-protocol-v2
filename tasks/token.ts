@@ -61,12 +61,19 @@ task("token:deploy:triple", "deploy token, bond and oracle")
   )
   .setAction(
     async (
-      { synName, bondName, underlying, synLiquidity, synUniswapLiquidity, undUniswapLiquidity },
+      {
+        synName,
+        bondName,
+        underlying,
+        synLiquidity,
+        synUniswapLiquidity,
+        undUniswapLiquidity,
+      },
       hre
     ) => {
       const [op] = await hre.ethers.getSigners();
       await tokenDeploy(hre, synName, synName);
-      await mint(hre, synName, op.address, BigNumber.from(synLiquidity))
+      await mint(hre, synName, op.address, BigNumber.from(synLiquidity));
       await tokenDeploy(hre, bondName, bondName);
       await addLiquidity(
         hre,
@@ -174,20 +181,20 @@ export async function mint(
 //     18
 //   );
 
-//   const droid = await contractDeploy(
-//     hre,
-//     "SyntheticToken",
-//     "Droid",
-//     "Droid",
-//     "Droid",
-//     18
-//   );
 //   const jedi = await contractDeploy(
 //     hre,
 //     "SyntheticToken",
 //     "Jedi",
 //     "Jedi",
 //     "Jedi",
+//     18
+//   );
+//   const droid = await contractDeploy(
+//     hre,
+//     "SyntheticToken",
+//     "Droid",
+//     "Droid",
+//     "Droid",
 //     18
 //   );
 
@@ -210,7 +217,7 @@ export async function mint(
 //   }
 //   console.log("Deployed 5 tokens");
 
-//   return { synthetic, bond, underlying, droid, jedi, klon };
+//   return { synthetic, bond, underlying, jedi, droid, klon };
 // }
 
 export function deriveSyntheticName(underlyingName: string) {
