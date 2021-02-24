@@ -134,7 +134,7 @@ task("multisig:generate:distribute")
     console.log(getMultisig(hre));
     console.log("-----------------------");
     const contract = contracts[fund];
-    await printCallData(hre, "Jedi", "transfer", [contract.address, value]);
+    await printCallData(hre, "Droid", "transfer", [contract.address, value]);
     await printCallData(hre, fund, "notifyRewardAmount", [value]);
   });
 

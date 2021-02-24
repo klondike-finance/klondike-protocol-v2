@@ -13,7 +13,7 @@ const LockPool = () => {
   useEffect(() => {
     (async () => {
       if (!provider || !deployments) return;
-      const { address, abi } = deployments['DroidJediLockPool'];
+      const { address, abi } = deployments['JediDroidLockPool'];
       const pool = new ethers.Contract(address, abi, provider);
       try {
         const owner = await pool.owner();
@@ -59,8 +59,8 @@ const LockPool = () => {
     <Grid item xs={12} md={6} lg={6}>
       <Card>
         <CardHeader
-          title={'DroidJedi Lock Pool'}
-          subheader={deployments && <Entry v={deployments['DroidJediLockPool'].address} />}
+          title={'JediDroid Lock Pool'}
+          subheader={deployments && <Entry v={deployments['JediDroidLockPool'].address} />}
         />
         <CardContent>
           {error && <Alert severity="error">{`Error fetching pair data: ${error}`}</Alert>}
