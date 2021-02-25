@@ -1,8 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.6.6;
 
+import "./ISmelter.sol";
+
 /// Token manager as seen by other managers
-interface ITokenManager {
+interface ITokenManager is ISmelter {
     /// A set of synthetic tokens under management
     /// @dev Deleted tokens are still present in the array but with address(0)
     function allTokens() external view returns (address[] memory);
@@ -45,26 +47,6 @@ interface ITokenManager {
     /// Updates Oracle for the synthetic asset
     /// @param syntheticTokenAddress The address of the synthetic token
     function updateOracle(address syntheticTokenAddress) external;
-
-    /// Burn SyntheticToken
-    /// @param syntheticTokenAddress The address of the synthetic token
-    /// @param owner Owner of the tokens to burn
-    /// @param amount Amount to burn
-    function burnSyntheticFrom(
-        address syntheticTokenAddress,
-        address owner,
-        uint256 amount
-    ) external;
-
-    /// Mints synthetic token
-    /// @param syntheticTokenAddress The address of the synthetic token
-    /// @param receiver Address to receive minted token
-    /// @param amount Amount to mint
-    function mintSynthetic(
-        address syntheticTokenAddress,
-        address receiver,
-        uint256 amount
-    ) external;
 
     /// Get one synthetic unit
     /// @param syntheticTokenAddress The address of the synthetic token
