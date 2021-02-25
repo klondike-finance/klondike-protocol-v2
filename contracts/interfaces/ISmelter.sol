@@ -22,4 +22,8 @@ interface ISmelter {
         address receiver,
         uint256 amount
     ) external;
+
+    /// Check if address is token admin
+    /// @param admin - address to check
+    function isTokenAdmin(address admin) external view returns (bool);
 }
