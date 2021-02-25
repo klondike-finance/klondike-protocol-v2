@@ -18,6 +18,10 @@ contract TokenManagerMock is ITokenManager {
         return false;
     }
 
+    function isTokenAdmin(address) external view override returns (bool) {
+        return false;
+    }
+
     function underlyingToken(address) external view override returns (address) {
         return address(0);
     }
