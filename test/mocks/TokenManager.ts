@@ -11,6 +11,7 @@ describe("TokenManagerMock", () => {
       await t.allTokens();
       await t.addToken(ethers.constants.AddressZero);
       await t.isManagedToken(ethers.constants.AddressZero);
+      await t.isTokenAdmin(ethers.constants.AddressZero);
       await t.underlyingToken(ethers.constants.AddressZero);
       await t.averagePrice(ethers.constants.AddressZero, 0);
       await t.currentPrice(ethers.constants.AddressZero, 0);

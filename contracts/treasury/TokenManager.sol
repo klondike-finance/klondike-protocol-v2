@@ -120,7 +120,7 @@ contract TokenManager is ITokenManager, Operatable, Migratable {
 
     /// Check if address is token admin
     /// @param admin - address to check
-    function isTokenAdmin(address admin) public view returns (bool) {
+    function isTokenAdmin(address admin) public view override returns (bool) {
         for (uint256 i = 0; i < tokenAdmins.length; i++) {
             if (tokenAdmins[i] == admin) {
                 return true;
