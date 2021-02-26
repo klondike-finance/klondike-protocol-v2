@@ -33,6 +33,25 @@ const config: HardhatUserConfig = {
           "0x0000000000000000000000000000000000000000000000000000000000000000",
       ],
     },
+    sokol: {
+      url: "https://sokol.poa.network",
+      chainId: 77,
+      accounts: [
+        process.env["TEST_OPERATOR_PK"] ||
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+      ],
+    },
+    // export interface HttpNetworkUserConfig {
+    //   chainId?: number;
+    //   from?: string;
+    //   gas?: "auto" | number;
+    //   gasPrice?: "auto" | number;
+    //   gasMultiplier?: number;
+    //   url?: string;
+    //   timeout?: number;
+    //   httpHeaders?: { [name: string]: string };
+    //   accounts?: HttpNetworkAccountsUserConfig;
+    // }
   },
 
   solidity: {

@@ -9,6 +9,7 @@
     "compile": "hardhat compile",
     "coverage": "hardhat coverage",
     "deploy:kovan": "rm -rf ./artifacts && hardhat compile && hardhat deploy --network kovan",
+    "deploy:sokol": "rm -rf ./artifacts && hardhat compile && hardhat deploy:sidechain --network sokol",
     "verify:kovan": "rm -rf ./artifacts && hardhat compile && hardhat contract:verify:all --network kovan",
     "front:kovan": "hardhat abi:generate --network kovan",
     "deploy:mainnet": "rm -rf ./artifacts && hardhat compile && hardhat deploy --network mainnet",

@@ -52,6 +52,7 @@ contract Exchange is Operatable {
         if (address(oraclePair.oracle0) == address(0)) {
             return ETH;
         }
+        
         (,int price0,,,) = oraclePair.oracle0.latestRoundData(); // A per USD
         (,int price1,,,) = oraclePair.oracle1.latestRoundData(); // B per USD
         return uint256(price1).mul(ETH).div(uint256(price0));
