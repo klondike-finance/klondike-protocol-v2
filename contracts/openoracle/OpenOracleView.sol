@@ -26,12 +26,9 @@ contract OpenOracleView is Operatable {
      * @notice Construct a view given the oracle backing address and the list of sources
      * @dev According to the protocol, Views must be immutable to be considered conforming.
      * @param data_ The address of the oracle data contract which is backing the view
-     * @param sources_ The list of source addresses to include in the aggregate value
      */
-    constructor(OpenOraclePriceData data_, address[] memory sources_) public {
-        require(sources_.length > 0, "Must initialize with sources");
+    constructor(OpenOraclePriceData data_) public {
         priceData = data_;
-        sources = sources_;
     }
 
     function getPrice(address tokenA, address tokenB) public view returns (uint256) {
