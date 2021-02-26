@@ -1,19 +1,15 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.6.6;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
-import "./access/Operatable.sol";
 import "./interfaces/ISmelter.sol";
-import "./libraries/UniswapLibrary.sol";
 import "./SyntheticToken.sol";
+import "./openoracle/OpenOracleView.sol";
 
 contract Exchange is Operatable {
     uint256 constant ETH = 10**18;
     using SafeMath for uint256;
     struct TokenData {
-        AggregatorV3Interface oracle0;
-        AggregatorV3Interface oracle1;
+        OpenOracleView oracle;
         ISmelter smelter;
     }
     struct TokenPair {
@@ -24,11 +20,14 @@ contract Exchange is Operatable {
     mapping(address => mapping(address => TokenData)) public tokenData;
     TokenPair[] public tokens;
 
-    function addPair(address tokenA, address tokenB, address smelter, address oracleA, address oracleB) public onlyOperator {
-        (address token0, address token1) = UniswapLibrary.sortTokens(tokenA, tokenB);
+    function addPair(address tokenA, address tokenB, address smelter, address oracle) public onlyOperator {
+        (address token0, address token1) = tokenA < tokenB
+            ? (tokenA, tokenB)
+            : (tokenB, tokenA);
         tokens.push(TokenPair({token0: SyntheticToken(token0), token1: SyntheticToken(token1)}));
-        tokenData[tokenA][tokenB] = TokenData({oracle0: AggregatorV3Interface(oracleA), oracle1: AggregatorV3Interface(oracleB), smelter: ISmelter(smelter)});
-        tokenData[tokenB][tokenA] = TokenData({oracle0: AggregatorV3Interface(oracleB), oracle1: AggregatorV3Interface(oracleA), smelter: ISmelter(smelter)});
+        TokenData memory tokenDataItem = TokenData({oracle: OpenOracleView(oracle), smelter: ISmelter(smelter)});
+        tokenData[tokenA][tokenB] = tokenDataItem;
+        tokenData[tokenB][tokenA] = tokenDataItem;
     }
 
     function validPermissions() public view returns (bool) {
@@ -49,13 +48,10 @@ contract Exchange is Operatable {
 
     function getPriceUnitAPerB(address tokenA, address tokenB) public view returns (uint256) {
         TokenData storage oraclePair = tokenData[tokenA][tokenB];
-        if (address(oraclePair.oracle0) == address(0)) {
+        if (address(oraclePair.oracle) == address(0)) {
             return ETH;
         }
-        
-        (,int price0,,,) = oraclePair.oracle0.latestRoundData(); // A per USD
-        (,int price1,,,) = oraclePair.oracle1.latestRoundData(); // B per USD
-        return uint256(price1).mul(ETH).div(uint256(price0));
+        return oraclePair.oracle.getPrice(tokenA, tokenB);
     }
 
     function swap(address fromToken, address toToken, uint256 amountIn) public {

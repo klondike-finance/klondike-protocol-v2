@@ -120,6 +120,7 @@ async function deploySideChain(hre: HardhatRuntimeEnvironment) {
     priceData.address
   );
   await contractDeploy(hre, "Exchange", "ExchangeV1");
+  await contractDeploy(hre, "Smelter", "SmelterV1");
 }
 
 async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
