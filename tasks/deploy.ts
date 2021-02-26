@@ -33,6 +33,12 @@ task("deploy", "Deploys the system").setAction(async (_, hre) => {
   await deploy(hre);
 });
 
+task("deploy:sidechain", "Deploys the sidechain system").setAction(
+  async (_, hre) => {
+    await deploySideChain(hre);
+  }
+);
+
 function daiAddress(hre: HardhatRuntimeEnvironment) {
   return isProd(hre)
     ? "0x6b175474e89094c44da98b954eedeac495271d0f"
@@ -98,8 +104,22 @@ async function transferPoolOwnership(
 }
 
 async function deployExchange(hre: HardhatRuntimeEnvironment) {
-  const tokenManager = await findExistingContract(hre, "TokenManagerV1");
-  await contractDeploy(hre, "Exchange", "ExchangeV1", tokenManager.address);
+  await contractDeploy(hre, "Exchange", "ExchangeV1");
+}
+
+async function deploySideChain(hre: HardhatRuntimeEnvironment) {
+  const priceData = await contractDeploy(
+    hre,
+    "OpenOraclePriceData",
+    "OpenOraclePriceDataV1"
+  );
+  await contractDeploy(
+    hre,
+    "OpenOracleView",
+    "OpenOracleViewV1",
+    priceData.address
+  );
+  await contractDeploy(hre, "Exchange", "ExchangeV1");
 }
 
 async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
