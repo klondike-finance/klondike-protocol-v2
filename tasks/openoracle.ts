@@ -1,53 +1,52 @@
+import { Reporter } from "open-oracle-reporter";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { BigNumber } from "ethers";
-import { ParamType } from "ethers/lib/utils";
-import { task } from "hardhat/config";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { task, types } from "hardhat/config";
+import {
+  HardhatNetworkAccountConfig,
+  HardhatRuntimeEnvironment,
+} from "hardhat/types";
 import { findExistingContract } from "./contract";
 import { getRegistryContract } from "./registry";
 import { sendTransaction } from "./utils";
 
 task("openoracle:update:raw", "Deploys an oracle")
-  .addParam("tokenA", "First token name or address in the pair")
-  .addParam("tokenB", "Second token name or address in the pair")
-  .addParam("price", "price to push (normalized to 10^18)")
-  .setAction(async ({ tokenA, tokenB, price }, hre) => {
-    await openoracleUpdateRaw(hre, tokenA, tokenB, price);
+  .addParam("token", "Token name")
+  .addParam(
+    "price",
+    "price (/USD) to push (normalized to 10^6)",
+    undefined,
+    types.float
+  )
+  .setAction(async ({ token, price }, hre) => {
+    await openoracleUpdateRaw(hre, token, price);
   });
 
 async function openoracleUpdateRaw(
   hre: HardhatRuntimeEnvironment,
-  tokenAName: string,
-  tokenBName: string,
-  priceStr: string
+  token: string,
+  price: number
 ) {
-  const price = BigNumber.from(priceStr);
-  const tokenA = (
-    await getRegistryContract(hre, tokenAName)
-  ).address.toLowerCase();
-  const tokenB = (
-    await getRegistryContract(hre, tokenBName)
-  ).address.toLowerCase();
-  const [token0, token1] =
-    tokenA > tokenB ? [tokenB, tokenA] : [tokenA, tokenB];
-  const key = hre.ethers.utils.defaultAbiCoder.encode(
-    [{ type: "address" } as any, { type: "address" } as any],
-    [token0, token1]
-  );
-  const message = hre.ethers.utils.defaultAbiCoder.encode(
-    [
-      { type: "string" } as any,
-      { type: "uint64" } as any,
-      { type: "string" } as any,
-      { type: "uint64" } as any,
-    ],
-    ["prices", Math.floor(new Date().getTime() / 1000), key, priceStr]
-  );
-  SignerWithAddress;
-  const bytes = hre.ethers.utils.arrayify(message);
-  const hash = hre.ethers.utils.keccak256(bytes);
-  const [operator] = await hre.ethers.getSigners();
-  const signature = await operator.signMessage(hash);
+  const message = Reporter.encode(
+    "prices",
+    Math.floor(new Date().getTime() / 1000),
+    {
+      [token]: price,
+    }
+  )[0];
+
+  //   const message = hre.ethers.utils.defaultAbiCoder.encode(
+  //     [
+  //       { type: "string" } as any,
+  //       { type: "uint64" } as any,
+  //       { type: "string" } as any,
+  //       { type: "uint64" } as any,
+  //     ],
+  //     ["prices", Math.floor(new Date().getTime() / 1000), key, priceStr]
+  //   );
+  const pk = (hre.network.config.accounts as any[])[0];
+
+  const { signature } = Reporter.sign(message, pk)[0];
   const openoraclePriceData = await findExistingContract(
     hre,
     "OpenOraclePriceDataV1"
@@ -56,7 +55,7 @@ async function openoracleUpdateRaw(
     message,
     signature
   );
-  console.log("Sending tx with message:", message);
+  console.log("Message:", message);
   console.log("Signature:", signature);
 
   await sendTransaction(hre, tx);
