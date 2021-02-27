@@ -85,6 +85,22 @@ async function deploySideChain(hre: HardhatRuntimeEnvironment) {
   );
   await contractDeploy(hre, "Exchange", "ExchangeV1");
   await contractDeploy(hre, "Smelter", "SmelterV1");
+  await contractDeploy(
+    hre,
+    "SyntheticToken",
+    "XDAIWBTC",
+    "XDAIWBTC",
+    "XDAIWBTC",
+    18
+  );
+  await contractDeploy(
+    hre,
+    "SyntheticToken",
+    "XDAIUSD",
+    "XDAIUSD",
+    "XDAIUSD",
+    18
+  );
 }
 
 async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
