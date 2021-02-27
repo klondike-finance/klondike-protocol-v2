@@ -11,6 +11,7 @@ import "./tasks/deploy";
 import "./tasks/abi";
 import "./tasks/multisig";
 import "./tasks/cron";
+import "./tasks/openoracle";
 
 dotenv();
 
