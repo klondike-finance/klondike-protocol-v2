@@ -42,6 +42,7 @@
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "axios": "^0.21.1",
     "dotenv": "^8.2.0",
+    "open-oracle-reporter": "^1.0.2",
     "synthetix": "^2.37.0"
   }
 }

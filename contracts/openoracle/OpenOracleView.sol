@@ -35,7 +35,7 @@ contract OpenOracleView is Operatable {
         (address token0, address token1) = tokenA < tokenB
             ? (tokenA, tokenB)
             : (tokenB, tokenA);
-        string memory key = string(abi.encodePacked(token0, token1));
+        string memory key = string(abi.encode(token0, token1));
         uint[] memory values = new uint[](sources.length);
         uint j;
         for (uint i = 0; i < sources.length; i++) {

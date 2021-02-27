@@ -9,6 +9,7 @@ import "./tasks/oracle";
 import "./tasks/deploy";
 import "./tasks/abi";
 import "./tasks/multisig";
+import "./tasks/openoracle";
 
 dotenv();
 
