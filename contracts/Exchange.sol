@@ -25,6 +25,7 @@ contract Exchange is Operatable, Migratable {
     function addTokenPair(address mintableToken, address unmintableToken, string memory oracleTicker, address smelter) public onlyOperator {
         tokens.push(mintableToken);
         TokenData memory tokenDataItem = TokenData({oracleTicker: oracleTicker, smelter: ISmelter(smelter)});
+        tokenData[mintableToken] = tokenDataItem;
         if (unmintableToken != address(0)) {
             unmintableTokens[mintableToken] = unmintableToken;
             mintableTokens[unmintableToken] = mintableToken;
