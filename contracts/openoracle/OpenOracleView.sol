@@ -2,6 +2,7 @@
 
 pragma solidity ^0.6.6;
 
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./OpenOraclePriceData.sol";
 import "../access/Operatable.sol";
 
@@ -10,6 +11,7 @@ import "../access/Operatable.sol";
  * @author Compound Labs, Inc.
  */
 contract OpenOracleView is Operatable {
+    using SafeMath for uint256;
     /**
      * @notice The Oracle Data Contract backing this View
      */
@@ -31,15 +33,21 @@ contract OpenOracleView is Operatable {
         priceData = data_;
     }
 
-    function getPrice(address tokenA, address tokenB) public view returns (uint256) {
-        (address token0, address token1) = tokenA < tokenB
-            ? (tokenA, tokenB)
-            : (tokenB, tokenA);
-        string memory key = string(abi.encode(token0, token1));
+    /// Normalized to 10^18
+    function getUnitPriceAPerB(string memory tokenA, string memory tokenB) public view returns (uint256) {
+        uint256 priceA = getUSDPrice(tokenA);
+        uint256 priceB = getUSDPrice(tokenB);
+        require(priceA != 0, "OpenOracleView: no data for token A");
+        require(priceB != 0, "OpenOracleView: no data for token B");
+        return priceA.mul(1 ether).div(priceB);
+    }
+
+    /// Normalize to 10^6
+    function getUSDPrice(string memory token) public view returns (uint256) {
         uint[] memory values = new uint[](sources.length);
         uint j;
         for (uint i = 0; i < sources.length; i++) {
-            uint256 price = priceData.getPrice(sources[i], key);
+            uint256 price = priceData.getPrice(sources[i], token);
             if (price != 0) {
                 values[j] = price;
                 j++;
@@ -70,7 +78,7 @@ contract OpenOracleView is Operatable {
         emit SourceDeleted(operator, source);
     }
 
-    function _sort(uint[] memory data) internal pure returns(uint[] memory) {
+    function sort(uint[] memory data) public pure returns(uint[] memory) {
        _quickSort(data, int(0), int(data.length - 1));
        return data;
     }

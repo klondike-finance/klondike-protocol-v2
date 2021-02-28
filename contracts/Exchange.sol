@@ -3,53 +3,38 @@ pragma solidity =0.6.6;
 
 import "./interfaces/ISmelter.sol";
 import "./SyntheticToken.sol";
+import "./access/Migratable.sol";
 import "./openoracle/OpenOracleView.sol";
 
-contract Exchange is Operatable {
-    uint256 constant ETH = 10**18;
+contract Exchange is Operatable, Migratable {
     using SafeMath for uint256;
     struct TokenData {
-        OpenOracleView oracle;
+        string oracleTicker;
         ISmelter smelter;
     }
-    struct TokenPair {
-        SyntheticToken token0;
-        SyntheticToken token1;   
-    }
-    mapping(address => mapping(address => TokenData)) public tokenData;
-    mapping(address => SyntheticToken) public mintableTokens;
-    mapping(address => SyntheticToken) public unmintableTokens;
-    TokenPair[] public tokens;
+    mapping(address => TokenData) public tokenData;
+    mapping(address => address) public mintableTokens;
+    mapping(address => address) public unmintableTokens;
+    OpenOracleView public oracle;
+    address[] public tokens;
 
-    function addPair(address tokenA, address tokenB, address smelter, address oracle) public onlyOperator {
-        addTuple(tokenA, tokenB, address(0), address(0), smelter, oracle);
+    function addToken(address mintableToken, string memory oracleTicker, address smelter) public onlyOperator {
+        addTokenPair(mintableToken, address(0), oracleTicker, smelter);
     }
 
-    function addTuple(address mintableTokenA, address mintableTokenB, address unmintableTokenA, address unmintableTokenB, address smelter, address oracle) public onlyOperator {
-        (address token0, address token1) = mintableTokenA < mintableTokenB
-            ? (mintableTokenA, mintableTokenB)
-            : (mintableTokenB, mintableTokenA);
-        tokens.push(TokenPair({token0: SyntheticToken(token0), token1: SyntheticToken(token1)}));
-        TokenData memory tokenDataItem = TokenData({oracle: OpenOracleView(oracle), smelter: ISmelter(smelter)});
-        tokenData[token0][token1] = tokenDataItem;
-        tokenData[token1][token0] = tokenDataItem;
-        if (unmintableTokenA != address(0)) {
-            unmintableTokens[mintableTokenA] = SyntheticToken(unmintableTokenA);
-            mintableTokens[unmintableTokenA] = SyntheticToken(mintableTokenA);
-        }
-        if (unmintableTokenB != address(0)) {
-            unmintableTokens[mintableTokenB] = SyntheticToken(unmintableTokenB);
-            mintableTokens[unmintableTokenB] = SyntheticToken(mintableTokenB);
+    function addTokenPair(address mintableToken, address unmintableToken, string memory oracleTicker, address smelter) public onlyOperator {
+        tokens.push(mintableToken);
+        TokenData memory tokenDataItem = TokenData({oracleTicker: oracleTicker, smelter: ISmelter(smelter)});
+        if (unmintableToken != address(0)) {
+            unmintableTokens[mintableToken] = unmintableToken;
+            mintableTokens[unmintableToken] = mintableToken;
         }
     }
 
     function validPermissions() public view returns (bool) {
         for (uint i = 0; i < tokens.length; i++) {
-            ISmelter smelter = tokenData[address(tokens[i].token0)][address(tokens[i].token1)].smelter;
-            if (tokens[i].token0.owner() != address(smelter)) {
-                return false;
-            }
-            if (tokens[i].token1.owner() != address(smelter)) {
+            ISmelter smelter = tokenData[tokens[i]].smelter;
+            if (SyntheticToken(tokens[i]).owner() != address(smelter)) {
                 return false;
             }
             if (!smelter.isTokenAdmin(address(this))) {
@@ -59,12 +44,11 @@ contract Exchange is Operatable {
         return true;
     }
 
-    function getPriceUnitAPerB(address tokenA, address tokenB) public view returns (uint256) {
-        TokenData storage oraclePair = tokenData[tokenA][tokenB];
-        if (address(oraclePair.oracle) == address(0)) {
-            return ETH;
-        }
-        return oraclePair.oracle.getPrice(tokenA, tokenB);
+    // throws if ticker doesn't exist
+    function getUnitPriceAPerB(address tokenA, address tokenB) public view returns (uint256) {
+        string storage oracleTickerA = tokenData[tokenA].oracleTicker;
+        string storage oracleTickerB = tokenData[tokenB].oracleTicker;
+        return oracle.getUnitPriceAPerB(oracleTickerA, oracleTickerB);
     }
 
     function isMintable(address token) public view returns (bool) {
@@ -82,13 +66,15 @@ contract Exchange is Operatable {
         require(mintableFromToken != address(0), "Exchange: fromToken isn't managed");
         require(mintableToToken != address(0), "Exchange: toToken isn't managed");
         address unmintableToToken = address(unmintableTokens[mintableToToken]);
-        ISmelter smelter = tokenData[mintableFromToken][mintableToToken].smelter;
-        require(address(smelter) != address(0), "Exchange: Tokens are not managed");
+        ISmelter mintableFromSmelter = tokenData[mintableFromToken].smelter;
+        ISmelter mintableToSmelter = tokenData[mintableToToken].smelter;
+        require(address(mintableFromSmelter) != address(0), "Exchange: FromToken is not managed");
+        require(address(mintableToSmelter) != address(0), "Exchange: ToToken is not managed");
 
-        uint256 price = getPriceUnitAPerB(mintableToToken, mintableFromToken);
-        uint256 amountOut = price.mul(amountIn).div(ETH);
+        uint256 price = getUnitPriceAPerB(mintableToToken, mintableFromToken);
+        uint256 amountOut = price.mul(amountIn).div(1 ether);
         if (isMintable(fromToken)) {
-            smelter.burnSyntheticFrom(fromToken, msg.sender, amountIn);    
+            mintableFromSmelter.burnSyntheticFrom(fromToken, msg.sender, amountIn);    
         } else {
             SyntheticToken(fromToken).transferFrom(msg.sender, address(this), amountIn);
         }
@@ -98,9 +84,9 @@ contract Exchange is Operatable {
             uint256 transferAmount = balance < amountOut ? balance : amountOut;
             token.transfer(msg.sender, transferAmount);
             amountOut = amountOut.sub(transferAmount);
-            if (amountOut > 0) {
-                smelter.mintSynthetic(mintableToToken, msg.sender, amountOut);                
-            }
+        }
+        if (amountOut > 0) {
+            mintableToSmelter.mintSynthetic(mintableToToken, msg.sender, amountOut);                
         }
         
         emit Swap(fromToken, toToken, amountIn, amountOut);
