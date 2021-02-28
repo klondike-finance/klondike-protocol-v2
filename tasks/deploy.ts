@@ -113,15 +113,15 @@ async function deploySideChain(hre: HardhatRuntimeEnvironment) {
     "OpenOraclePriceData",
     "OpenOraclePriceDataV1"
   );
-  await contractDeploy(
+  const oracle = await contractDeploy(
     hre,
     "OpenOracleView",
     "OpenOracleViewV1",
     priceData.address
   );
-  await contractDeploy(hre, "Exchange", "ExchangeV1");
-  await contractDeploy(hre, "Smelter", "SmelterV1");
-  await contractDeploy(
+  const exchange = await contractDeploy(hre, "Exchange", "ExchangeV1");
+  const smelter = await contractDeploy(hre, "Smelter", "SmelterV1");
+  const xdaiwbtc = await contractDeploy(
     hre,
     "SyntheticToken",
     "XDAIWBTC",
@@ -129,7 +129,7 @@ async function deploySideChain(hre: HardhatRuntimeEnvironment) {
     "XDAIWBTC",
     18
   );
-  await contractDeploy(
+  const xdaiusd = await contractDeploy(
     hre,
     "SyntheticToken",
     "XDAIUSD",
@@ -137,6 +137,35 @@ async function deploySideChain(hre: HardhatRuntimeEnvironment) {
     "XDAIUSD",
     18
   );
+  const xdaikwbtc = await findExistingContract(hre, "XDAIKWBTC");
+  const xdaikusd = await findExistingContract(hre, "XDAIKUSD");
+  const tokens: string[] = await exchange.allTokens();
+  console.log("Adding WBTC to exchange");
+  if (tokens.includes(xdaiwbtc.address)) {
+    console.log("WBTC is already added, skipping...");
+  } else {
+    let tx = await exchange.populateTransaction.addTokenPair(
+      xdaiwbtc.address,
+      xdaikwbtc.address,
+      "BTC",
+      smelter.address
+    );
+    await sendTransaction(hre, tx);
+  }
+  console.log("Adding USD to exchange");
+  if (tokens.includes(xdaiusd.address)) {
+    console.log("USD is already added, skipping...");
+  } else {
+    let tx = await exchange.populateTransaction.addTokenPair(
+      xdaiusd.address,
+      xdaikusd.address,
+      "DAI",
+      smelter.address
+    );
+    await sendTransaction(hre, tx);
+  }
+  await transferFullOwnership(hre, "XDAIUSD", "SmelterV1");
+  await transferFullOwnership(hre, "XDAIWBTC", "SmelterV1");
 }
 
 async function transferOwnerships(hre: HardhatRuntimeEnvironment) {

@@ -18,6 +18,10 @@ contract Exchange is Operatable, Migratable {
     OpenOracleView public oracle;
     address[] public tokens;
 
+    function allTokens() public view returns (address[] memory) {
+        return tokens;
+    }
+
     function addToken(
         address mintableToken,
         string memory oracleTicker,
