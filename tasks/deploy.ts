@@ -117,7 +117,9 @@ async function deploySideChain(hre: HardhatRuntimeEnvironment) {
     await sendTransaction(hre, tx);
   }
   console.log("Adding USD to exchange");
-  if (tokens.includes(xdaiusd.address)) {
+  if (
+    tokens.map((x) => x.toLowerCase()).includes(xdaiusd.address.toLowerCase())
+  ) {
     console.log("USD is already added, skipping...");
   } else {
     let tx = await exchange.populateTransaction.addTokenPair(
@@ -130,6 +132,23 @@ async function deploySideChain(hre: HardhatRuntimeEnvironment) {
   }
   await transferFullOwnership(hre, "XDAIUSD", "SmelterV1");
   await transferFullOwnership(hre, "XDAIWBTC", "SmelterV1");
+  console.log("Setting exchange as token admin");
+
+  const isAdmin = await smelter.isTokenAdmin(exchange.address);
+  if (isAdmin) {
+    console.log("Already admin, skipping...");
+  } else {
+    let tx = await smelter.populateTransaction.addTokenAdmin(exchange.address);
+    await sendTransaction(hre, tx);
+  }
+  console.log("Adding source to oracle");
+  const [op] = await hre.ethers.getSigners();
+  let tx = await oracle.populateTransaction.addSource(op.address);
+  await sendTransaction(hre, tx);
+
+  console.log("Setting oracle for exchange");
+  tx = await exchange.populateTransaction.setOracle(oracle.address);
+  await sendTransaction(hre, tx);
 }
 
 async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
