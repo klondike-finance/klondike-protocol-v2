@@ -30,6 +30,10 @@ contract Exchange is Operatable, Migratable {
         addTokenPair(mintableToken, address(0), oracleTicker, smelter);
     }
 
+    function setOracle(address _oracle) public onlyOperator {
+        oracle = OpenOracleView(_oracle);
+    }
+
     function addTokenPair(
         address mintableToken,
         address unmintableToken,
@@ -126,9 +130,12 @@ contract Exchange is Operatable, Migratable {
         if (unmintableToToken != address(0)) {
             SyntheticToken token = SyntheticToken(unmintableToToken);
             uint256 balance = token.balanceOf(address(this));
-            uint256 transferAmount = balance < amountOut ? balance : amountOut;
-            token.transfer(msg.sender, transferAmount);
-            amountOut = amountOut.sub(transferAmount);
+            if (balance > 0) {
+                uint256 transferAmount =
+                    balance < amountOut ? balance : amountOut;
+                token.transfer(msg.sender, transferAmount);
+                amountOut = amountOut.sub(transferAmount);
+            }
         }
         if (amountOut > 0) {
             mintableToSmelter.mintSynthetic(
