@@ -1,6 +1,6 @@
 import { BigNumber, Contract, ethers } from "ethers";
 import { task, types } from "hardhat/config";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { HardhatRuntimeEnvironment, HDAccountsUserConfig } from "hardhat/types";
 import { contractDeploy, findExistingContract } from "./contract";
 import { oracleDeploy } from "./oracle";
 import { getRegistryContract } from "./registry";
@@ -30,6 +30,56 @@ task("token:mint", "Mints to an address")
   )
   .setAction(async ({ name, to, value, force }, hre) => {
     await mint(hre, name, to, BigNumber.from(value), force);
+  });
+
+task("token:approve", "Approves spending")
+  .addParam(
+    "name",
+    "The name of the token in the registry or deployment address",
+    undefined,
+    types.string
+  )
+  .addParam("spender", "Address of the spender", undefined, types.string)
+  .addParam("value", "Value to be minted", "0", types.string)
+  .setAction(async ({ name, spender, value }, hre) => {
+    await tokenApprove(hre, name, spender, BigNumber.from(value));
+  });
+
+task("token:transfer", "Transfers token")
+  .addParam(
+    "name",
+    "The name of the token in the registry or deployment address",
+    undefined,
+    types.string
+  )
+  .addParam("spender", "Address of the spender", undefined, types.string)
+  .addParam("value", "Value to be minted", "0", types.string)
+  .setAction(async ({ name, spender, value }, hre) => {
+    await tokenApprove(hre, name, spender, BigNumber.from(value));
+  });
+
+task("token:allowance", "Get allowance")
+  .addParam(
+    "name",
+    "The name of the token in the registry or deployment address",
+    undefined,
+    types.string
+  )
+  .addParam("owner", "Address of the owner", undefined, types.string)
+  .addParam("spender", "Address of the spender", undefined, types.string)
+  .setAction(async ({ name, owner, spender }, hre) => {
+    await tokenAllowance(hre, name, owner, spender);
+  });
+task("token:balance", "Get balance")
+  .addParam(
+    "name",
+    "The name of the token in the registry or deployment address",
+    undefined,
+    types.string
+  )
+  .addParam("owner", "Address of the owner", undefined, types.string)
+  .setAction(async ({ name, owner }, hre) => {
+    await tokenBalance(hre, name, owner);
   });
 
 task("token:deploy:triple", "deploy token, bond and oracle")
@@ -100,6 +150,45 @@ export async function tokenDeploy(
     symbol,
     decimals
   );
+}
+
+async function tokenApprove(
+  hre: HardhatRuntimeEnvironment,
+  name: string,
+  spender: string,
+  amount: BigNumber
+) {
+  console.log(`Approving ${amount} tokens for ${spender}`);
+  const contract = await findExistingContract(hre, name);
+  const [op] = await hre.ethers.getSigners();
+  const allowance = await contract.allowance(op.address, spender);
+  if (BigNumber.from(allowance).gte(amount)) {
+    console.log("Allowance is approved, skipping...");
+    return;
+  }
+  const tx = await contract.populateTransaction.approve(spender, amount);
+  await sendTransaction(hre, tx);
+}
+
+async function tokenAllowance(
+  hre: HardhatRuntimeEnvironment,
+  name: string,
+  owner: string,
+  spender: string
+) {
+  const contract = await findExistingContract(hre, name);
+  const allowance = await contract.allowance(owner, spender);
+  console.log(`Allowance of ${owner} to ${spender} is ${allowance}`);
+}
+
+async function tokenBalance(
+  hre: HardhatRuntimeEnvironment,
+  name: string,
+  owner: string
+) {
+  const contract = await findExistingContract(hre, name);
+  const balance = await contract.balanceOf(owner);
+  console.log(`Balance of ${owner} is ${balance}`);
 }
 
 export async function mint(
