@@ -63,7 +63,10 @@ contract TokenManager is ITokenManager, Operatable, Migratable {
     }
 
     modifier tokenAdmin() {
-        require(isTokenAdmin(msg.sender), "TokenManager: Must be called by token admin");
+        require(
+            isTokenAdmin(msg.sender),
+            "TokenManager: Must be called by token admin"
+        );
         _;
     }
 
@@ -338,7 +341,13 @@ contract TokenManager is ITokenManager, Operatable, Migratable {
         address syntheticTokenAddress,
         address owner,
         uint256 amount
-    ) public override managedToken(syntheticTokenAddress) initialized tokenAdmin {
+    )
+        public
+        override
+        managedToken(syntheticTokenAddress)
+        initialized
+        tokenAdmin
+    {
         SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
         token.burnFrom(owner, amount);
     }
@@ -351,7 +360,13 @@ contract TokenManager is ITokenManager, Operatable, Migratable {
         address syntheticTokenAddress,
         address receiver,
         uint256 amount
-    ) public override managedToken(syntheticTokenAddress) initialized tokenAdmin {
+    )
+        public
+        override
+        managedToken(syntheticTokenAddress)
+        initialized
+        tokenAdmin
+    {
         SyntheticToken token = tokenIndex[syntheticTokenAddress].syntheticToken;
         token.mint(receiver, amount);
     }
@@ -361,7 +376,10 @@ contract TokenManager is ITokenManager, Operatable, Migratable {
     /// Updates bond manager address
     /// @param _bondManager new bond manager
     function setBondManager(address _bondManager) public onlyOperator {
-        require(address(bondManager) != _bondManager, "TokenManager: bondManager with this address already set");
+        require(
+            address(bondManager) != _bondManager,
+            "TokenManager: bondManager with this address already set"
+        );
         deleteTokenAdmin(address(bondManager));
         addTokenAdmin(_bondManager);
         bondManager = IBondManager(_bondManager);
@@ -371,7 +389,10 @@ contract TokenManager is ITokenManager, Operatable, Migratable {
     /// Updates emission manager address
     /// @param _emissionManager new emission manager
     function setEmissionManager(address _emissionManager) public onlyOperator {
-        require(address(emissionManager) != _emissionManager, "TokenManager: emissionManager with this address already set");
+        require(
+            address(emissionManager) != _emissionManager,
+            "TokenManager: emissionManager with this address already set"
+        );
         deleteTokenAdmin(address(emissionManager));
         addTokenAdmin(_emissionManager);
         emissionManager = IEmissionManager(_emissionManager);
@@ -402,15 +423,17 @@ contract TokenManager is ITokenManager, Operatable, Migratable {
             return;
         }
         tokenAdmins.push(admin);
+        emit AddedTokenManager(msg.sender, admin);
     }
+
     function _deleteTokenAdmin(address admin) internal {
         for (uint256 i = 0; i < tokenAdmins.length; i++) {
             if (tokenAdmins[i] == admin) {
                 delete tokenAdmins[i];
+                emit DeletedTokenManager(msg.sender, admin);
             }
         }
     }
-
 
     // ------- Events ----------
 
@@ -439,5 +462,7 @@ contract TokenManager is ITokenManager, Operatable, Migratable {
     /// Emitted each time EmissionManager is updated
     event EmissionManagerChanged(address indexed operator, address newManager);
     /// Emitted when migrated
+    event AddedTokenManager(address indexed operator, address tokenAdmin);
+    event DeletedTokenManager(address indexed operator, address tokenAdmin);
     event Migrated(address indexed operator, address target);
 }

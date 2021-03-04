@@ -63,12 +63,33 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await deployBoardroom(hre);
   await setLinks(hre);
   await addV1Token(hre);
-  await deployExchange(hre);
+  await deploySwap(hre);
   await transferOwnerships(hre);
 }
 
-async function deployExchange(hre: HardhatRuntimeEnvironment) {
-  await contractDeploy(hre, "Exchange", "ExchangeV1");
+async function deploySwap(hre: HardhatRuntimeEnvironment) {
+  const tokenManager = await findExistingContract(hre, "TokenManagerV1");
+  const swap = await contractDeploy(
+    hre,
+    "Swap",
+    "SwapV1",
+    tokenManager.address
+  );
+  console.log("Adding swap to token admins.");
+
+  const tokenAdmins: any[] = await tokenManager.allTokenAdmins();
+  if (
+    !tokenAdmins
+      .map((x: any) => x.toLowerCase())
+      .includes(swap.address.toLowerCase())
+  ) {
+    const tx = await tokenManager.populateTransaction.addTokenAdmin(
+      swap.address
+    );
+    await sendTransaction(hre, tx);
+  } else {
+    console.log("Already tokenManager, skipping");
+  }
 }
 
 async function deploySideChain(hre: HardhatRuntimeEnvironment) {
