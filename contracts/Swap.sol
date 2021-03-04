@@ -8,7 +8,7 @@ import "./interfaces/ISmelter.sol";
 contract Swap is Operatable, Migratable {
     mapping(address => address) public tokenIndex;
     address[] public tokens;
-    address smelter;
+    address public smelter;
 
     constructor(address _smelter) public {
         smelter = _smelter;
@@ -50,7 +50,7 @@ contract Swap is Operatable, Migratable {
         } else {
             inT.burnFrom(msg.sender, amount);
         }
-        SyntheticToken(outToken).mint(msg.sender, amount);
+        ISmelter(smelter).mintSynthetic(outToken, msg.sender, amount);
     }
 
     function setTokenPair(address inToken, address outToken)
