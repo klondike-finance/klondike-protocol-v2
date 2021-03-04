@@ -55,7 +55,7 @@ task("token:transfer", "Transfers token")
   .addParam("spender", "Address of the spender", undefined, types.string)
   .addParam("value", "Value to be minted", "0", types.string)
   .setAction(async ({ name, spender, value }, hre) => {
-    await tokenApprove(hre, name, spender, BigNumber.from(value));
+    await tokenTransfer(hre, name, spender, BigNumber.from(value));
   });
 
 task("token:allowance", "Get allowance")
@@ -167,6 +167,18 @@ async function tokenApprove(
     return;
   }
   const tx = await contract.populateTransaction.approve(spender, amount);
+  await sendTransaction(hre, tx);
+}
+
+async function tokenTransfer(
+  hre: HardhatRuntimeEnvironment,
+  name: string,
+  spender: string,
+  amount: BigNumber
+) {
+  console.log(`Transfering ${amount} tokens to ${spender}`);
+  const contract = await findExistingContract(hre, name);
+  const tx = await contract.populateTransaction.transfer(spender, amount);
   await sendTransaction(hre, tx);
 }
 
