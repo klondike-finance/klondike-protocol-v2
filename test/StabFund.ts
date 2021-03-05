@@ -362,22 +362,5 @@ describe("StabFund", () => {
         ).to.be.revertedWith("StabFund: Not a trader");
       });
     });
-
-    describe("when called not by Trader", () => {
-      it("fails", async () => {
-        await stabFund.addToken(kwbtc.address);
-        await expect(
-          stabFund.swapExactTokensForTokens(kwbtc.address, 123)
-        ).to.be.revertedWith("StabFund: Not a trader");
-      });
-    });
-    describe("when token is not allowed", () => {
-      it("fails", async () => {
-        await stabFund.addTrader(op.address);
-        await expect(stabFund.approve(kwbtc.address, 123)).to.be.revertedWith(
-          "StabFund: Token is not allowed"
-        );
-      });
-    });
   });
 });
