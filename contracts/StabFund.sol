@@ -108,26 +108,6 @@ contract StabFund is Operatable, Migratable {
         );
     }
 
-    /// Swaps tokens at uniswap
-    /// @param amountOut amount of tokens to receive
-    /// @param amountInMax max expected amount to swap
-    /// @param path path of token addresses (aka uniswap route)
-    /// @param deadline if the transaction is processed after this time it fails
-    function swapTokensForExactTokens(
-        uint256 amountOut,
-        uint256 amountInMax,
-        address[] memory path,
-        uint256 deadline
-    ) public onlyAllowedTokens(path) onlyTrader {
-        IUniswapV2Router02(router).swapTokensForExactTokens(
-            amountOut,
-            amountInMax,
-            path,
-            address(this),
-            deadline
-        );
-    }
-
     /// Approve token for trading at Uniswap
     /// @param token token address
     /// @param amount amount to approve

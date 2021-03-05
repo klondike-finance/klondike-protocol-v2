@@ -1,9 +1,8 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
-import { Contract, ContractFactory } from "ethers";
+import { BigNumber, Contract, ContractFactory } from "ethers";
 import { ethers } from "hardhat";
-import { ETH } from "../tasks/utils";
-import { deployUniswap } from "./helpers/helpers";
+import { deployUniswap, ETH, now, pairFor } from "./helpers/helpers";
 
 describe("StabFund", () => {
   const INITIAL_MINT = ETH.mul(100);
@@ -19,7 +18,7 @@ describe("StabFund", () => {
   let dai: Contract;
   let factory: Contract;
   let router: Contract;
-  let stableFund: Contract;
+  let stabFund: Contract;
 
   before(async () => {
     StabFund = await ethers.getContractFactory("StabFund");
@@ -32,6 +31,8 @@ describe("StabFund", () => {
     const { factory: f, router: r } = await deployUniswap();
     factory = f;
     router = r;
+  });
+  beforeEach(async () => {
     kwbtc = await SyntheticToken.deploy("KWBTC", "KWBTC", 18);
     wbtc = await SyntheticToken.deploy("WBTC", "WTBC", 18);
     kdai = await SyntheticToken.deploy("KDAI", "KDAI", 18);
@@ -40,21 +41,20 @@ describe("StabFund", () => {
     wbtc.mint(op.address, INITIAL_MINT);
     kdai.mint(op.address, INITIAL_MINT);
     dai.mint(op.address, INITIAL_MINT);
-  });
-  beforeEach(async () => {
-    stableFund = await StabFund.deploy(router.address, [], []);
+
+    stabFund = await StabFund.deploy(router.address, [], []);
   });
 
   describe("#addTrader", () => {
     it("adds trader to traders list", async () => {
-      expect(await stableFund.isAllowedTrader(other.address)).to.eq(false);
-      await stableFund.addTrader(other.address);
-      expect(await stableFund.isAllowedTrader(other.address)).to.eq(true);
+      expect(await stabFund.isAllowedTrader(other.address)).to.eq(false);
+      await stabFund.addTrader(other.address);
+      expect(await stabFund.isAllowedTrader(other.address)).to.eq(true);
     });
     describe("when called not by Operator", () => {
       it("fails", async () => {
         await expect(
-          stableFund.connect(other).addTrader(other.address)
+          stabFund.connect(other).addTrader(other.address)
         ).to.be.revertedWith("Only operator can call this method");
       });
     });
@@ -62,21 +62,21 @@ describe("StabFund", () => {
 
   describe("#deleteTrader", () => {
     it("deletes trader from traders list", async () => {
-      await stableFund.addTrader(other.address);
-      await stableFund.addTrader(another.address);
-      expect(await stableFund.isAllowedTrader(other.address)).to.eq(true);
-      expect(await stableFund.isAllowedTrader(another.address)).to.eq(true);
-      await stableFund.deleteTrader(other.address);
-      expect(await stableFund.isAllowedTrader(other.address)).to.eq(false);
-      expect(await stableFund.isAllowedTrader(another.address)).to.eq(true);
-      await stableFund.deleteTrader(another.address);
-      expect(await stableFund.isAllowedTrader(other.address)).to.eq(false);
-      expect(await stableFund.isAllowedTrader(another.address)).to.eq(false);
+      await stabFund.addTrader(other.address);
+      await stabFund.addTrader(another.address);
+      expect(await stabFund.isAllowedTrader(other.address)).to.eq(true);
+      expect(await stabFund.isAllowedTrader(another.address)).to.eq(true);
+      await stabFund.deleteTrader(other.address);
+      expect(await stabFund.isAllowedTrader(other.address)).to.eq(false);
+      expect(await stabFund.isAllowedTrader(another.address)).to.eq(true);
+      await stabFund.deleteTrader(another.address);
+      expect(await stabFund.isAllowedTrader(other.address)).to.eq(false);
+      expect(await stabFund.isAllowedTrader(another.address)).to.eq(false);
     });
     describe("when called not by Operator", () => {
       it("fails", async () => {
         await expect(
-          stableFund.connect(other).deleteTrader(other.address)
+          stabFund.connect(other).deleteTrader(other.address)
         ).to.be.revertedWith("Only operator can call this method");
       });
     });
@@ -84,15 +84,15 @@ describe("StabFund", () => {
 
   describe("#addToken", () => {
     it("adds token to tokens list", async () => {
-      expect(await stableFund.isAllowedToken(kwbtc.address)).to.eq(false);
-      await stableFund.addToken(kwbtc.address);
-      expect(await stableFund.isAllowedToken(kwbtc.address)).to.eq(true);
+      expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(false);
+      await stabFund.addToken(kwbtc.address);
+      expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(true);
     });
     describe("when called not by Owner", () => {
       it("fails", async () => {
-        await stableFund.transferOperator(other.address);
+        await stabFund.transferOperator(other.address);
         await expect(
-          stableFund.connect(other).addToken(kwbtc.address)
+          stabFund.connect(other).addToken(kwbtc.address)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
@@ -100,22 +100,22 @@ describe("StabFund", () => {
 
   describe("#deleteToken", () => {
     it("deletes token from tokens list", async () => {
-      await stableFund.addToken(kwbtc.address);
-      await stableFund.addToken(kdai.address);
-      expect(await stableFund.isAllowedToken(kwbtc.address)).to.eq(true);
-      expect(await stableFund.isAllowedToken(kdai.address)).to.eq(true);
-      await stableFund.deleteToken(kwbtc.address);
-      expect(await stableFund.isAllowedToken(kwbtc.address)).to.eq(false);
-      expect(await stableFund.isAllowedToken(kdai.address)).to.eq(true);
-      await stableFund.deleteToken(kdai.address);
-      expect(await stableFund.isAllowedToken(kwbtc.address)).to.eq(false);
-      expect(await stableFund.isAllowedToken(kdai.address)).to.eq(false);
+      await stabFund.addToken(kwbtc.address);
+      await stabFund.addToken(kdai.address);
+      expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(true);
+      expect(await stabFund.isAllowedToken(kdai.address)).to.eq(true);
+      await stabFund.deleteToken(kwbtc.address);
+      expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(false);
+      expect(await stabFund.isAllowedToken(kdai.address)).to.eq(true);
+      await stabFund.deleteToken(kdai.address);
+      expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(false);
+      expect(await stabFund.isAllowedToken(kdai.address)).to.eq(false);
     });
     describe("when called not by Owner", () => {
       it("fails", async () => {
-        await stableFund.transferOperator(other.address);
+        await stabFund.transferOperator(other.address);
         await expect(
-          stableFund.connect(other).deleteToken(other.address)
+          stabFund.connect(other).deleteToken(other.address)
         ).to.be.revertedWith("Ownable: caller is not the owner");
       });
     });
@@ -123,9 +123,9 @@ describe("StabFund", () => {
 
   describe("#allAllowedTokens", () => {
     it("returns all allowed tokens", async () => {
-      await stableFund.addToken(kwbtc.address);
-      await stableFund.addToken(kdai.address);
-      expect(await stableFund.allAllowedTokens()).to.eql([
+      await stabFund.addToken(kwbtc.address);
+      await stabFund.addToken(kdai.address);
+      expect(await stabFund.allAllowedTokens()).to.eql([
         kwbtc.address,
         kdai.address,
       ]);
@@ -134,9 +134,9 @@ describe("StabFund", () => {
 
   describe("#allAllowedTraders", () => {
     it("returns all allowed tokens", async () => {
-      await stableFund.addTrader(other.address);
-      await stableFund.addTrader(another.address);
-      expect(await stableFund.allAllowedTraders()).to.eql([
+      await stabFund.addTrader(other.address);
+      await stabFund.addTrader(another.address);
+      expect(await stabFund.allAllowedTraders()).to.eql([
         other.address,
         another.address,
       ]);
@@ -145,36 +145,239 @@ describe("StabFund", () => {
 
   describe("#approve", () => {
     it("approves StabFund token for trading at Uniswap", async () => {
-      await stableFund.addTrader(op.address);
-      await stableFund.addToken(kwbtc.address);
-      expect(await kwbtc.allowance(stableFund.address, router.address)).to.eq(
-        0
-      );
-      await stableFund.approve(kwbtc.address, 123);
-      expect(await kwbtc.allowance(stableFund.address, router.address)).to.eq(
+      await stabFund.addTrader(op.address);
+      await stabFund.addToken(kwbtc.address);
+      expect(await kwbtc.allowance(stabFund.address, router.address)).to.eq(0);
+      await stabFund.approve(kwbtc.address, 123);
+      expect(await kwbtc.allowance(stabFund.address, router.address)).to.eq(
         123
       );
     });
+    describe("when called not by Trader", () => {
+      it("fails", async () => {
+        await stabFund.addToken(kwbtc.address);
+        await expect(stabFund.approve(kwbtc.address, 123)).to.be.revertedWith(
+          "StabFund: Not a trader"
+        );
+      });
+    });
+    describe("when token is not allowed", () => {
+      it("fails", async () => {
+        await stabFund.addTrader(op.address);
+        await expect(stabFund.approve(kwbtc.address, 123)).to.be.revertedWith(
+          "StabFund: Token is not allowed"
+        );
+      });
+    });
   });
 
-  //   await setupUniswap();
-  // });
+  describe("#swapExactTokensForTokens", () => {
+    it("swaps on Uniswap", async () => {
+      await stabFund.addToken(wbtc.address);
+      await stabFund.addToken(kwbtc.address);
+      await stabFund.addTrader(op.address);
+      const pair = await ethers.getContractAt(
+        "IUniswapV2Pair",
+        pairFor(factory.address, wbtc.address, kwbtc.address)
+      );
+      await wbtc.approve(router.address, ETH);
+      await kwbtc.approve(router.address, ETH);
+      await router.addLiquidity(
+        wbtc.address,
+        kwbtc.address,
+        ETH,
+        ETH,
+        ETH,
+        ETH,
+        op.address,
+        (await now()) + 1000000
+      );
+      const [reserve0, reserve1] = await pair.getReserves();
+      const [wbtcReserve, kwbtcReserve] =
+        wbtc.address.toLowerCase() < kwbtc.address.toLowerCase()
+          ? [reserve0, reserve1]
+          : [reserve1, reserve0];
+      const amount = BigNumber.from("100000000000000000");
+      const expectedWbtcReserve = wbtcReserve.add(amount);
+      const expectedKwbtcReserve = wbtcReserve
+        .mul(kwbtcReserve)
+        .div(expectedWbtcReserve.sub(amount.mul(3).div(1000)))
+        .add(1); // off-by-1 error
+      const amountOut = kwbtcReserve.sub(expectedKwbtcReserve);
+      await stabFund.approve(wbtc.address, amount);
+      await wbtc.transfer(stabFund.address, amount);
+      await stabFund.swapExactTokensForTokens(
+        amount,
+        amountOut,
+        [wbtc.address, kwbtc.address],
+        (await now()) + 1000
+      );
+      const [reserve10, reserve11] = await pair.getReserves();
+      const [wbtcReserve1, kwbtcReserve1] =
+        wbtc.address.toLowerCase() < kwbtc.address.toLowerCase()
+          ? [reserve10, reserve11]
+          : [reserve11, reserve10];
+      expect(wbtcReserve1).to.eq(expectedWbtcReserve);
+      expect(kwbtcReserve1).to.eq(expectedKwbtcReserve);
+    });
 
-  // async function setupUniswap() {
-  //   const { factory: f, router: r } = await deployUniswap();
-  //   const { underlying: u, synthetic: s, pair: p } = await addUniswapPair(
-  //     f,
-  //     r,
-  //     "WBTC",
-  //     8,
-  //     "KBTC",
-  //     18
-  //   );
+    describe("when token is not approved", () => {
+      it("fails", async () => {
+        await stabFund.addToken(wbtc.address);
+        await stabFund.addToken(kwbtc.address);
+        await stabFund.addTrader(op.address);
+        const pair = await ethers.getContractAt(
+          "IUniswapV2Pair",
+          pairFor(factory.address, wbtc.address, kwbtc.address)
+        );
+        await wbtc.approve(router.address, ETH);
+        await kwbtc.approve(router.address, ETH);
+        await router.addLiquidity(
+          wbtc.address,
+          kwbtc.address,
+          ETH,
+          ETH,
+          ETH,
+          ETH,
+          op.address,
+          (await now()) + 1000000
+        );
+        const amount = 123;
+        await wbtc.transfer(stabFund.address, amount);
+        await expect(
+          stabFund.swapExactTokensForTokens(
+            amount,
+            0,
+            [wbtc.address, kwbtc.address],
+            (await now()) + 1000
+          )
+        ).to.be.revertedWith("TransferHelper: TRANSFER_FROM_FAILED");
+      });
+    });
 
-  //   factory = f;
-  //   router = r;
-  //   underlying = u;
-  //   synthetic = s;
-  //   pair = p;
-  // }
+    describe("when not enough balance", () => {
+      it("fails", async () => {
+        await stabFund.addToken(wbtc.address);
+        await stabFund.addToken(kwbtc.address);
+        await stabFund.addTrader(op.address);
+        const pair = await ethers.getContractAt(
+          "IUniswapV2Pair",
+          pairFor(factory.address, wbtc.address, kwbtc.address)
+        );
+        await wbtc.approve(router.address, ETH);
+        await kwbtc.approve(router.address, ETH);
+        await router.addLiquidity(
+          wbtc.address,
+          kwbtc.address,
+          ETH,
+          ETH,
+          ETH,
+          ETH,
+          op.address,
+          (await now()) + 1000000
+        );
+        const amount = 123;
+        await stabFund.approve(wbtc.address, amount);
+        await expect(
+          stabFund.swapExactTokensForTokens(
+            amount,
+            0,
+            [wbtc.address, kwbtc.address],
+            (await now()) + 1000
+          )
+        ).to.be.revertedWith("TransferHelper: TRANSFER_FROM_FAILED");
+      });
+    });
+
+    describe("when called tokens are not whitelisted", () => {
+      it("fails", async () => {
+        await stabFund.addTrader(op.address);
+        const pair = await ethers.getContractAt(
+          "IUniswapV2Pair",
+          pairFor(factory.address, wbtc.address, kwbtc.address)
+        );
+        await wbtc.approve(router.address, ETH);
+        await kwbtc.approve(router.address, ETH);
+        await router.addLiquidity(
+          wbtc.address,
+          kwbtc.address,
+          ETH,
+          ETH,
+          ETH,
+          ETH,
+          op.address,
+          (await now()) + 1000000
+        );
+        const amount = 123;
+        await wbtc.transfer(stabFund.address, amount);
+        await expect(
+          stabFund.swapExactTokensForTokens(
+            amount,
+            0,
+            [wbtc.address, kwbtc.address],
+            (await now()) + 1000
+          )
+        ).to.be.revertedWith("StabFund: First token is not allowed");
+        await stabFund.addToken(wbtc.address);
+        await expect(
+          stabFund.swapExactTokensForTokens(
+            amount,
+            0,
+            [wbtc.address, kwbtc.address],
+            (await now()) + 1000
+          )
+        ).to.be.revertedWith("StabFund: Last token is not allowed");
+      });
+    });
+
+    describe("when called not by Trader", () => {
+      it("fails", async () => {
+        await stabFund.addToken(wbtc.address);
+        await stabFund.addToken(kwbtc.address);
+        const pair = await ethers.getContractAt(
+          "IUniswapV2Pair",
+          pairFor(factory.address, wbtc.address, kwbtc.address)
+        );
+        await wbtc.approve(router.address, ETH);
+        await kwbtc.approve(router.address, ETH);
+        await router.addLiquidity(
+          wbtc.address,
+          kwbtc.address,
+          ETH,
+          ETH,
+          ETH,
+          ETH,
+          op.address,
+          (await now()) + 1000000
+        );
+        const amount = 123;
+        await wbtc.transfer(stabFund.address, amount);
+        await expect(
+          stabFund.swapExactTokensForTokens(
+            amount,
+            0,
+            [wbtc.address, kwbtc.address],
+            (await now()) + 1000
+          )
+        ).to.be.revertedWith("StabFund: Not a trader");
+      });
+    });
+
+    describe("when called not by Trader", () => {
+      it("fails", async () => {
+        await stabFund.addToken(kwbtc.address);
+        await expect(
+          stabFund.swapExactTokensForTokens(kwbtc.address, 123)
+        ).to.be.revertedWith("StabFund: Not a trader");
+      });
+    });
+    describe("when token is not allowed", () => {
+      it("fails", async () => {
+        await stabFund.addTrader(op.address);
+        await expect(stabFund.approve(kwbtc.address, 123)).to.be.revertedWith(
+          "StabFund: Token is not allowed"
+        );
+      });
+    });
+  });
 });
