@@ -6,7 +6,7 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "./access/Operatable.sol";
 import "./access/Migratable.sol";
 
-contract StableFund is Operatable, Migratable {
+contract StabFund is Operatable, Migratable {
     address[] public allowedTokens;
     address[] public allowedTraders;
     address public router;
@@ -60,7 +60,7 @@ contract StableFund is Operatable, Migratable {
     /// Requires token to be allowed
     /// @param token token to check
     modifier onlyAllowedToken(address token) {
-        require(isAllowedToken(token), "StableFund: Token is not allowed");
+        require(isAllowedToken(token), "StabFund: Token is not allowed");
         _;
     }
 
@@ -71,18 +71,18 @@ contract StableFund is Operatable, Migratable {
         address lastToken = path[path.length - 1];
         require(
             isAllowedToken(firstToken),
-            "StableFund: First token is not allowed"
+            "StabFund: First token is not allowed"
         );
         require(
             isAllowedToken(lastToken),
-            "StableFund: Last token is not allowed"
+            "StabFund: Last token is not allowed"
         );
         _;
     }
 
     /// Requires sender to be a trader
     modifier onlyTrader() {
-        require(isAllowedTrader(msg.sender), "StableFund: Not a trader");
+        require(isAllowedTrader(msg.sender), "StabFund: Not a trader");
         _;
     }
 
@@ -128,7 +128,7 @@ contract StableFund is Operatable, Migratable {
         );
     }
 
-    /// Approve token
+    /// Approve token for trading at Uniswap
     /// @param token token address
     /// @param amount amount to approve
     function approve(address token, uint256 amount)

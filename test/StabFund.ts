@@ -5,9 +5,9 @@ import { ethers } from "hardhat";
 import { ETH } from "../tasks/utils";
 import { deployUniswap } from "./helpers/helpers";
 
-describe("StableFund", () => {
+describe("StabFund", () => {
   const INITIAL_MINT = ETH.mul(100);
-  let StableFund: ContractFactory;
+  let StabFund: ContractFactory;
   let SyntheticToken: ContractFactory;
   let op: SignerWithAddress;
   let trader: SignerWithAddress;
@@ -22,7 +22,7 @@ describe("StableFund", () => {
   let stableFund: Contract;
 
   before(async () => {
-    StableFund = await ethers.getContractFactory("StableFund");
+    StabFund = await ethers.getContractFactory("StabFund");
     SyntheticToken = await ethers.getContractFactory("SyntheticToken");
     const signers = await ethers.getSigners();
     op = signers[0];
@@ -42,7 +42,7 @@ describe("StableFund", () => {
     dai.mint(op.address, INITIAL_MINT);
   });
   beforeEach(async () => {
-    stableFund = await StableFund.deploy(router.address, [], []);
+    stableFund = await StabFund.deploy(router.address, [], []);
   });
 
   describe("#addTrader", () => {
@@ -140,6 +140,20 @@ describe("StableFund", () => {
         other.address,
         another.address,
       ]);
+    });
+  });
+
+  describe("#approve", () => {
+    it("approves StabFund token for trading at Uniswap", async () => {
+      await stableFund.addTrader(op.address);
+      await stableFund.addToken(kwbtc.address);
+      expect(await kwbtc.allowance(stableFund.address, router.address)).to.eq(
+        0
+      );
+      await stableFund.approve(kwbtc.address, 123);
+      expect(await kwbtc.allowance(stableFund.address, router.address)).to.eq(
+        123
+      );
     });
   });
 
