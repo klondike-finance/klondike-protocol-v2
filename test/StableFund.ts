@@ -121,6 +121,28 @@ describe("StableFund", () => {
     });
   });
 
+  describe("#allAllowedTokens", () => {
+    it("returns all allowed tokens", async () => {
+      await stableFund.addToken(kwbtc.address);
+      await stableFund.addToken(kdai.address);
+      expect(await stableFund.allAllowedTokens()).to.eql([
+        kwbtc.address,
+        kdai.address,
+      ]);
+    });
+  });
+
+  describe("#allAllowedTraders", () => {
+    it("returns all allowed tokens", async () => {
+      await stableFund.addTrader(other.address);
+      await stableFund.addTrader(another.address);
+      expect(await stableFund.allAllowedTraders()).to.eql([
+        other.address,
+        another.address,
+      ]);
+    });
+  });
+
   //   await setupUniswap();
   // });
 
