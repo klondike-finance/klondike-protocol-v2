@@ -11,6 +11,10 @@ contract StableFund is Operatable, Migratable {
     address[] public allowedTraders;
     address public router;
 
+    /// Creates a new contract.
+    /// @param _router an address of uniswap router V2 02
+    /// @param _allowedTokens a list of allowed tokens for trade
+    /// @param _allowedTraders a list of allowed traders
     constructor(
         address _router,
         address[] memory _allowedTokens,
@@ -21,14 +25,18 @@ contract StableFund is Operatable, Migratable {
         allowedTokens = _allowedTokens;
     }
 
+    /// Returns a list of all tokens allowed for trade
     function allAllowedTokens() public view returns (address[] memory) {
         return allowedTokens;
     }
 
+    /// Returns a list of all allowed traders
     function allAllowedTraders() public view returns (address[] memory) {
         return allowedTraders;
     }
 
+    /// Checks if token is allowed for trade
+    /// @param token token to check
     function isAllowedToken(address token) public view returns (bool) {
         for (uint256 i = 0; i < allowedTokens.length; i++) {
             if (allowedTokens[i] == token) {
@@ -38,20 +46,26 @@ contract StableFund is Operatable, Migratable {
         return false;
     }
 
-    function isAllowedTrader(address token) public view returns (bool) {
+    /// Checks if trader is allowed to trade
+    /// @param trader trader to check
+    function isAllowedTrader(address trader) public view returns (bool) {
         for (uint256 i = 0; i < allowedTraders.length; i++) {
-            if (allowedTraders[i] == token) {
+            if (allowedTraders[i] == trader) {
                 return true;
             }
         }
         return false;
     }
 
+    /// Requires token to be allowed
+    /// @param token token to check
     modifier onlyAllowedToken(address token) {
         require(isAllowedToken(token), "StableFund: Token is not allowed");
         _;
     }
 
+    /// Requires first and last tokens of path to be allowed
+    /// @param path uniswap-like route of tokens
     modifier onlyAllowedTokens(address[] memory path) {
         address firstToken = path[0];
         address lastToken = path[path.length - 1];
@@ -66,6 +80,7 @@ contract StableFund is Operatable, Migratable {
         _;
     }
 
+    /// Requires sender to be a trader
     modifier onlyTrader() {
         require(isAllowedTrader(msg.sender), "StableFund: Not a trader");
         _;
@@ -73,6 +88,11 @@ contract StableFund is Operatable, Migratable {
 
     /* ========== TRADER ========== */
 
+    /// Swaps tokens at uniswap
+    /// @param amountIn amount of tokens to swap
+    /// @param amountOutMin min expected amount to receive
+    /// @param path path of token addresses (aka uniswap route)
+    /// @param deadline if the transaction is processed after this time it fails
     function swapExactTokensForTokens(
         uint256 amountIn,
         uint256 amountOutMin,
@@ -88,6 +108,11 @@ contract StableFund is Operatable, Migratable {
         );
     }
 
+    /// Swaps tokens at uniswap
+    /// @param amountOut amount of tokens to receive
+    /// @param amountInMax max expected amount to swap
+    /// @param path path of token addresses (aka uniswap route)
+    /// @param deadline if the transaction is processed after this time it fails
     function swapTokensForExactTokens(
         uint256 amountOut,
         uint256 amountInMax,
@@ -103,6 +128,9 @@ contract StableFund is Operatable, Migratable {
         );
     }
 
+    /// Approve token
+    /// @param token token address
+    /// @param amount amount to approve
     function approve(address token, uint256 amount)
         public
         onlyAllowedToken(token)
@@ -114,6 +142,8 @@ contract StableFund is Operatable, Migratable {
 
     /* ========== OPERATOR ========== */
 
+    /// Adds trader to allowed traders
+    /// @param trader address of the new trader
     function addTrader(address trader) public onlyOperator {
         if (isAllowedTrader(trader)) {
             return;
@@ -122,6 +152,8 @@ contract StableFund is Operatable, Migratable {
         emit TraderAdded(msg.sender, trader);
     }
 
+    /// Deletes trader from allowed traders
+    /// @param trader address of the deleted trader
     function deleteTrader(address trader) public onlyOperator {
         for (uint256 i = 0; i < allowedTraders.length; i++) {
             if (allowedTraders[i] == trader) {
@@ -133,6 +165,8 @@ contract StableFund is Operatable, Migratable {
 
     /* ========== OWNER ========== */
 
+    /// Adds token to allowed tokens
+    /// @param token address of the new token
     function addToken(address token) public onlyOwner {
         if (isAllowedToken(token)) {
             return;
@@ -141,6 +175,8 @@ contract StableFund is Operatable, Migratable {
         emit TokenAdded(msg.sender, token);
     }
 
+    /// Deletes token from allowed tokens
+    /// @param token address of the deleted token
     function deleteToken(address token) public onlyOwner {
         for (uint256 i = 0; i < allowedTokens.length; i++) {
             if (allowedTokens[i] == token) {
