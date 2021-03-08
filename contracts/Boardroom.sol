@@ -47,30 +47,30 @@ abstract contract Boardroom is
     /// Pause
     bool public pause;
 
-    /// Base token. Both base and boost token yield reward token which ultimately participates in rewards distribution.
-    SyntheticToken public shareToken;
+    /// Staking token. Both base and boost token yield reward token which ultimately participates in rewards distribution.
+    SyntheticToken public stakingToken;
     /// TokenManager ref
     ITokenManager public tokenManager;
     /// EmissionManager ref
     address public emissionManager;
 
-    /// Proxy for base token supply
-    uint256 public shareTokenSupply;
-    /// Proxy for base token balances
-    mapping(address => uint256) public shareTokenBalances;
+    /// Staking token supply in the Boardroom
+    uint256 public stakingTokenSupply;
+    /// Staking token balances in the Boardroom
+    mapping(address => uint256) public stakingTokenBalances;
 
     /// Creates new Boardroom
-    /// @param _shareToken address of the base token
+    /// @param _stakingToken address of the base token
     /// @param _tokenManager address of the TokenManager
     /// @param _emissionManager address of the EmissionManager
     /// @param _start start of the pool date
     constructor(
-        address _shareToken,
+        address _stakingToken,
         address _tokenManager,
         address _emissionManager,
         uint256 _start
     ) public Timeboundable(_start, 0) {
-        shareToken = SyntheticToken(_shareToken);
+        stakingToken = SyntheticToken(_stakingToken);
         tokenManager = ITokenManager(_tokenManager);
         emissionManager = _emissionManager;
     }
@@ -109,34 +109,45 @@ abstract contract Boardroom is
             lastAccrualSnapshot.accruedRewardPerShareUnit;
         uint256 deltaRPSU = lastOverallRPSU.sub(lastUserAccrualRPSU);
         uint256 addedUserReward =
-            shareTokenBalances[owner].mul(deltaRPSU).div(
-                10**shareToken.decimals()
+            stakingTokenBalances[owner].mul(deltaRPSU).div(
+                uint256(10)**stakingToken.decimals()
             );
         return accrual.accruedReward.add(addedUserReward);
     }
 
     /// Stake tokens into Boardroom
-    /// @param amount amount of base token
-    /// @dev One of amounts should be > 0
-    function stake(uint256 amount) public nonReentrant inTimeBounds unpaused {
+    /// @param to the receiver of the token
+    /// @param amount amount of staking token
+    function stake(address to, uint256 amount)
+        public
+        nonReentrant
+        inTimeBounds
+        unpaused
+    {
         require((amount > 0), "Boardroom: amount should be > 0");
         updateAccruals();
-        shareTokenBalances[owner] = shareTokenBalances[owner].add(amount);
-        shareTokenSupply = shareTokenSupply.add(amount);
-        shareToken.transferFrom(owner, address(this), amount);
-        emit Staked(owner, amount);
+        stakingTokenBalances[to] = stakingTokenBalances[to].add(amount);
+        stakingTokenSupply = stakingTokenSupply.add(amount);
+        _doStakeTransfer(msg.sender, amount);
+        emit Staked(msg.sender, to, amount);
     }
 
+    function _doStakeTransfer(address from, uint256 amount) internal virtual;
+
+    function _doWithdrawTransfer(address to, uint256 amount) internal virtual;
+
     /// Withdraw tokens from Boardroom
+    /// @param to the receiver of the token
     /// @param amount amount of base token
-    /// @dev One of amounts should be > 0
-    function withdraw(uint256 amount) public nonReentrant {
+    function withdraw(address to, uint256 amount) public nonReentrant {
         require((amount > 0), "Boardroom: amount should be > 0");
         updateAccruals();
-        shareTokenBalances[owner] = shareTokenBalances[owner].sub(amount);
-        shareTokenSupply = shareTokenSupply.sub(amount);
-        shareToken.transfer(owner, amount);
-        emit Withdrawn(owner, amount);
+        stakingTokenBalances[msg.sender] = stakingTokenBalances[msg.sender].sub(
+            amount
+        );
+        stakingTokenSupply = stakingTokenSupply.sub(amount);
+        _doWithdrawTransfer(to, amount);
+        emit Withdrawn(msg.sender, to, amount);
     }
 
     /// Update accrued rewards for all tokens of sender
@@ -166,7 +177,7 @@ abstract contract Boardroom is
             "Boardroom: can only be called by EmissionManager"
         );
         require(
-            shareTokenSupply > 0,
+            stakingTokenSupply > 0,
             "Boardroom: Cannot receive incoming reward when token balance is 0"
         );
         PoolRewardSnapshot[] storage tokenSnapshots =
@@ -174,7 +185,9 @@ abstract contract Boardroom is
         PoolRewardSnapshot storage lastSnapshot =
             tokenSnapshots[tokenSnapshots.length - 1];
         uint256 deltaRPSU =
-            amount.mul(10**shareToken.decimals()).div(shareTokenSupply);
+            amount.mul(uint256(10)**stakingToken.decimals()).div(
+                stakingTokenSupply
+            );
         tokenSnapshots.push(
             PoolRewardSnapshot({
                 timestamp: block.timestamp,
@@ -255,8 +268,8 @@ abstract contract Boardroom is
             lastAccrualSnapshot.accruedRewardPerShareUnit;
         uint256 deltaRPSU = lastOverallRPSU.sub(lastUserAccrualRPSU);
         uint256 addedUserReward =
-            shareTokenBalances[owner].mul(deltaRPSU).div(
-                10**shareToken.decimals()
+            stakingTokenBalances[owner].mul(deltaRPSU).div(
+                uint256(10)**stakingToken.decimals()
             );
         accrual.lastAccrualSnaphotId = tokenSnapshots.length - 1;
         accrual.accruedReward = accrual.accruedReward.add(addedUserReward);
@@ -286,15 +299,8 @@ abstract contract Boardroom is
         address indexed from,
         uint256 amount
     );
-    event RewardStaked(address indexed to, uint256 amount);
-    event RewardWithdrawn(address indexed to, uint256 amount);
-    event Staked(address indexed to, uint256 amount);
-    event Withdrawn(address indexed to, uint256 amount);
-    event BoostStaked(address indexed to, uint256 amount);
-    event BoostWithdrawn(address indexed to, uint256 amount);
-    event UpdatedLockPool(address indexed operator, address newPool);
-    event UpdatedBase(address indexed operator, address newBase);
-    event UpdatedBoost(address indexed operator, address newBoost);
+    event Staked(address indexed from, address indexed to, uint256 amount);
+    event Withdrawn(address indexed from, address indexed to, uint256 amount);
     event UpdatedPause(address indexed operator, bool pause);
     event UpdatedTokenManager(
         address indexed operator,
@@ -304,6 +310,4 @@ abstract contract Boardroom is
         address indexed operator,
         address newEmissionManager
     );
-    event UpdatedBoostFactor(address indexed operator, uint256 value);
-    event UpdatedBoostDenominator(address indexed operator, uint256 value);
 }

@@ -8,10 +8,6 @@ contract BoardroomMock is IBoardroom {
         emit NotifyTransfer(token, amount);
     }
 
-    function updateRewardsAfterLock(address owner) public override {
-        emit UpdateRewardsAfterLock(owner);
-    }
-
     event NotifyTransfer(address token, uint256 amount);
     event UpdateRewardsAfterLock(address owner);
 }
