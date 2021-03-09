@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./time/Timeboundable.sol";
-import "./LockPool.sol";
 import "./SyntheticToken.sol";
 import "./interfaces/ITokenManager.sol";
 import "./interfaces/IBoardroom.sol";
@@ -120,6 +119,7 @@ abstract contract Boardroom is
     /// @param amount amount of staking token
     function stake(address to, uint256 amount)
         public
+        override
         nonReentrant
         inTimeBounds
         unpaused
@@ -128,27 +128,58 @@ abstract contract Boardroom is
         updateAccruals();
         stakingTokenBalances[to] = stakingTokenBalances[to].add(amount);
         stakingTokenSupply = stakingTokenSupply.add(amount);
-        _doStakeTransfer(msg.sender, amount);
+        _doStakeTransfer(msg.sender, to, amount);
         emit Staked(msg.sender, to, amount);
     }
-
-    function _doStakeTransfer(address from, uint256 amount) internal virtual;
-
-    function _doWithdrawTransfer(address to, uint256 amount) internal virtual;
 
     /// Withdraw tokens from Boardroom
     /// @param to the receiver of the token
     /// @param amount amount of base token
-    function withdraw(address to, uint256 amount) public nonReentrant {
+    function withdraw(address to, uint256 amount) public override nonReentrant {
         require((amount > 0), "Boardroom: amount should be > 0");
         updateAccruals();
         stakingTokenBalances[msg.sender] = stakingTokenBalances[msg.sender].sub(
             amount
         );
         stakingTokenSupply = stakingTokenSupply.sub(amount);
-        _doWithdrawTransfer(to, amount);
+        _doWithdrawTransfer(msg.sender, to, amount);
         emit Withdrawn(msg.sender, to, amount);
     }
+
+    /// Called inside `stake` method after updating internal balances
+    /// @param from the owner of the staking tokens
+    /// @param to the receiver of the staked token benefits
+    /// @param amount amount to stake
+    /// @dev should be implemented in child contracts
+    function _doStakeTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual;
+
+    /// Called inside `withdraw` method after updating internal balances
+    /// @param from the owner of the staked tokens
+    /// @param to the receiver of the staking tokens
+    /// @param amount amount to unstake
+    /// @dev should be implemented in child contracts
+    function _doWithdrawTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual;
+
+    /// Shows the balance of the virtual token that participates in reward calculation
+    /// @param owner the owner of the share tokens
+    /// @dev the default implementation should be { return stakeTokenBalances[owner] }
+    function shareTokenBalance(address owner)
+        public
+        view
+        virtual
+        returns (uint256);
+
+    /// Shows the supply of the virtual token that participates in reward calculation
+    /// @dev the default implementation should be { return stakeTokenSupply }
+    function shareTokenSupply() public view virtual returns (uint256);
 
     /// Update accrued rewards for all tokens of sender
     function updateAccruals() public unpaused {
@@ -176,8 +207,9 @@ abstract contract Boardroom is
             msg.sender == address(emissionManager),
             "Boardroom: can only be called by EmissionManager"
         );
+        uint256 shareSupply = shareTokenSupply();
         require(
-            stakingTokenSupply > 0,
+            shareSupply > 0,
             "Boardroom: Cannot receive incoming reward when token balance is 0"
         );
         PoolRewardSnapshot[] storage tokenSnapshots =
@@ -185,9 +217,7 @@ abstract contract Boardroom is
         PoolRewardSnapshot storage lastSnapshot =
             tokenSnapshots[tokenSnapshots.length - 1];
         uint256 deltaRPSU =
-            amount.mul(uint256(10)**stakingToken.decimals()).div(
-                stakingTokenSupply
-            );
+            amount.mul(uint256(10)**stakingToken.decimals()).div(shareSupply);
         tokenSnapshots.push(
             PoolRewardSnapshot({
                 timestamp: block.timestamp,
@@ -268,7 +298,7 @@ abstract contract Boardroom is
             lastAccrualSnapshot.accruedRewardPerShareUnit;
         uint256 deltaRPSU = lastOverallRPSU.sub(lastUserAccrualRPSU);
         uint256 addedUserReward =
-            stakingTokenBalances[owner].mul(deltaRPSU).div(
+            shareTokenBalance(owner).mul(deltaRPSU).div(
                 uint256(10)**stakingToken.decimals()
             );
         accrual.lastAccrualSnaphotId = tokenSnapshots.length - 1;

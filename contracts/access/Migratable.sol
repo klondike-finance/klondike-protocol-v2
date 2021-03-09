@@ -11,6 +11,7 @@ contract Migratable is MigratableOwnership {
     function migrateBalances(address[] memory tokens, address target)
         public
         onlyOwner
+        nonReentrant
     {
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = IERC20(tokens[i]);

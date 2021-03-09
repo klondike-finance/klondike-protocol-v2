@@ -228,6 +228,15 @@ def locked__end(_addr: address) -> uint256:
     """
     return self.locked[_addr].end
 
+@external
+@view
+def locked__balance(_addr: address) -> uint256:
+    """
+    @notice Get locked balance
+    @param _addr User wallet
+    @return Locked balance
+    """
+    return self.locked[_addr].amount
 
 @internal
 def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBalance):
