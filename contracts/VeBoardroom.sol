@@ -4,8 +4,8 @@ pragma solidity =0.6.6;
 import "./interfaces/IVotingEscrow.sol";
 import "./Boardroom.sol";
 
-/// Boardroom distributes token emission among shareholders that stake Klon
-contract LiquidBoardroom is Boardroom {
+/// Boardroom distributes token emission among shareholders that stake veKlon
+contract VeBoardroom is Boardroom {
     address public veToken;
 
     /// Creates new Boardroom
@@ -27,6 +27,22 @@ contract LiquidBoardroom is Boardroom {
         veToken = _veToken;
     }
 
+    function _doStakeTransfer(
+        address,
+        address,
+        uint256
+    ) internal override {
+        revert("VeBoardroom: Staking is disabled");
+    }
+
+    function _doWithdrawTransfer(
+        address,
+        address,
+        uint256
+    ) internal override {
+        revert("VeBoardroom: Withdrawing is disabled");
+    }
+
     /// Shows the balance of the virtual token that participates in reward calculation
     /// @param owner the owner of the share tokens
     function shareTokenBalance(address owner)
@@ -35,16 +51,11 @@ contract LiquidBoardroom is Boardroom {
         override
         returns (uint256)
     {
-        return
-            stakingToken.balanceOf(owner).add(
-                IVotingEscrow(veToken).locked__balance(owner)
-            );
+        return IERC20(veToken).balanceOf(owner);
     }
 
     /// Shows the supply of the virtual token that participates in reward calculation
     function shareTokenSupply() public view override returns (uint256) {
-        stakingToken.balanceOf(address(this)).add(
-            stakingToken.balanceOf(veToken)
-        );
+        return IERC20(veToken).totalSupply();
     }
 }

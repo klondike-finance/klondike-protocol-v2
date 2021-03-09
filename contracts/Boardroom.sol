@@ -62,7 +62,7 @@ abstract contract Boardroom is
     /// @param _stakingToken address of the base token
     /// @param _tokenManager address of the TokenManager
     /// @param _emissionManager address of the EmissionManager
-    /// @param _start start of the pool date
+    /// @param _start start of the boardroom date
     constructor(
         address _stakingToken,
         address _tokenManager,
@@ -148,38 +148,41 @@ abstract contract Boardroom is
 
     /// Called inside `stake` method after updating internal balances
     /// @param from the owner of the staking tokens
-    /// @param to the receiver of the staked token benefits
     /// @param amount amount to stake
-    /// @dev should be implemented in child contracts
     function _doStakeTransfer(
         address from,
-        address to,
+        address,
         uint256 amount
-    ) internal virtual;
+    ) internal virtual {
+        stakingToken.transferFrom(from, address(this), amount);
+    }
 
     /// Called inside `withdraw` method after updating internal balances
-    /// @param from the owner of the staked tokens
     /// @param to the receiver of the staking tokens
     /// @param amount amount to unstake
-    /// @dev should be implemented in child contracts
     function _doWithdrawTransfer(
-        address from,
+        address,
         address to,
         uint256 amount
-    ) internal virtual;
+    ) internal virtual {
+        stakingToken.transfer(to, amount);
+    }
 
     /// Shows the balance of the virtual token that participates in reward calculation
     /// @param owner the owner of the share tokens
-    /// @dev the default implementation should be { return stakeTokenBalances[owner] }
     function shareTokenBalance(address owner)
         public
         view
         virtual
-        returns (uint256);
+        returns (uint256)
+    {
+        return stakingTokenBalances[owner];
+    }
 
     /// Shows the supply of the virtual token that participates in reward calculation
-    /// @dev the default implementation should be { return stakeTokenSupply }
-    function shareTokenSupply() public view virtual returns (uint256);
+    function shareTokenSupply() public view virtual returns (uint256) {
+        return stakingTokenSupply;
+    }
 
     /// Update accrued rewards for all tokens of sender
     function updateAccruals() public unpaused {
