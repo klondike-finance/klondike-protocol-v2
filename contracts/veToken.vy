@@ -236,7 +236,10 @@ def locked__balance(_addr: address) -> uint256:
     @param _addr User wallet
     @return Locked balance
     """
-    return self.locked[_addr].amount
+    amount: int128 = self.locked[_addr].amount
+    if amount < 0:
+        amount = 0
+    return convert(amount, uint256)
 
 @internal
 def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBalance):
