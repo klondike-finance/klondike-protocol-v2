@@ -46,6 +46,9 @@ abstract contract Boardroom is
     /// Pause
     bool public pause;
 
+    /// one unit of staking token (e.g. # of wei in eth)
+    uint256 public immutable stakingUnit;
+
     /// Staking token. Both base and boost token yield reward token which ultimately participates in rewards distribution.
     SyntheticToken public stakingToken;
     /// TokenManager ref
@@ -70,6 +73,7 @@ abstract contract Boardroom is
         uint256 _start
     ) public Timeboundable(_start, 0) {
         stakingToken = SyntheticToken(_stakingToken);
+        stakingUnit = uint256(10)**stakingToken.decimals();
         tokenManager = ITokenManager(_tokenManager);
         emissionManager = _emissionManager;
     }
@@ -108,9 +112,7 @@ abstract contract Boardroom is
             lastAccrualSnapshot.accruedRewardPerShareUnit;
         uint256 deltaRPSU = lastOverallRPSU.sub(lastUserAccrualRPSU);
         uint256 addedUserReward =
-            stakingTokenBalances[owner].mul(deltaRPSU).div(
-                uint256(10)**stakingToken.decimals()
-            );
+            shareTokenBalance(owner).mul(deltaRPSU).div(stakingUnit);
         return accrual.accruedReward.add(addedUserReward);
     }
 
@@ -219,8 +221,7 @@ abstract contract Boardroom is
             poolRewardSnapshots[token];
         PoolRewardSnapshot storage lastSnapshot =
             tokenSnapshots[tokenSnapshots.length - 1];
-        uint256 deltaRPSU =
-            amount.mul(uint256(10)**stakingToken.decimals()).div(shareSupply);
+        uint256 deltaRPSU = amount.mul(stakingUnit).div(shareSupply);
         tokenSnapshots.push(
             PoolRewardSnapshot({
                 timestamp: block.timestamp,
@@ -301,9 +302,7 @@ abstract contract Boardroom is
             lastAccrualSnapshot.accruedRewardPerShareUnit;
         uint256 deltaRPSU = lastOverallRPSU.sub(lastUserAccrualRPSU);
         uint256 addedUserReward =
-            shareTokenBalance(owner).mul(deltaRPSU).div(
-                uint256(10)**stakingToken.decimals()
-            );
+            shareTokenBalance(owner).mul(deltaRPSU).div(stakingUnit);
         accrual.lastAccrualSnaphotId = tokenSnapshots.length - 1;
         accrual.accruedReward = accrual.accruedReward.add(addedUserReward);
         emit RewardAccrued(

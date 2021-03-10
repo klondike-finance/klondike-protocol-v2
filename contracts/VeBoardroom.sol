@@ -6,7 +6,7 @@ import "./Boardroom.sol";
 
 /// Boardroom distributes token emission among shareholders that stake veKlon
 contract VeBoardroom is Boardroom {
-    address public veToken;
+    IERC20 public veToken;
 
     /// Creates new Boardroom
     /// @param _stakingToken address of the base token
@@ -24,9 +24,10 @@ contract VeBoardroom is Boardroom {
     {}
 
     function setVeToken(address _veToken) public onlyOperator {
-        veToken = _veToken;
+        veToken = IERC20(_veToken);
     }
 
+    /// Method is called inside stake method
     function _doStakeTransfer(
         address,
         address,
@@ -35,6 +36,7 @@ contract VeBoardroom is Boardroom {
         revert("VeBoardroom: Staking is disabled");
     }
 
+    /// Method is called inside withdraw method
     function _doWithdrawTransfer(
         address,
         address,
@@ -51,11 +53,11 @@ contract VeBoardroom is Boardroom {
         override
         returns (uint256)
     {
-        return IERC20(veToken).balanceOf(owner);
+        return veToken.balanceOf(owner);
     }
 
     /// Shows the supply of the virtual token that participates in reward calculation
     function shareTokenSupply() public view override returns (uint256) {
-        return IERC20(veToken).totalSupply();
+        return veToken.totalSupply();
     }
 }
