@@ -389,259 +389,216 @@ describe("Boardroom", () => {
     });
   });
 
-  // describe("#claimRewards", () => {
-  //   it("transfers all accrued rewards to owner", async () => {
-  //     const tick = 86400;
-  //     const stakers = [staker0, staker1, staker2, staker3];
-  //     for (const staker of stakers) {
-  //       await klon.transfer(staker.address, 1000);
-  //       await klon
-  //         .connect(staker)
-  //         .approve(boardroom.address, ethers.constants.MaxUint256);
-  //     }
+  describe("#claimRewards", () => {
+    it("transfers all accrued rewards to owner", async () => {
+      const tick = 86400;
+      const stakers = [staker0, staker1, staker2, staker3];
+      for (const staker of stakers) {
+        await klon.transfer(staker.address, 1000);
+        await klon
+          .connect(staker)
+          .approve(boardroom.address, ethers.constants.MaxUint256);
+      }
 
-  //     // day 1
-  //     await boardroom.connect(staker0).stake(100, 0);
-  //     await boardroom.connect(staker1).stake(300, 0);
-  //     await fastForwardAndMine(ethers.provider, tick);
-  //     // day 2
-  //     await kbtc.transfer(boardroom.address, 20000);
-  //     await keth.transfer(boardroom.address, 2000);
-  //     await boardroom
-  //       .connect(emissionManagerMock)
-  //       .notifyTransfer(kbtc.address, 20000);
-  //     await boardroom
-  //       .connect(emissionManagerMock)
-  //       .notifyTransfer(keth.address, 2000);
-  //     await boardroom.connect(staker0).updateAccruals();
-  //     await boardroom.connect(staker1).updateAccruals();
-  //     expect(await kbtc.balanceOf(boardroom.address)).to.eq(20000);
-  //     expect(await keth.balanceOf(boardroom.address)).to.eq(2000);
-  //     expect(await kbtc.balanceOf(staker0.address)).to.eq(0);
-  //     expect(await keth.balanceOf(staker0.address)).to.eq(0);
-  //     expect(await kbtc.balanceOf(staker1.address)).to.eq(0);
-  //     expect(await keth.balanceOf(staker1.address)).to.eq(0);
+      // day 1
+      await boardroom.connect(staker0).stake(staker0.address, 100);
+      await boardroom.connect(staker1).stake(staker1.address, 300);
+      await fastForwardAndMine(ethers.provider, tick);
+      // day 2
+      await kbtc.transfer(boardroom.address, 20000);
+      await keth.transfer(boardroom.address, 2000);
+      await boardroom
+        .connect(emissionManagerMock)
+        .notifyTransfer(kbtc.address, 20000);
+      await boardroom
+        .connect(emissionManagerMock)
+        .notifyTransfer(keth.address, 2000);
+      await boardroom.connect(staker0).updateAccruals();
+      await boardroom.connect(staker1).updateAccruals();
+      expect(await kbtc.balanceOf(boardroom.address)).to.eq(20000);
+      expect(await keth.balanceOf(boardroom.address)).to.eq(2000);
+      expect(await kbtc.balanceOf(staker0.address)).to.eq(0);
+      expect(await keth.balanceOf(staker0.address)).to.eq(0);
+      expect(await kbtc.balanceOf(staker1.address)).to.eq(0);
+      expect(await keth.balanceOf(staker1.address)).to.eq(0);
 
-  //     await expect(boardroom.connect(staker0).claimRewards())
-  //       .to.emit(boardroom, "RewardPaid")
-  //       .withArgs(kbtc.address, staker0.address, 5000)
-  //       .and.to.emit(boardroom, "RewardPaid")
-  //       .withArgs(keth.address, staker0.address, 500);
-  //     await expect(boardroom.connect(staker1).claimRewards())
-  //       .to.emit(boardroom, "RewardPaid")
-  //       .withArgs(kbtc.address, staker1.address, 15000)
-  //       .and.to.emit(boardroom, "RewardPaid")
-  //       .withArgs(keth.address, staker1.address, 1500);
+      await expect(boardroom.connect(staker0).claimRewards())
+        .to.emit(boardroom, "RewardPaid")
+        .withArgs(kbtc.address, staker0.address, 5000)
+        .and.to.emit(boardroom, "RewardPaid")
+        .withArgs(keth.address, staker0.address, 500);
+      await expect(boardroom.connect(staker1).claimRewards())
+        .to.emit(boardroom, "RewardPaid")
+        .withArgs(kbtc.address, staker1.address, 15000)
+        .and.to.emit(boardroom, "RewardPaid")
+        .withArgs(keth.address, staker1.address, 1500);
 
-  //     expect(
-  //       (await boardroom.personRewardAccruals(kbtc.address, staker0.address))[1]
-  //     ).to.eq(BigNumber.from(0));
-  //     expect(
-  //       (await boardroom.personRewardAccruals(keth.address, staker0.address))[1]
-  //     ).to.eq(BigNumber.from(0));
-  //     expect(
-  //       (await boardroom.personRewardAccruals(kbtc.address, staker1.address))[1]
-  //     ).to.eq(BigNumber.from(0));
-  //     expect(
-  //       (await boardroom.personRewardAccruals(keth.address, staker1.address))[1]
-  //     ).to.eq(BigNumber.from(0));
+      expect(
+        (await boardroom.personRewardAccruals(kbtc.address, staker0.address))[1]
+      ).to.eq(BigNumber.from(0));
+      expect(
+        (await boardroom.personRewardAccruals(keth.address, staker0.address))[1]
+      ).to.eq(BigNumber.from(0));
+      expect(
+        (await boardroom.personRewardAccruals(kbtc.address, staker1.address))[1]
+      ).to.eq(BigNumber.from(0));
+      expect(
+        (await boardroom.personRewardAccruals(keth.address, staker1.address))[1]
+      ).to.eq(BigNumber.from(0));
 
-  //     expect(await kbtc.balanceOf(staker0.address)).to.eq(5000);
-  //     expect(await keth.balanceOf(staker0.address)).to.eq(500);
-  //     expect(await kbtc.balanceOf(staker1.address)).to.eq(15000);
-  //     expect(await keth.balanceOf(staker1.address)).to.eq(1500);
+      expect(await kbtc.balanceOf(staker0.address)).to.eq(5000);
+      expect(await keth.balanceOf(staker0.address)).to.eq(500);
+      expect(await kbtc.balanceOf(staker1.address)).to.eq(15000);
+      expect(await keth.balanceOf(staker1.address)).to.eq(1500);
 
-  //     expect(await kbtc.balanceOf(boardroom.address)).to.eq(0);
-  //     expect(await keth.balanceOf(boardroom.address)).to.eq(0);
+      expect(await kbtc.balanceOf(boardroom.address)).to.eq(0);
+      expect(await keth.balanceOf(boardroom.address)).to.eq(0);
 
-  //     await boardroom.connect(staker0).claimRewards();
-  //     await boardroom.connect(staker1).claimRewards();
+      await boardroom.connect(staker0).claimRewards();
+      await boardroom.connect(staker1).claimRewards();
 
-  //     expect(await kbtc.balanceOf(staker0.address)).to.eq(5000);
-  //     expect(await keth.balanceOf(staker0.address)).to.eq(500);
-  //     expect(await kbtc.balanceOf(staker1.address)).to.eq(15000);
-  //     expect(await keth.balanceOf(staker1.address)).to.eq(1500);
-  //   });
-  //   describe("when paused", () => {
-  //     it("fails", async () => {
-  //       await boardroom.setPause(true);
-  //       await expect(boardroom.claimRewards()).to.be.revertedWith(
-  //         "Boardroom operations are paused"
-  //       );
-  //     });
-  //   });
-  // });
+      expect(await kbtc.balanceOf(staker0.address)).to.eq(5000);
+      expect(await keth.balanceOf(staker0.address)).to.eq(500);
+      expect(await kbtc.balanceOf(staker1.address)).to.eq(15000);
+      expect(await keth.balanceOf(staker1.address)).to.eq(1500);
+    });
+    describe("when paused", () => {
+      it("fails", async () => {
+        await boardroom.setPause(true);
+        await expect(boardroom.claimRewards()).to.be.revertedWith(
+          "Boardroom operations are paused"
+        );
+      });
+    });
+  });
 
-  // describe("#notifyTransfer", () => {
-  //   it("adds a reward snapshot", async () => {
-  //     const tick = 86400;
-  //     const stakers = [staker0, staker1, staker2, staker3];
-  //     for (const staker of stakers) {
-  //       await klon.transfer(staker.address, 1000);
-  //       await klon
-  //         .connect(staker)
-  //         .approve(boardroom.address, ethers.constants.MaxUint256);
-  //     }
+  describe("#notifyTransfer", () => {
+    it("adds a reward snapshot", async () => {
+      const tick = 86400;
+      const stakers = [staker0, staker1, staker2, staker3];
+      for (const staker of stakers) {
+        await klon.transfer(staker.address, 1000);
+        await klon
+          .connect(staker)
+          .approve(boardroom.address, ethers.constants.MaxUint256);
+      }
 
-  //     // day 1
-  //     await boardroom.connect(staker0).stake(100, 0);
-  //     await fastForwardAndMine(ethers.provider, tick);
-  //     // day 2
-  //     await kbtc.transfer(boardroom.address, 20000);
-  //     await expect(
-  //       boardroom
-  //         .connect(emissionManagerMock)
-  //         .notifyTransfer(kbtc.address, 20000)
-  //     )
-  //       .to.emit(boardroom, "IncomingBoardroomReward")
-  //       .withArgs(kbtc.address, emissionManagerMock.address, 20000);
-  //     const [_, actualReward, actualRPSU] = await boardroom.poolRewardSnapshots(
-  //       kbtc.address,
-  //       1
-  //     );
-  //     expect(actualReward).to.eq(20000);
-  //     expect(actualRPSU).to.eq(
-  //       BigNumber.from(200).mul(BigNumber.from(10).pow(18))
-  //     );
-  //   });
-  //   describe("when called not by EmissionManager", () => {
-  //     it("fails", async () => {
-  //       const tick = 86400;
-  //       const stakers = [staker0, staker1, staker2, staker3];
-  //       for (const staker of stakers) {
-  //         await klon.transfer(staker.address, 1000);
-  //         await klon
-  //           .connect(staker)
-  //           .approve(boardroom.address, ethers.constants.MaxUint256);
-  //       }
+      // day 1
+      await boardroom.connect(staker0).stake(staker0.address, 100);
+      await fastForwardAndMine(ethers.provider, tick);
+      // day 2
+      await kbtc.transfer(boardroom.address, 20000);
+      await expect(
+        boardroom
+          .connect(emissionManagerMock)
+          .notifyTransfer(kbtc.address, 20000)
+      )
+        .to.emit(boardroom, "IncomingBoardroomReward")
+        .withArgs(kbtc.address, emissionManagerMock.address, 20000);
+      const [_, actualReward, actualRPSU] = await boardroom.poolRewardSnapshots(
+        kbtc.address,
+        1
+      );
+      expect(actualReward).to.eq(20000);
+      expect(actualRPSU).to.eq(
+        BigNumber.from(200).mul(BigNumber.from(10).pow(18))
+      );
+    });
+    describe("when called not by EmissionManager", () => {
+      it("fails", async () => {
+        const tick = 86400;
+        const stakers = [staker0, staker1, staker2, staker3];
+        for (const staker of stakers) {
+          await klon.transfer(staker.address, 1000);
+          await klon
+            .connect(staker)
+            .approve(boardroom.address, ethers.constants.MaxUint256);
+        }
 
-  //       // day 1
-  //       await boardroom.connect(staker0).stake(100, 0);
-  //       await fastForwardAndMine(ethers.provider, tick);
-  //       // day 2
-  //       await kbtc.transfer(boardroom.address, 20000);
-  //       await expect(
-  //         boardroom.notifyTransfer(kbtc.address, 20000)
-  //       ).to.be.revertedWith(
-  //         "Boardroom: can only be called by EmissionManager"
-  //       );
-  //     });
-  //   });
+        // day 1
+        await boardroom.connect(staker0).stake(staker0.address, 100);
+        await fastForwardAndMine(ethers.provider, tick);
+        // day 2
+        await kbtc.transfer(boardroom.address, 20000);
+        await expect(
+          boardroom.notifyTransfer(kbtc.address, 20000)
+        ).to.be.revertedWith(
+          "Boardroom: can only be called by EmissionManager"
+        );
+      });
+    });
 
-  //   describe("when 0 is staked", () => {
-  //     it("fails", async () => {
-  //       await kbtc.transfer(boardroom.address, 20000);
-  //       await expect(
-  //         boardroom
-  //           .connect(emissionManagerMock)
-  //           .notifyTransfer(kbtc.address, 20000)
-  //       ).to.be.revertedWith(
-  //         "Boardroom: Cannot receive incoming reward when token balance is 0"
-  //       );
-  //     });
-  //   });
-  // });
+    describe("when 0 is staked", () => {
+      it("fails", async () => {
+        await kbtc.transfer(boardroom.address, 20000);
+        await expect(
+          boardroom
+            .connect(emissionManagerMock)
+            .notifyTransfer(kbtc.address, 20000)
+        ).to.be.revertedWith(
+          "Boardroom: Cannot receive incoming reward when token balance is 0"
+        );
+      });
+    });
+  });
 
-  // describe("#updateRewardsAfterLock", () => {
-  //   describe("when called by LockPool", () => {
-  //     it("updates rewards share", async () => {
-  //       const stakers = [staker0, staker1, staker2, staker3];
-  //       for (const staker of stakers) {
-  //         await klon.transfer(staker.address, 1000);
-  //         await klon
-  //           .connect(staker)
-  //           .approve(lockPool.address, ethers.constants.MaxUint256);
-  //       }
-  //       await lockPool.lock(1000, 7);
-  //       expect(await boardroom.rewardTokenBalances(op.address)).to.eq(1000);
-  //     });
-  //   });
-  //   describe("when called not by LockPool", () => {
-  //     it("fails", async () => {
-  //       await expect(
-  //         boardroom.updateRewardsAfterLock(op.address)
-  //       ).to.be.revertedWith("Boardroom: can only be called by LockPool");
-  //     });
-  //   });
-  // });
+  describe("#setTokenManager, #setEmissionManager", () => {
+    describe("when called by Owner", () => {
+      it("succeeds", async () => {
+        await expect(boardroom.setTokenManager(op.address)).to.not.be.reverted;
+        await expect(boardroom.setEmissionManager(op.address)).to.not.be
+          .reverted;
+      });
+    });
+    describe("when called not by Owner", () => {
+      it("fails", async () => {
+        await boardroom.transferOwnership(staker0.address);
+        await expect(boardroom.setTokenManager(op.address)).to.be.revertedWith(
+          "Ownable: caller is not the owner"
+        );
+        await expect(
+          boardroom.setEmissionManager(op.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
 
-  // describe("#setLockPool, #setBase, #setBoost, #setTokenManager, #setEmissionManager, #setBoostFactor, #setBoostDenominator", () => {
-  //   describe("when called by Owner", () => {
-  //     it("succeeds", async () => {
-  //       await expect(boardroom.setLockPool(op.address)).to.not.be.reverted;
-  //       await expect(boardroom.setBase(op.address)).to.not.be.reverted;
-  //       await expect(boardroom.setBoost(op.address)).to.not.be.reverted;
-  //       await expect(boardroom.setTokenManager(op.address)).to.not.be.reverted;
-  //       await expect(boardroom.setEmissionManager(op.address)).to.not.be
-  //         .reverted;
-  //       await expect(boardroom.setBoostFactor(105)).to.not.be.reverted;
-  //       await expect(boardroom.setBoostDenominator(110)).to.not.be.reverted;
-  //     });
-  //   });
-  //   describe("when called not by Owner", () => {
-  //     it("fails", async () => {
-  //       await boardroom.transferOwnership(staker0.address);
-  //       await expect(boardroom.setLockPool(op.address)).to.be.revertedWith(
-  //         "Ownable: caller is not the owner"
-  //       );
-  //       await expect(boardroom.setBase(op.address)).to.be.revertedWith(
-  //         "Ownable: caller is not the owner"
-  //       );
-  //       await expect(boardroom.setBoost(op.address)).to.be.revertedWith(
-  //         "Ownable: caller is not the owner"
-  //       );
-  //       await expect(boardroom.setBoostFactor(110)).to.be.revertedWith(
-  //         "Ownable: caller is not the owner"
-  //       );
-  //       await expect(boardroom.setBoostDenominator(110)).to.be.revertedWith(
-  //         "Ownable: caller is not the owner"
-  //       );
-  //       await expect(boardroom.setTokenManager(op.address)).to.be.revertedWith(
-  //         "Ownable: caller is not the owner"
-  //       );
-  //       await expect(
-  //         boardroom.setEmissionManager(op.address)
-  //       ).to.be.revertedWith("Ownable: caller is not the owner");
-  //     });
-  //   });
-  // });
+  describe("#setPause", () => {
+    describe("when called by Operator", () => {
+      it("succeeds", async () => {
+        await expect(boardroom.setPause(true)).to.not.be.reverted;
+      });
+    });
+    describe("when called not by Operator", () => {
+      it("fails", async () => {
+        await boardroom.transferOperator(staker0.address);
+        await expect(boardroom.setPause(true)).to.be.revertedWith(
+          "Only operator can call this method"
+        );
+      });
+    });
+  });
 
-  // describe("#setPause", () => {
-  //   describe("when called by Operator", () => {
-  //     it("succeeds", async () => {
-  //       await expect(boardroom.setPause(true)).to.not.be.reverted;
-  //     });
-  //   });
-  //   describe("when called not by Operator", () => {
-  //     it("fails", async () => {
-  //       await boardroom.transferOperator(staker0.address);
-  //       await expect(boardroom.setPause(true)).to.be.revertedWith(
-  //         "Only operator can call this method"
-  //       );
-  //     });
-  //   });
-  // });
-
-  // describe("#availableForWithdraw", () => {
-  //   describe("when token is not initialized", () => {
-  //     it("returns 0", async () => {
-  //       expect(
-  //         await boardroom.availableForWithdraw(kbtc.address, op.address)
-  //       ).to.eq(0);
-  //     });
-  //   });
-  //   describe("when token is initialized, and something is staked", () => {
-  //     it("returns distibuted amount", async () => {
-  //       const amount = 10000000;
-  //       await boardroom.stake(1, 0);
-  //       await kbtc.transfer(boardroom.address, amount);
-  //       await boardroom
-  //         .connect(emissionManagerMock)
-  //         .notifyTransfer(kbtc.address, amount);
-  //       expect(
-  //         await boardroom.availableForWithdraw(kbtc.address, op.address)
-  //       ).to.eq(amount);
-  //     });
-  //   });
-  // });
+  describe("#availableForWithdraw", () => {
+    describe("when token is not initialized", () => {
+      it("returns 0", async () => {
+        expect(
+          await boardroom.availableForWithdraw(kbtc.address, op.address)
+        ).to.eq(0);
+      });
+    });
+    describe("when token is initialized, and something is staked", () => {
+      it("returns distibuted amount", async () => {
+        const amount = 10000000;
+        await boardroom.stake(op.address, 1);
+        await kbtc.transfer(boardroom.address, amount);
+        await boardroom
+          .connect(emissionManagerMock)
+          .notifyTransfer(kbtc.address, amount);
+        expect(
+          await boardroom.availableForWithdraw(kbtc.address, op.address)
+        ).to.eq(amount);
+      });
+    });
+  });
 });
