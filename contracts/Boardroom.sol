@@ -10,12 +10,7 @@ import "./interfaces/ITokenManager.sol";
 import "./interfaces/IBoardroom.sol";
 
 /// Boardroom distributes token emission among shareholders
-abstract contract Boardroom is
-    IBoardroom,
-    ReentrancyGuard,
-    Timeboundable,
-    Operatable
-{
+contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
     using SafeMath for uint256;
 
     /// Added each time reward to the Boardroom is added
