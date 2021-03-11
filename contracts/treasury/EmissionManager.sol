@@ -324,7 +324,7 @@ contract EmissionManager is
             syntheticTokenAddress,
             uniswapBoardroomAmount
         );
-        emit LiquidBoardroomFunded(
+        emit UniswapBoardroomFunded(
             syntheticTokenAddress,
             uniswapBoardroomAmount
         );
