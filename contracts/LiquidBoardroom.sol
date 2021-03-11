@@ -38,12 +38,11 @@ contract LiquidBoardroom is Boardroom {
         override
         returns (uint256)
     {
-        return
-            stakingToken.balanceOf(owner).add(veToken.locked__balance(owner));
+        return stakingTokenBalances[owner].add(veToken.locked__balance(owner));
     }
 
     /// Shows the supply of the virtual token that participates in reward calculation
     function shareTokenSupply() public view override returns (uint256) {
-        stakingToken.balanceOf(address(this)).add(veToken.supply());
+        return stakingTokenSupply.add(veToken.supply());
     }
 }
