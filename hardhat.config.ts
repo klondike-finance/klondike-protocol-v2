@@ -64,7 +64,7 @@ const config: HardhatUserConfig = {
     apiKey: process.env["ETHERSCAN_API_KEY"],
   },
   vyper: {
-    version: "0.2.4",
+    version: "0.2.7",
   },
 };
 
