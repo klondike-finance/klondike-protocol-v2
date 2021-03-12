@@ -100,13 +100,15 @@ describe("StabFund", () => {
       expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(true);
     });
     describe("when called twice for the same token", async () => {
-      expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(false);
-      await stabFund.addToken(kwbtc.address);
-      const allowedTokens = await stabFund.allAllowedTokens();
-      expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(true);
-      await stabFund.addToken(kwbtc.address);
-      expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(true);
-      expect(await stabFund.allAllowedTokens()).to.eql(allowedTokens);
+      it("adds only one token", async () => {
+        expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(false);
+        await stabFund.addToken(kwbtc.address);
+        const allowedTokens = await stabFund.allAllowedTokens();
+        expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(true);
+        await stabFund.addToken(kwbtc.address);
+        expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(true);
+        expect(await stabFund.allAllowedTokens()).to.eql(allowedTokens);
+      });
     });
     describe("when called not by Owner", () => {
       it("fails", async () => {
