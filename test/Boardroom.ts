@@ -5,17 +5,11 @@ import { ethers } from "hardhat";
 import { ETH, fastForwardAndMine, now } from "./helpers/helpers";
 
 describe("Boardroom", () => {
-  const BOOST_FACTOR = 4;
-  const BOOST_DENOMINATOR = 2;
-
   let Boardroom: ContractFactory;
   let SyntheticToken: ContractFactory;
-  let LockPool: ContractFactory;
   let TokenManagerMock: ContractFactory;
   let boardroom: Contract;
-  let lockPool: Contract;
-  let base: Contract;
-  let boost: Contract;
+  let klon: Contract;
   let tokenManagerMock: Contract;
   let kbtc: Contract;
   let keth: Contract;
@@ -37,24 +31,11 @@ describe("Boardroom", () => {
     staker3 = signers[5];
     Boardroom = await ethers.getContractFactory("Boardroom");
     SyntheticToken = await ethers.getContractFactory("SyntheticToken");
-    LockPool = await ethers.getContractFactory("LockPool");
     TokenManagerMock = await ethers.getContractFactory("TokenManagerMock");
   });
   beforeEach(async () => {
-    base = await SyntheticToken.deploy("DROID", "DROID", 18);
-    boost = await SyntheticToken.deploy("JEDI", "JEDI", 18);
-    await base.mint(op.address, ETH.mul(100));
-    await boost.mint(op.address, ETH.mul(100));
-    lockPool = await LockPool.deploy(base.address, boost.address, await now());
-    await boost.transferOperator(lockPool.address);
-    await boost.transferOwnership(lockPool.address);
-    await base.approve(lockPool.address, ethers.constants.MaxUint256);
-    await lockPool.setRewardFactor(7, 100);
-    await lockPool.setRewardFactor(30, 150);
-    await lockPool.setRewardFactor(90, 200);
-    await lockPool.setRewardFactor(180, 250);
-    await lockPool.setRewardFactor(365, 300);
-    await lockPool.setRewardFactor(1460, 450);
+    klon = await SyntheticToken.deploy("KLON", "KLON", 18);
+    await klon.mint(op.address, ETH.mul(100));
     kbtc = await SyntheticToken.deploy("KBTC", "KBTC", 18);
     keth = await SyntheticToken.deploy("KETH", "KETH", 18);
     await kbtc.mint(op.address, ETH.mul(100));
@@ -63,20 +44,14 @@ describe("Boardroom", () => {
     await tokenManagerMock.addToken(kbtc.address);
     await tokenManagerMock.addToken(keth.address);
     boardroom = await createBoardroom();
-    await base.approve(boardroom.address, ethers.constants.MaxUint256);
-    await boost.approve(boardroom.address, ethers.constants.MaxUint256);
-    await lockPool.setBoardroom(boardroom.address);
+    await klon.approve(boardroom.address, ethers.constants.MaxUint256);
   });
 
   async function createBoardroom() {
     return await Boardroom.deploy(
-      base.address,
-      boost.address,
+      klon.address,
       tokenManagerMock.address,
       emissionManagerMock.address,
-      lockPool.address,
-      BOOST_FACTOR,
-      BOOST_DENOMINATOR,
       await now()
     );
   }
@@ -85,170 +60,79 @@ describe("Boardroom", () => {
     it("creates Boardroom", async () => {
       await expect(
         Boardroom.deploy(
-          base.address,
-          boost.address,
+          klon.address,
           tokenManagerMock.address,
           emissionManagerMock.address,
-          lockPool.address,
-          BOOST_FACTOR,
-          BOOST_DENOMINATOR,
           await now()
         )
       ).to.not.be.reverted;
     });
-    describe("when base and boost decimals are different", () => {
-      it("fails", async () => {
-        base = await SyntheticToken.deploy("DROID", "DROID", 17);
-        boost = await SyntheticToken.deploy("JEDI", "JEDI", 18);
-        await expect(createBoardroom()).to.be.revertedWith(
-          "Boardroom: Base and Boost decimals must be equal"
-        );
-      });
-    });
   });
 
-  describe("#rewardsTokenBalance", () => {
-    describe("when only base token is staked", () => {
-      it("returns reward token equal to base token", async () => {
-        const amount = 12345;
-        await boardroom.stake(amount, 0);
-        expect(await boardroom.rewardsTokenBalance(op.address)).to.eq(amount);
-      });
-    });
-    describe("when base token is staked and locked in the lockPool", () => {
-      it("returns reward token equal to sum of tokens", async () => {
-        const amount = 12345;
-        const amountLock = 23456;
-        await boardroom.stake(amount, 0);
-        await lockPool.lock(amountLock, 7);
-        expect(await boardroom.rewardsTokenBalance(op.address)).to.eq(
-          amount + amountLock
-        );
-      });
-    });
-    describe("when boost token is staked", () => {
-      it("returns 0", async () => {
-        const amount = 12345;
-        await boardroom.stake(0, amount);
-        expect(await boardroom.rewardsTokenBalance(op.address)).to.eq(0);
-      });
-    });
-    describe("when base and boost token is staked", () => {
-      it("returns base + boostFactor * min(base, boost / boostDenominator)", async () => {
-        for (let i = 0; i < 20; i++) {
-          const amountBase = Math.floor(Math.random() * 10000);
-          const amountLock = Math.floor(Math.random() * 10000);
-          const amountBoost =
-            Math.floor(Math.random() * 10000) *
-            (Math.random() < 0.5 ? BOOST_DENOMINATOR : 1);
-          const actualAmountLock = (await lockPool.totalLocked(op.address))
-            .add(amountLock)
-            .toNumber();
-          const expectedBalance =
-            amountBase +
-            actualAmountLock +
-            BOOST_FACTOR *
-              Math.min(
-                amountBase + actualAmountLock,
-                Math.floor(amountBoost / BOOST_DENOMINATOR)
-              );
-          await boardroom.stake(amountBase, amountBoost);
-          await lockPool.lock(amountLock, 30);
-
-          expect(await boardroom.rewardsTokenBalance(op.address)).to.eq(
-            expectedBalance
-          );
-          await boardroom.withdraw(amountBase, amountBoost);
-        }
-      });
+  describe("#shareTokenBalance", () => {
+    it("returns klon token staked", async () => {
+      const amount = 12345;
+      await boardroom.stake(op.address, amount);
+      expect(await boardroom.shareTokenBalance(op.address)).to.eq(amount);
     });
   });
 
   describe("#stake", () => {
-    it("stakes base and boost tokens", async () => {
-      const baseAmount = 123456;
-      const boostAmount = 32;
+    it("stakes klon to specified address", async () => {
+      const klonAmount = 123456;
+      const initialBalance = await klon.balanceOf(op.address);
 
-      await boardroom.stake(baseAmount, 0);
-      expect(await boardroom.baseTokenBalances(op.address)).to.eq(baseAmount);
-
-      await boardroom.stake(0, boostAmount);
-      expect(await boardroom.boostTokenBalances(op.address)).to.eq(boostAmount);
-
-      await boardroom.stake(baseAmount, boostAmount);
-      expect(await boardroom.baseTokenBalances(op.address)).to.eq(
-        baseAmount * 2
+      await boardroom.stake(staker0.address, klonAmount);
+      expect(await boardroom.stakingTokenBalances(staker0.address)).to.eq(
+        klonAmount
       );
-      expect(await boardroom.boostTokenBalances(op.address)).to.eq(
-        boostAmount * 2
-      );
+      const afterBalance = await klon.balanceOf(op.address);
+      expect(initialBalance.sub(afterBalance)).to.eq(klonAmount);
     });
 
-    describe("when both amounts are 0", () => {
+    describe("when amount is 0", () => {
       it("fails", async () => {
-        await expect(boardroom.stake(0, 0)).to.be.revertedWith(
-          "Boardroom: one amount should be > 0"
+        await expect(boardroom.stake(op.address, 0)).to.be.revertedWith(
+          "Boardroom: amount should be > 0"
         );
       });
     });
 
     describe("when there's not enough balance to stake", () => {
       it("fails", async () => {
-        await boost.transfer(staker0.address, 1235);
-        const baseBalance = await base.balanceOf(op.address);
-        const boostBalance = await boost.balanceOf(op.address);
+        const klonBalance = await klon.balanceOf(op.address);
 
-        await expect(boardroom.stake(baseBalance + 1, 0)).to.be.revertedWith(
-          "ERC20: transfer amount exceeds balance"
-        );
-        await expect(boardroom.stake(boostBalance + 1, 0)).to.be.revertedWith(
-          "ERC20: transfer amount exceeds balance"
-        );
-
-        await expect(boardroom.stake(baseBalance, 0))
-          .to.emit(boardroom, "BaseStaked")
-          .withArgs(op.address, baseBalance);
-        await expect(boardroom.stake(0, boostBalance))
-          .to.emit(boardroom, "BoostStaked")
-          .withArgs(op.address, boostBalance);
-        expect(await base.balanceOf(op.address)).to.eq(0);
-        expect(await boost.balanceOf(op.address)).to.eq(0);
+        await expect(
+          boardroom.stake(staker0.address, klonBalance + 1)
+        ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
+        await expect(boardroom.stake(staker0.address, klonBalance))
+          .to.emit(boardroom, "Staked")
+          .withArgs(op.address, staker0.address, klonBalance);
+        expect(await klon.balanceOf(op.address)).to.eq(0);
       });
     });
 
     describe("when balance is not approved", () => {
       it("fails", async () => {
-        await boost.transfer(staker0.address, 1235);
-        const baseBalance = await base.balanceOf(op.address);
-        const boostBalance = await boost.balanceOf(op.address);
-        await base.approve(boardroom.address, baseBalance.sub(1));
-        await boost.approve(boardroom.address, boostBalance.sub(1));
+        const klonBalance = await klon.balanceOf(op.address);
+        await klon.approve(boardroom.address, klonBalance.sub(1));
 
-        await expect(boardroom.stake(baseBalance, 0)).to.be.revertedWith(
-          "ERC20: transfer amount exceeds allowance"
-        );
-        await expect(boardroom.stake(0, boostBalance)).to.be.revertedWith(
-          "ERC20: transfer amount exceeds allowance"
-        );
+        await expect(
+          boardroom.stake(op.address, klonBalance)
+        ).to.be.revertedWith("ERC20: transfer amount exceeds allowance");
+        await klon.approve(boardroom.address, klonBalance);
 
-        await base.approve(boardroom.address, baseBalance);
-        await boost.approve(boardroom.address, boostBalance);
-
-        await expect(boardroom.stake(baseBalance, 0))
-          .to.emit(boardroom, "BaseStaked")
-          .withArgs(op.address, baseBalance);
-        await expect(boardroom.stake(0, boostBalance))
-          .to.emit(boardroom, "BoostStaked")
-          .withArgs(op.address, boostBalance);
-        expect(await base.balanceOf(op.address)).to.eq(0);
-        expect(await boost.balanceOf(op.address)).to.eq(0);
+        await expect(boardroom.stake(staker0.address, klonBalance))
+          .to.emit(boardroom, "Staked")
+          .withArgs(op.address, staker0.address, klonBalance);
+        expect(await klon.balanceOf(op.address)).to.eq(0);
       });
     });
 
     describe("when boardroom is paused", () => {
       it("fails", async () => {
         await boardroom.setPause(true);
-        await expect(boardroom.stake(123, 0)).to.be.revertedWith(
+        await expect(boardroom.stake(op.address, 123)).to.be.revertedWith(
           "Boardroom operations are paused"
         );
       });
@@ -257,50 +141,39 @@ describe("Boardroom", () => {
 
   describe("#withdraw", () => {
     it("withdraws available funds", async () => {
-      const baseBalance = await base.balanceOf(op.address);
-      const boostBalance = await boost.balanceOf(op.address);
-      const baseAmount = 123456;
-      const boostAmount = 32;
+      const klonBalance = await klon.balanceOf(op.address);
+      const klonAmount = 123456;
 
-      await boardroom.stake(baseAmount, boostAmount);
-      await expect(boardroom.withdraw(baseAmount / 2, boostAmount / 2))
-        .to.emit(boardroom, "BaseWithdrawn")
-        .withArgs(op.address, baseAmount / 2)
-        .and.emit(boardroom, "BoostWithdrawn")
-        .withArgs(op.address, boostAmount / 2);
-      await expect(boardroom.withdraw(baseAmount / 2, 0))
-        .to.emit(boardroom, "BaseWithdrawn")
-        .withArgs(op.address, baseAmount / 2);
-      await expect(boardroom.withdraw(0, boostAmount / 2))
-        .to.emit(boardroom, "BoostWithdrawn")
-        .withArgs(op.address, boostAmount / 2);
+      await boardroom.stake(op.address, klonAmount);
+      await expect(boardroom.withdraw(staker0.address, klonAmount / 2))
+        .to.emit(boardroom, "Withdrawn")
+        .withArgs(op.address, staker0.address, klonAmount / 2);
+      await expect(boardroom.withdraw(op.address, klonAmount / 2))
+        .to.emit(boardroom, "Withdrawn")
+        .withArgs(op.address, op.address, klonAmount / 2);
 
-      expect(await base.balanceOf(op.address)).to.eq(baseBalance);
-      expect(await boost.balanceOf(op.address)).to.eq(boostBalance);
+      expect(await klon.balanceOf(op.address)).to.eq(
+        klonBalance.sub(klonAmount / 2)
+      );
     });
 
     describe("when limits are overflown", () => {
       it("fails", async () => {
-        const baseAmount = 123456;
-        const boostAmount = 32;
+        const klonAmount = 123456;
 
-        await boardroom.stake(baseAmount, boostAmount);
-        await expect(boardroom.withdraw(baseAmount + 1, 0)).to.be.revertedWith(
-          "SafeMath: subtraction overflow"
-        );
-        await expect(boardroom.withdraw(0, boostAmount + 1)).to.be.revertedWith(
-          "SafeMath: subtraction overflow"
-        );
+        await boardroom.stake(op.address, klonAmount);
+        await expect(
+          boardroom.withdraw(op.address, klonAmount + 1)
+        ).to.be.revertedWith("SafeMath: subtraction overflow");
       });
     });
     describe("when both amounts are 0", () => {
       it("fails", async () => {
-        const baseAmount = 123456;
-        const boostAmount = 32;
+        const klonAmount = 123456;
 
-        await boardroom.stake(baseAmount, boostAmount);
-        await expect(boardroom.withdraw(0, 0)).to.be.revertedWith(
-          "Boardroom: one amount should be > 0"
+        await boardroom.stake(op.address, klonAmount);
+        await expect(boardroom.withdraw(op.address, 0)).to.be.revertedWith(
+          "Boardroom: amount should be > 0"
         );
       });
     });
@@ -320,15 +193,15 @@ describe("Boardroom", () => {
       const tick = 86400;
       const stakers = [staker0, staker1, staker2, staker3];
       for (const staker of stakers) {
-        await base.transfer(staker.address, 1000);
-        await base
+        await klon.transfer(staker.address, 1000);
+        await klon
           .connect(staker)
           .approve(boardroom.address, ethers.constants.MaxUint256);
       }
 
       // day 1
-      await boardroom.connect(staker0).stake(100, 0);
-      await boardroom.connect(staker1).stake(100, 0);
+      await boardroom.connect(staker0).stake(staker0.address, 100);
+      await boardroom.connect(staker1).stake(staker1.address, 100);
       await fastForwardAndMine(ethers.provider, tick);
       await randomlyAccrueReward(probability);
       // day 2
@@ -343,7 +216,7 @@ describe("Boardroom", () => {
       await fastForwardAndMine(ethers.provider, tick);
       await randomlyAccrueReward(probability);
       // day 3
-      await boardroom.connect(staker2).stake(50, 0);
+      await boardroom.connect(staker2).stake(staker2.address, 50);
       await fastForwardAndMine(ethers.provider, tick);
       await randomlyAccrueReward(probability);
       // day 4
@@ -358,7 +231,7 @@ describe("Boardroom", () => {
       await fastForwardAndMine(ethers.provider, tick);
       await randomlyAccrueReward(probability);
       // day 5
-      await boardroom.connect(staker3).stake(150, 0);
+      await boardroom.connect(staker3).stake(staker3.address, 150);
       await fastForwardAndMine(ethers.provider, tick);
       await randomlyAccrueReward(probability);
       // day 6
@@ -459,8 +332,8 @@ describe("Boardroom", () => {
       const tick = 86400;
       const stakers = [staker0, staker1, staker2, staker3];
       for (const staker of stakers) {
-        await base.transfer(staker.address, 10000);
-        await base
+        await klon.transfer(staker.address, 10000);
+        await klon
           .connect(staker)
           .approve(boardroom.address, ethers.constants.MaxUint256);
       }
@@ -480,7 +353,9 @@ describe("Boardroom", () => {
         const totalStakes = stakesAcc.reduce((acc, val) => acc + val);
         const reward = Math.floor(Math.random() * 10000);
         for (let j = 0; j < 4; j++) {
-          await boardroom.connect(stakers[j]).stake(stakes[j], 0);
+          await boardroom
+            .connect(stakers[j])
+            .stake(stakers[j].address, stakes[j]);
           rewards[j] += Math.floor((stakesAcc[j] * reward) / totalStakes);
         }
         await fastForwardAndMine(ethers.provider, tick);
@@ -519,15 +394,15 @@ describe("Boardroom", () => {
       const tick = 86400;
       const stakers = [staker0, staker1, staker2, staker3];
       for (const staker of stakers) {
-        await base.transfer(staker.address, 1000);
-        await base
+        await klon.transfer(staker.address, 1000);
+        await klon
           .connect(staker)
           .approve(boardroom.address, ethers.constants.MaxUint256);
       }
 
       // day 1
-      await boardroom.connect(staker0).stake(100, 0);
-      await boardroom.connect(staker1).stake(300, 0);
+      await boardroom.connect(staker0).stake(staker0.address, 100);
+      await boardroom.connect(staker1).stake(staker1.address, 300);
       await fastForwardAndMine(ethers.provider, tick);
       // day 2
       await kbtc.transfer(boardroom.address, 20000);
@@ -602,14 +477,14 @@ describe("Boardroom", () => {
       const tick = 86400;
       const stakers = [staker0, staker1, staker2, staker3];
       for (const staker of stakers) {
-        await base.transfer(staker.address, 1000);
-        await base
+        await klon.transfer(staker.address, 1000);
+        await klon
           .connect(staker)
           .approve(boardroom.address, ethers.constants.MaxUint256);
       }
 
       // day 1
-      await boardroom.connect(staker0).stake(100, 0);
+      await boardroom.connect(staker0).stake(staker0.address, 100);
       await fastForwardAndMine(ethers.provider, tick);
       // day 2
       await kbtc.transfer(boardroom.address, 20000);
@@ -634,14 +509,14 @@ describe("Boardroom", () => {
         const tick = 86400;
         const stakers = [staker0, staker1, staker2, staker3];
         for (const staker of stakers) {
-          await base.transfer(staker.address, 1000);
-          await base
+          await klon.transfer(staker.address, 1000);
+          await klon
             .connect(staker)
             .approve(boardroom.address, ethers.constants.MaxUint256);
         }
 
         // day 1
-        await boardroom.connect(staker0).stake(100, 0);
+        await boardroom.connect(staker0).stake(staker0.address, 100);
         await fastForwardAndMine(ethers.provider, tick);
         // day 2
         await kbtc.transfer(boardroom.address, 20000);
@@ -667,60 +542,17 @@ describe("Boardroom", () => {
     });
   });
 
-  describe("#updateRewardsAfterLock", () => {
-    describe("when called by LockPool", () => {
-      it("updates rewards share", async () => {
-        const stakers = [staker0, staker1, staker2, staker3];
-        for (const staker of stakers) {
-          await base.transfer(staker.address, 1000);
-          await base
-            .connect(staker)
-            .approve(lockPool.address, ethers.constants.MaxUint256);
-        }
-        await lockPool.lock(1000, 7);
-        expect(await boardroom.rewardTokenBalances(op.address)).to.eq(1000);
-      });
-    });
-    describe("when called not by LockPool", () => {
-      it("fails", async () => {
-        await expect(
-          boardroom.updateRewardsAfterLock(op.address)
-        ).to.be.revertedWith("Boardroom: can only be called by LockPool");
-      });
-    });
-  });
-
-  describe("#setLockPool, #setBase, #setBoost, #setTokenManager, #setEmissionManager, #setBoostFactor, #setBoostDenominator", () => {
+  describe("#setTokenManager, #setEmissionManager", () => {
     describe("when called by Owner", () => {
       it("succeeds", async () => {
-        await expect(boardroom.setLockPool(op.address)).to.not.be.reverted;
-        await expect(boardroom.setBase(op.address)).to.not.be.reverted;
-        await expect(boardroom.setBoost(op.address)).to.not.be.reverted;
         await expect(boardroom.setTokenManager(op.address)).to.not.be.reverted;
         await expect(boardroom.setEmissionManager(op.address)).to.not.be
           .reverted;
-        await expect(boardroom.setBoostFactor(105)).to.not.be.reverted;
-        await expect(boardroom.setBoostDenominator(110)).to.not.be.reverted;
       });
     });
     describe("when called not by Owner", () => {
       it("fails", async () => {
         await boardroom.transferOwnership(staker0.address);
-        await expect(boardroom.setLockPool(op.address)).to.be.revertedWith(
-          "Ownable: caller is not the owner"
-        );
-        await expect(boardroom.setBase(op.address)).to.be.revertedWith(
-          "Ownable: caller is not the owner"
-        );
-        await expect(boardroom.setBoost(op.address)).to.be.revertedWith(
-          "Ownable: caller is not the owner"
-        );
-        await expect(boardroom.setBoostFactor(110)).to.be.revertedWith(
-          "Ownable: caller is not the owner"
-        );
-        await expect(boardroom.setBoostDenominator(110)).to.be.revertedWith(
-          "Ownable: caller is not the owner"
-        );
         await expect(boardroom.setTokenManager(op.address)).to.be.revertedWith(
           "Ownable: caller is not the owner"
         );
@@ -758,7 +590,7 @@ describe("Boardroom", () => {
     describe("when token is initialized, and something is staked", () => {
       it("returns distibuted amount", async () => {
         const amount = 10000000;
-        await boardroom.stake(1, 0);
+        await boardroom.stake(op.address, 1);
         await kbtc.transfer(boardroom.address, amount);
         await boardroom
           .connect(emissionManagerMock)

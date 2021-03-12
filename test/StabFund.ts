@@ -51,6 +51,17 @@ describe("StabFund", () => {
       await stabFund.addTrader(other.address);
       expect(await stabFund.isAllowedTrader(other.address)).to.eq(true);
     });
+    describe("when called twice for the same trader", () => {
+      it("does nothing", async () => {
+        expect(await stabFund.isAllowedTrader(other.address)).to.eq(false);
+        await stabFund.addTrader(other.address);
+        const allowedTraders = await stabFund.allAllowedTraders();
+        expect(await stabFund.isAllowedTrader(other.address)).to.eq(true);
+        await stabFund.addTrader(other.address);
+        expect(await stabFund.isAllowedTrader(other.address)).to.eq(true);
+        expect(await stabFund.allAllowedTraders()).to.eql(allowedTraders);
+      });
+    });
     describe("when called not by Operator", () => {
       it("fails", async () => {
         await expect(
@@ -87,6 +98,17 @@ describe("StabFund", () => {
       expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(false);
       await stabFund.addToken(kwbtc.address);
       expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(true);
+    });
+    describe("when called twice for the same token", async () => {
+      it("adds only one token", async () => {
+        expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(false);
+        await stabFund.addToken(kwbtc.address);
+        const allowedTokens = await stabFund.allAllowedTokens();
+        expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(true);
+        await stabFund.addToken(kwbtc.address);
+        expect(await stabFund.isAllowedToken(kwbtc.address)).to.eq(true);
+        expect(await stabFund.allAllowedTokens()).to.eql(allowedTokens);
+      });
     });
     describe("when called not by Owner", () => {
       it("fails", async () => {

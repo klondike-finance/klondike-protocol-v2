@@ -27,8 +27,13 @@ contract EmissionManager is
     address public stableFund;
     /// Development fund address
     address public devFund;
-    /// Boardroom contract
-    IBoardroom public boardroom;
+    /// LiquidBoardroom contract
+    IBoardroom public liquidBoardroom;
+    /// VeBoardroom contract
+    IBoardroom public veBoardroom;
+    /// UniswapBoardroom contract
+    IBoardroom public uniswapBoardroom;
+
     /// TokenManager contract
     ITokenManager public tokenManager;
     /// BondManager contract
@@ -42,6 +47,11 @@ contract EmissionManager is
     uint256 public devFundRate = 2;
     /// Stable fund allocation rate (in percentage points)
     uint256 public stableFundRate = 69;
+    /// LiquidBoardroom allocation rate (in percentage points)
+    uint256 public liquidBoardroomRate = 15;
+    /// VeBoardroom allocation rate (in percentage points)
+    uint256 public veBoardroomRate = 80;
+
     /// Pauses positive rebases
     bool public pausePositiveRebase;
 
@@ -64,6 +74,10 @@ contract EmissionManager is
 
     // --------- View ---------
 
+    function uniswapBoardroomRate() public view returns (uint256) {
+        return uint256(100).sub(veBoardroomRate).sub(liquidBoardroomRate);
+    }
+
     /// Checks if contract was initialized properly and ready for use
     function isInitialized() public view returns (bool) {
         return
@@ -71,7 +85,9 @@ contract EmissionManager is
             (address(bondManager) != address(0)) &&
             (address(stableFund) != address(0)) &&
             (address(devFund) != address(0)) &&
-            (address(boardroom) != address(0)) &&
+            (address(veBoardroom) != address(0)) &&
+            (address(uniswapBoardroom) != address(0)) &&
+            (address(liquidBoardroom) != address(0)) &&
             (stableFundRate > 0) &&
             (devFundRate > 0) &&
             (threshold > 100) &&
@@ -152,9 +168,23 @@ contract EmissionManager is
 
     /// Set new boardroom
     /// @param _boardroom New boardroom address
-    function setBoardroom(address _boardroom) public onlyOwner {
-        boardroom = IBoardroom(_boardroom);
-        emit BoardroomChanged(msg.sender, _boardroom);
+    function setLiquidBoardroom(address _boardroom) public onlyOwner {
+        liquidBoardroom = IBoardroom(_boardroom);
+        emit LiquidBoardroomChanged(msg.sender, _boardroom);
+    }
+
+    /// Set new boardroom
+    /// @param _boardroom New boardroom address
+    function setVeBoardroom(address _boardroom) public onlyOwner {
+        veBoardroom = IBoardroom(_boardroom);
+        emit VeBoardroomChanged(msg.sender, _boardroom);
+    }
+
+    /// Set new boardroom
+    /// @param _boardroom New boardroom address
+    function setUniswapBoardroom(address _boardroom) public onlyOwner {
+        uniswapBoardroom = IBoardroom(_boardroom);
+        emit UniswapBoardroomChanged(msg.sender, _boardroom);
     }
 
     /// Set new TokenManager
@@ -229,6 +259,15 @@ contract EmissionManager is
         emit DevFundFunded(syntheticTokenAddress, devFundAmount);
         amount = amount.sub(devFundAmount);
 
+        uint256 stableFundAmount = amount.mul(stableFundRate).div(100);
+        tokenManager.mintSynthetic(
+            syntheticTokenAddress,
+            stableFund,
+            stableFundAmount
+        );
+        emit StableFundFunded(syntheticTokenAddress, stableFundAmount);
+        amount = amount.sub(stableFundAmount);
+
         SyntheticToken bondToken =
             SyntheticToken(bondManager.bondIndex(syntheticTokenAddress));
         uint256 bondSupply = bondToken.totalSupply();
@@ -249,27 +288,56 @@ contract EmissionManager is
             return;
         }
 
-        uint256 stableFundAmount = amount.mul(stableFundRate).div(100);
+        uint256 veBoardroomAmount = amount.mul(veBoardroomRate).div(100);
         tokenManager.mintSynthetic(
             syntheticTokenAddress,
-            stableFund,
-            stableFundAmount
+            address(veBoardroom),
+            veBoardroomAmount
         );
-        emit StableFundFunded(syntheticTokenAddress, stableFundAmount);
-        amount = amount.sub(stableFundAmount);
+        veBoardroom.notifyTransfer(syntheticTokenAddress, veBoardroomAmount);
+        emit VeBoardroomFunded(syntheticTokenAddress, veBoardroomAmount);
 
+        uint256 liquidBoardroomAmount =
+            amount.mul(liquidBoardroomRate).div(100);
         tokenManager.mintSynthetic(
             syntheticTokenAddress,
-            address(boardroom),
-            amount
+            address(liquidBoardroom),
+            liquidBoardroomAmount
         );
-        boardroom.notifyTransfer(syntheticTokenAddress, amount);
-        emit BoardroomFunded(syntheticTokenAddress, amount);
+        liquidBoardroom.notifyTransfer(
+            syntheticTokenAddress,
+            liquidBoardroomAmount
+        );
+        emit LiquidBoardroomFunded(
+            syntheticTokenAddress,
+            liquidBoardroomAmount
+        );
+
+        uint256 uniswapBoardroomAmount =
+            amount.sub(veBoardroomAmount).sub(liquidBoardroomAmount);
+        tokenManager.mintSynthetic(
+            syntheticTokenAddress,
+            address(uniswapBoardroom),
+            uniswapBoardroomAmount
+        );
+        uniswapBoardroom.notifyTransfer(
+            syntheticTokenAddress,
+            uniswapBoardroomAmount
+        );
+        emit UniswapBoardroomFunded(
+            syntheticTokenAddress,
+            uniswapBoardroomAmount
+        );
     }
 
     event DevFundChanged(address indexed operator, address newFund);
     event StableFundChanged(address indexed operator, address newFund);
-    event BoardroomChanged(address indexed operator, address newBoadroom);
+    event LiquidBoardroomChanged(address indexed operator, address newBoadroom);
+    event VeBoardroomChanged(address indexed operator, address newBoadroom);
+    event UniswapBoardroomChanged(
+        address indexed operator,
+        address newBoadroom
+    );
     event TokenManagerChanged(
         address indexed operator,
         address newTokenManager
@@ -289,7 +357,15 @@ contract EmissionManager is
         address indexed syntheticTokenAddress,
         uint256 amount
     );
-    event BoardroomFunded(
+    event LiquidBoardroomFunded(
+        address indexed syntheticTokenAddress,
+        uint256 amount
+    );
+    event VeBoardroomFunded(
+        address indexed syntheticTokenAddress,
+        uint256 amount
+    );
+    event UniswapBoardroomFunded(
         address indexed syntheticTokenAddress,
         uint256 amount
     );

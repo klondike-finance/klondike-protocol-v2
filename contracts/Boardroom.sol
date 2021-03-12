@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./time/Timeboundable.sol";
-import "./LockPool.sol";
 import "./SyntheticToken.sol";
 import "./interfaces/ITokenManager.sol";
 import "./interfaces/IBoardroom.sol";
@@ -39,70 +38,39 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
     mapping(address => mapping(address => PersonRewardAccrual))
         public personRewardAccruals;
 
-    /// Reward token formula param
-    uint256 public boostFactor;
-    /// Reward token formula param
-    uint256 public boostDenominator;
-    /// Decimals for base, boost and rewards tokens;
-    uint256 public immutable decimals;
     /// Pause
-    bool pause;
+    bool public pause;
 
-    /// Base token. Both base and boost token yield reward token which ultimately participates in rewards distribution.
-    SyntheticToken public base;
-    /// Boost token
-    SyntheticToken public boost;
+    /// one unit of staking token (e.g. # of wei in eth)
+    uint256 public immutable stakingUnit;
+
+    /// Staking token. Both base and boost token yield reward token which ultimately participates in rewards distribution.
+    SyntheticToken public stakingToken;
     /// TokenManager ref
     ITokenManager public tokenManager;
     /// EmissionManager ref
     address public emissionManager;
-    /// LockPool (assume all tokens in LockPool are also locked in the Boardroom)
-    LockPool public lockPool;
 
-    /// Proxy for reward token supply
-    uint256 public rewardTokenSupply;
-    /// Proxy for reward token balances
-    mapping(address => uint256) public rewardTokenBalances;
-    /// Proxy for base token supply
-    uint256 public baseTokenSupply;
-    /// Proxy for base token balances
-    mapping(address => uint256) public baseTokenBalances;
-    /// Proxy for boost token supply
-    uint256 public boostTokenSupply;
-    /// Proxy for boost token balances
-    mapping(address => uint256) public boostTokenBalances;
+    /// Staking token supply in the Boardroom
+    uint256 public stakingTokenSupply;
+    /// Staking token balances in the Boardroom
+    mapping(address => uint256) public stakingTokenBalances;
 
     /// Creates new Boardroom
-    /// @param _base address of the base token
-    /// @param _boost address of the boost token
+    /// @param _stakingToken address of the base token
     /// @param _tokenManager address of the TokenManager
     /// @param _emissionManager address of the EmissionManager
-    /// @param _lockPool address of the LockPool
-    /// @param _boostFactor boost formula param
-    /// @param _boostDenominator boost formula param
-    /// @param _start start of the pool date
+    /// @param _start start of the boardroom date
     constructor(
-        address _base,
-        address _boost,
+        address _stakingToken,
         address _tokenManager,
         address _emissionManager,
-        address _lockPool,
-        uint256 _boostFactor,
-        uint256 _boostDenominator,
         uint256 _start
     ) public Timeboundable(_start, 0) {
-        base = SyntheticToken(_base);
-        boost = SyntheticToken(_boost);
-        require(
-            base.decimals() == boost.decimals(),
-            "Boardroom: Base and Boost decimals must be equal"
-        );
-        decimals = base.decimals();
+        stakingToken = SyntheticToken(_stakingToken);
+        stakingUnit = uint256(10)**stakingToken.decimals();
         tokenManager = ITokenManager(_tokenManager);
         emissionManager = _emissionManager;
-        lockPool = LockPool(_lockPool);
-        boostFactor = _boostFactor;
-        boostDenominator = _boostDenominator;
     }
 
     // ------- Modifiers ----------
@@ -139,68 +107,77 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
             lastAccrualSnapshot.accruedRewardPerShareUnit;
         uint256 deltaRPSU = lastOverallRPSU.sub(lastUserAccrualRPSU);
         uint256 addedUserReward =
-            rewardsTokenBalance(owner).mul(deltaRPSU).div(10**decimals);
+            shareTokenBalance(owner).mul(deltaRPSU).div(stakingUnit);
         return accrual.accruedReward.add(addedUserReward);
     }
 
-    /// Get reward token balance for a user
-    function rewardsTokenBalance(address owner) public view returns (uint256) {
-        uint256 baseBalanceBoardroom = baseTokenBalances[owner];
-        uint256 baseLockedBalance = lockPool.balanceOf(owner);
-        uint256 baseBalance = baseBalanceBoardroom.add(baseLockedBalance);
-        uint256 boostBalance = boostTokenBalances[owner];
-        return
-            baseBalance.add(
-                boostFactor.mul(
-                    Math.min(baseBalance, boostBalance.div(boostDenominator))
-                )
-            );
-    }
-
     /// Stake tokens into Boardroom
-    /// @param baseAmount amount of base token
-    /// @param boostAmount amount of boost token
-    /// @dev One of amounts should be > 0
-    function stake(uint256 baseAmount, uint256 boostAmount)
+    /// @param to the receiver of the token
+    /// @param amount amount of staking token
+    function stake(address to, uint256 amount)
         public
         nonReentrant
         inTimeBounds
         unpaused
     {
-        require(
-            (baseAmount > 0) || (boostAmount > 0),
-            "Boardroom: one amount should be > 0"
-        );
+        require((amount > 0), "Boardroom: amount should be > 0");
         updateAccruals();
-        if (baseAmount > 0) {
-            _stakeBase(msg.sender, baseAmount);
-        }
-        if (boostAmount > 0) {
-            _stakeBoost(msg.sender, boostAmount);
-        }
-        _updateRewardTokenBalance(msg.sender);
+        stakingTokenBalances[to] = stakingTokenBalances[to].add(amount);
+        stakingTokenSupply = stakingTokenSupply.add(amount);
+        _doStakeTransfer(msg.sender, to, amount);
+        emit Staked(msg.sender, to, amount);
     }
 
     /// Withdraw tokens from Boardroom
-    /// @param baseAmount amount of base token
-    /// @param boostAmount amount of boost token
-    /// @dev One of amounts should be > 0
-    function withdraw(uint256 baseAmount, uint256 boostAmount)
-        public
-        nonReentrant
-    {
-        require(
-            (baseAmount > 0) || (boostAmount > 0),
-            "Boardroom: one amount should be > 0"
-        );
+    /// @param to the receiver of the token
+    /// @param amount amount of base token
+    function withdraw(address to, uint256 amount) public nonReentrant {
+        require((amount > 0), "Boardroom: amount should be > 0");
         updateAccruals();
-        if (baseAmount > 0) {
-            _withdrawBase(msg.sender, baseAmount);
-        }
-        if (boostAmount > 0) {
-            _withdrawBoost(msg.sender, boostAmount);
-        }
-        _updateRewardTokenBalance(msg.sender);
+        stakingTokenBalances[msg.sender] = stakingTokenBalances[msg.sender].sub(
+            amount
+        );
+        stakingTokenSupply = stakingTokenSupply.sub(amount);
+        _doWithdrawTransfer(msg.sender, to, amount);
+        emit Withdrawn(msg.sender, to, amount);
+    }
+
+    /// Called inside `stake` method after updating internal balances
+    /// @param from the owner of the staking tokens
+    /// @param amount amount to stake
+    function _doStakeTransfer(
+        address from,
+        address,
+        uint256 amount
+    ) internal virtual {
+        stakingToken.transferFrom(from, address(this), amount);
+    }
+
+    /// Called inside `withdraw` method after updating internal balances
+    /// @param to the receiver of the staking tokens
+    /// @param amount amount to unstake
+    function _doWithdrawTransfer(
+        address,
+        address to,
+        uint256 amount
+    ) internal virtual {
+        stakingToken.transfer(to, amount);
+    }
+
+    /// Shows the balance of the virtual token that participates in reward calculation
+    /// @param owner the owner of the share tokens
+    function shareTokenBalance(address owner)
+        public
+        view
+        virtual
+        returns (uint256)
+    {
+        return stakingTokenBalances[owner];
+    }
+
+    /// Shows the supply of the virtual token that participates in reward calculation
+    function shareTokenSupply() public view virtual returns (uint256) {
+        return stakingTokenSupply;
     }
 
     /// Update accrued rewards for all tokens of sender
@@ -229,15 +206,16 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
             msg.sender == address(emissionManager),
             "Boardroom: can only be called by EmissionManager"
         );
+        uint256 shareSupply = shareTokenSupply();
         require(
-            rewardTokenSupply > 0,
+            shareSupply > 0,
             "Boardroom: Cannot receive incoming reward when token balance is 0"
         );
         PoolRewardSnapshot[] storage tokenSnapshots =
             poolRewardSnapshots[token];
         PoolRewardSnapshot storage lastSnapshot =
             tokenSnapshots[tokenSnapshots.length - 1];
-        uint256 deltaRPSU = amount.mul(10**decimals).div(rewardTokenSupply);
+        uint256 deltaRPSU = amount.mul(stakingUnit).div(shareSupply);
         tokenSnapshots.push(
             PoolRewardSnapshot({
                 timestamp: block.timestamp,
@@ -250,40 +228,7 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
         emit IncomingBoardroomReward(token, msg.sender, amount);
     }
 
-    // ------- Public, LockManager ----------
-
-    /// Updates reward token balance of the owner after locking tokens
-    /// @param owner address of the owner
-    function updateRewardsAfterLock(address owner) public override {
-        require(
-            msg.sender == address(lockPool),
-            "Boardroom: can only be called by LockPool"
-        );
-        _updateRewardTokenBalance(owner);
-    }
-
     // ------- Public, Owner (timelock) ----------
-
-    /// Updates LockPool
-    /// @param _lockPool new LockPool
-    function setLockPool(address _lockPool) public onlyOwner {
-        lockPool = LockPool(_lockPool);
-        emit UpdatedLockPool(msg.sender, _lockPool);
-    }
-
-    /// Updates Base
-    /// @param _base new Base
-    function setBase(address _base) public onlyOwner {
-        base = SyntheticToken(_base);
-        emit UpdatedBase(msg.sender, _base);
-    }
-
-    /// Updates Boost
-    /// @param _boost new Boost
-    function setBoost(address _boost) public onlyOwner {
-        boost = SyntheticToken(_boost);
-        emit UpdatedBoost(msg.sender, _boost);
-    }
 
     /// Updates TokenManager
     /// @param _tokenManager new TokenManager
@@ -299,20 +244,6 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
         emit UpdatedEmissionManager(msg.sender, _emissionManager);
     }
 
-    /// Updates BoostFactor
-    /// @param _boostFactor new boostFactor
-    function setBoostFactor(uint256 _boostFactor) public onlyOwner {
-        boostFactor = _boostFactor;
-        emit UpdatedBoostFactor(msg.sender, _boostFactor);
-    }
-
-    /// Updates BoostDenominator
-    /// @param _boostDenominator new boostDenominator
-    function setBoostDenominator(uint256 _boostDenominator) public onlyOwner {
-        boostDenominator = _boostDenominator;
-        emit UpdatedBoostDenominator(msg.sender, _boostDenominator);
-    }
-
     // ------- Public, Operator (multisig) ----------
 
     /// Set pause
@@ -323,46 +254,6 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
     }
 
     // ------- Internal ----------
-
-    function _stakeReward(address owner, uint256 amount) internal {
-        rewardTokenBalances[owner] = rewardTokenBalances[owner].add(amount);
-        rewardTokenSupply = rewardTokenSupply.add(amount);
-        emit RewardStaked(owner, amount);
-    }
-
-    function _withdrawReward(address owner, uint256 amount) internal {
-        rewardTokenBalances[owner] = rewardTokenBalances[owner].sub(amount);
-        rewardTokenSupply = rewardTokenSupply.sub(amount);
-        emit RewardWithdrawn(owner, amount);
-    }
-
-    function _stakeBase(address owner, uint256 amount) internal {
-        baseTokenBalances[owner] = baseTokenBalances[owner].add(amount);
-        baseTokenSupply = baseTokenSupply.add(amount);
-        base.transferFrom(owner, address(this), amount);
-        emit BaseStaked(owner, amount);
-    }
-
-    function _withdrawBase(address owner, uint256 amount) internal {
-        baseTokenBalances[owner] = baseTokenBalances[owner].sub(amount);
-        baseTokenSupply = baseTokenSupply.sub(amount);
-        base.transfer(owner, amount);
-        emit BaseWithdrawn(owner, amount);
-    }
-
-    function _stakeBoost(address owner, uint256 amount) internal {
-        boostTokenBalances[owner] = boostTokenBalances[owner].add(amount);
-        boostTokenSupply = boostTokenSupply.add(amount);
-        boost.transferFrom(owner, address(this), amount);
-        emit BoostStaked(owner, amount);
-    }
-
-    function _withdrawBoost(address owner, uint256 amount) internal {
-        boostTokenBalances[owner] = boostTokenBalances[owner].sub(amount);
-        boostTokenSupply = boostTokenSupply.sub(amount);
-        boost.transfer(owner, amount);
-        emit BoostWithdrawn(owner, amount);
-    }
 
     function _claimReward(address syntheticTokenAddress) internal {
         uint256 reward =
@@ -380,7 +271,6 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
     function _updateAccrual(address syntheticTokenAddress, address owner)
         internal
     {
-        _updateRewardTokenBalance(owner);
         PersonRewardAccrual storage accrual =
             personRewardAccruals[syntheticTokenAddress][owner];
         PoolRewardSnapshot[] storage tokenSnapshots =
@@ -406,7 +296,7 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
             lastAccrualSnapshot.accruedRewardPerShareUnit;
         uint256 deltaRPSU = lastOverallRPSU.sub(lastUserAccrualRPSU);
         uint256 addedUserReward =
-            rewardsTokenBalance(owner).mul(deltaRPSU).div(10**decimals);
+            shareTokenBalance(owner).mul(deltaRPSU).div(stakingUnit);
         accrual.lastAccrualSnaphotId = tokenSnapshots.length - 1;
         accrual.accruedReward = accrual.accruedReward.add(addedUserReward);
         emit RewardAccrued(
@@ -415,19 +305,6 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
             addedUserReward,
             accrual.accruedReward
         );
-    }
-
-    function _updateRewardTokenBalance(address owner) internal {
-        uint256 currentBalance = rewardTokenBalances[owner];
-        uint256 newBalance = rewardsTokenBalance(owner);
-        if (newBalance == currentBalance) {
-            return;
-        }
-        if (newBalance > currentBalance) {
-            _stakeReward(owner, newBalance.sub(currentBalance));
-        } else {
-            _withdrawReward(owner, currentBalance.sub(newBalance));
-        }
     }
 
     // ------- Events ----------
@@ -448,15 +325,8 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
         address indexed from,
         uint256 amount
     );
-    event RewardStaked(address indexed to, uint256 amount);
-    event RewardWithdrawn(address indexed to, uint256 amount);
-    event BaseStaked(address indexed to, uint256 amount);
-    event BaseWithdrawn(address indexed to, uint256 amount);
-    event BoostStaked(address indexed to, uint256 amount);
-    event BoostWithdrawn(address indexed to, uint256 amount);
-    event UpdatedLockPool(address indexed operator, address newPool);
-    event UpdatedBase(address indexed operator, address newBase);
-    event UpdatedBoost(address indexed operator, address newBoost);
+    event Staked(address indexed from, address indexed to, uint256 amount);
+    event Withdrawn(address indexed from, address indexed to, uint256 amount);
     event UpdatedPause(address indexed operator, bool pause);
     event UpdatedTokenManager(
         address indexed operator,
@@ -466,6 +336,4 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
         address indexed operator,
         address newEmissionManager
     );
-    event UpdatedBoostFactor(address indexed operator, uint256 value);
-    event UpdatedBoostDenominator(address indexed operator, uint256 value);
 }

@@ -1,5 +1,6 @@
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-etherscan";
+import "@nomiclabs/hardhat-vyper";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import { HardhatUserConfig } from "hardhat/config";
@@ -61,6 +62,9 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: process.env["ETHERSCAN_API_KEY"],
+  },
+  vyper: {
+    version: "0.2.7",
   },
 };
 
