@@ -820,4 +820,11 @@ describe("EmissionManager", () => {
       });
     });
   });
+  describe("#uniswapBoardroomRate", () => {
+    it("returns uniswap Boardroom Rate", async () => {
+      expect(await manager.uniswapBoardroomRate()).to.eq(
+        UNISWAP_BOARDROOM_RATE
+      );
+    });
+  });
 });

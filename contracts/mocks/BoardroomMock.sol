@@ -8,13 +8,9 @@ contract BoardroomMock is IBoardroom {
         emit NotifyTransfer(token, amount);
     }
 
-    function stake(address to, uint256 amount) public override {
-        emit Stake(to, amount);
-    }
+    function stake(address to, uint256 amount) public override {}
 
-    function withdraw(address to, uint256 amount) public override {
-        emit Withdraw(to, amount);
-    }
+    function withdraw(address to, uint256 amount) public override {}
 
     event NotifyTransfer(address token, uint256 amount);
     event Stake(address to, uint256 amount);
