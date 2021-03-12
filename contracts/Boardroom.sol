@@ -116,7 +116,6 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
     /// @param amount amount of staking token
     function stake(address to, uint256 amount)
         public
-        override
         nonReentrant
         inTimeBounds
         unpaused
@@ -132,7 +131,7 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
     /// Withdraw tokens from Boardroom
     /// @param to the receiver of the token
     /// @param amount amount of base token
-    function withdraw(address to, uint256 amount) public override nonReentrant {
+    function withdraw(address to, uint256 amount) public nonReentrant {
         require((amount > 0), "Boardroom: amount should be > 0");
         updateAccruals();
         stakingTokenBalances[msg.sender] = stakingTokenBalances[msg.sender].sub(

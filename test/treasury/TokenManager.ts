@@ -535,6 +535,19 @@ describe("TokenManager", () => {
         expect(await manager.bondManager()).to.eq(bondManager.address);
       });
     });
+    describe("when called twice", () => {
+      it("fails", async () => {
+        const manager = await TokenManager.deploy(factory.address);
+        expect(await manager.bondManager()).to.eq(ethers.constants.AddressZero);
+        await manager.setBondManager(bondManager.address);
+        await expect(
+          manager.setBondManager(bondManager.address)
+        ).to.be.revertedWith(
+          "TokenManager: bondManager with this address already set"
+        );
+      });
+    });
+
     describe("when called by not Operator", () => {
       it("fails", async () => {
         const [_, other] = await ethers.getSigners();
@@ -557,6 +570,21 @@ describe("TokenManager", () => {
         expect(await manager.emissionManager()).to.eq(emissionManager.address);
       });
     });
+    describe("when called twice", () => {
+      it("fails", async () => {
+        const manager = await TokenManager.deploy(factory.address);
+        expect(await manager.emissionManager()).to.eq(
+          ethers.constants.AddressZero
+        );
+        await manager.setEmissionManager(emissionManager.address);
+        await expect(
+          manager.setEmissionManager(emissionManager.address)
+        ).to.be.revertedWith(
+          "TokenManager: emissionManager with this address already set"
+        );
+      });
+    });
+
     describe("when called by not Operator", () => {
       it("fails", async () => {
         const [_, other] = await ethers.getSigners();
