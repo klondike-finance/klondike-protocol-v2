@@ -375,9 +375,7 @@ describe("TokenManager", () => {
               underlying.address,
               synthetic.address
             )
-          ).to.be.revertedWith(
-            "function selector was not recognized and there's no fallback function"
-          );
+          ).to.be.reverted;
         });
       });
       describe("when oracle doesn't match tokens", () => {
