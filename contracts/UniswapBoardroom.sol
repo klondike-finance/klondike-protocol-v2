@@ -25,9 +25,10 @@ contract UniswapBoardroom is Boardroom {
     {}
 
     /// Update lpPool
-    /// @param _lpPool new token address
+    /// @param _lpPool new lp pool
     function setLpPool(address _lpPool) public onlyOwner {
         lpPool = IRewardsPool(_lpPool);
+        emit LpPoolChanged(msg.sender, _lpPool);
     }
 
     /// Shows the balance of the virtual token that participates in reward calculation
@@ -45,4 +46,6 @@ contract UniswapBoardroom is Boardroom {
     function shareTokenSupply() public view override returns (uint256) {
         return stakingTokenSupply.add(lpPool.totalSupply());
     }
+
+    event LpPoolChanged(address indexed operator, address newLpPool);
 }
