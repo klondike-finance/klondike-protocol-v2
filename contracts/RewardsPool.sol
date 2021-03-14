@@ -12,7 +12,7 @@ interface IBoardroom {
 /// @title Rewards pool for distributing synthetic tokens
 contract RewardsPool is StakingRewards {
     string public name;
-    IBoardroom boardroom;
+    IBoardroom public boardroom;
 
     /// Creates a new contract.
     /// @param _name an address allowed to add rewards
@@ -53,6 +53,7 @@ contract RewardsPool is StakingRewards {
 
     function setBoardroom(address _boardroom) external onlyOwner {
         boardroom = IBoardroom(_boardroom);
+        emit BoardroomChanged(msg.sender, _boardroom);
     }
 
     function _updateBoardroomAccruals(address owner) internal {
@@ -60,4 +61,6 @@ contract RewardsPool is StakingRewards {
             boardroom.updateAccruals(owner);
         }
     }
+
+    event BoardroomChanged(address indexed operator, address newBoardroom);
 }
