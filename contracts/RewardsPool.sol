@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.5.16;
 
-import "synthetix/contracts/StakingRewards.sol";
+import "./synthetix/StakingRewards.sol";
 
 interface IBoardroom {
     /// Update accrued rewards for all tokens of owner
@@ -41,9 +41,9 @@ contract RewardsPool is StakingRewards {
         rewardsDuration = _rewardsDuration;
     }
 
-    function stake(uint256 amount) external {
+    function stake(uint256 amount) public {
         _updateBoardroomAccruals(msg.sender);
-        // super.stake(amount);
+        super.stake(amount);
     }
 
     function withdraw(uint256 amount) public {
