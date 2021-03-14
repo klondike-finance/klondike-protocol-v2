@@ -70,6 +70,15 @@ describe("LiquidBoardroom", () => {
     });
   });
 
+  describe("setVeToken", () => {
+    it("sets VeToken", async () => {
+      await expect(boardroom.setVeToken(staker0.address))
+        .to.emit(boardroom, "VeTokenChanged")
+        .withArgs(op.address, staker0.address);
+      expect(await boardroom.veToken()).to.eq(staker0.address);
+    });
+  });
+
   describe("#claimRewards", () => {
     it("takes into account veKlon holdings", async () => {
       const tick = 86400;
@@ -99,18 +108,18 @@ describe("LiquidBoardroom", () => {
       await boardroom
         .connect(emissionManagerMock)
         .notifyTransfer(kbtc.address, 20000);
-      await boardroom.connect(staker0).updateAccruals();
-      await boardroom.connect(staker1).updateAccruals();
+      await boardroom.connect(staker0).updateAccruals(staker0.address);
+      await boardroom.connect(staker1).updateAccruals(staker1.address);
       expect(await kbtc.balanceOf(boardroom.address)).to.eq(20000);
       expect(await kbtc.balanceOf(staker0.address)).to.eq(0);
       expect(await kbtc.balanceOf(staker1.address)).to.eq(0);
 
-      await expect(boardroom.connect(staker0).claimRewards())
+      await expect(boardroom.connect(staker0).claimRewards(staker0.address))
         .to.emit(boardroom, "RewardPaid")
-        .withArgs(kbtc.address, staker0.address, 5000);
-      await expect(boardroom.connect(staker1).claimRewards())
+        .withArgs(kbtc.address, staker0.address, staker0.address, 5000);
+      await expect(boardroom.connect(staker1).claimRewards(staker1.address))
         .to.emit(boardroom, "RewardPaid")
-        .withArgs(kbtc.address, staker1.address, 15000);
+        .withArgs(kbtc.address, staker1.address, staker1.address, 15000);
 
       expect(
         (await boardroom.personRewardAccruals(kbtc.address, staker0.address))[1]
@@ -124,8 +133,8 @@ describe("LiquidBoardroom", () => {
 
       expect(await kbtc.balanceOf(boardroom.address)).to.eq(0);
 
-      await boardroom.connect(staker0).claimRewards();
-      await boardroom.connect(staker1).claimRewards();
+      await boardroom.connect(staker0).claimRewards(staker0.address);
+      await boardroom.connect(staker1).claimRewards(staker1.address);
 
       expect(await kbtc.balanceOf(staker0.address)).to.eq(5000);
       expect(await kbtc.balanceOf(staker1.address)).to.eq(15000);

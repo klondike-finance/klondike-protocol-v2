@@ -28,6 +28,7 @@ contract LiquidBoardroom is Boardroom {
     /// @param _veToken new token address
     function setVeToken(address _veToken) public onlyOwner {
         veToken = IVotingEscrow(_veToken);
+        emit VeTokenChanged(msg.sender, _veToken);
     }
 
     /// Shows the balance of the virtual token that participates in reward calculation
@@ -45,4 +46,6 @@ contract LiquidBoardroom is Boardroom {
     function shareTokenSupply() public view override returns (uint256) {
         return stakingTokenSupply.add(veToken.supply());
     }
+
+    event VeTokenChanged(address indexed operator, address newVeToken);
 }

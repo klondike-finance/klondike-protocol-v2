@@ -5,7 +5,7 @@ import "./interfaces/IRewardsPool.sol";
 import "./Boardroom.sol";
 
 /// Boardroom distributes token emission among shareholders that stake Klon and lock Klon in lpPool
-contract LiquidBoardroom is Boardroom {
+contract UniswapBoardroom is Boardroom {
     /// Address of lpPool
     IRewardsPool public lpPool;
 
