@@ -85,7 +85,6 @@ contract EmissionManager is
             (address(bondManager) != address(0)) &&
             (address(stableFund) != address(0)) &&
             (address(devFund) != address(0)) &&
-            (address(veBoardroom) != address(0)) &&
             (address(uniswapBoardroom) != address(0)) &&
             (address(liquidBoardroom) != address(0)) &&
             (stableFundRate > 0) &&
@@ -215,6 +214,23 @@ contract EmissionManager is
         emit StableFundRateChanged(msg.sender, _stableFundRate);
     }
 
+    /// Set new stable fund rate
+    /// @param _veBoardroomRate New stable fund rate
+    function setVeBoardroomRate(uint256 _veBoardroomRate) public onlyOwner {
+        veBoardroomRate = _veBoardroomRate;
+        emit VeBoardroomRateChanged(msg.sender, _veBoardroomRate);
+    }
+
+    /// Set new stable fund rate
+    /// @param _liquidBoardroomRate New stable fund rate
+    function setLiquidBoardroomRate(uint256 _liquidBoardroomRate)
+        public
+        onlyOwner
+    {
+        liquidBoardroomRate = _liquidBoardroomRate;
+        emit LiquidBoardroomRateChanged(msg.sender, _liquidBoardroomRate);
+    }
+
     /// Set new threshold
     /// @param _threshold New threshold
     function setThreshold(uint256 _threshold) public onlyOwner {
@@ -303,37 +319,41 @@ contract EmissionManager is
             emit VeBoardroomFunded(syntheticTokenAddress, veBoardroomAmount);
         }
 
-        uint256 liquidBoardroomAmount =
-            amount.mul(liquidBoardroomRate).div(100);
-        tokenManager.mintSynthetic(
-            syntheticTokenAddress,
-            address(liquidBoardroom),
-            liquidBoardroomAmount
-        );
-        liquidBoardroom.notifyTransfer(
-            syntheticTokenAddress,
-            liquidBoardroomAmount
-        );
-        emit LiquidBoardroomFunded(
-            syntheticTokenAddress,
-            liquidBoardroomAmount
-        );
+        uint256 liquidBoardroomAmount = 0;
+        if (liquidBoardroomRate > 0) {
+            liquidBoardroomAmount = amount.mul(liquidBoardroomRate).div(100);
+            tokenManager.mintSynthetic(
+                syntheticTokenAddress,
+                address(liquidBoardroom),
+                liquidBoardroomAmount
+            );
+            liquidBoardroom.notifyTransfer(
+                syntheticTokenAddress,
+                liquidBoardroomAmount
+            );
+            emit LiquidBoardroomFunded(
+                syntheticTokenAddress,
+                liquidBoardroomAmount
+            );
+        }
 
-        uint256 uniswapBoardroomAmount =
-            amount.sub(veBoardroomAmount).sub(liquidBoardroomAmount);
-        tokenManager.mintSynthetic(
-            syntheticTokenAddress,
-            address(uniswapBoardroom),
-            uniswapBoardroomAmount
-        );
-        uniswapBoardroom.notifyTransfer(
-            syntheticTokenAddress,
-            uniswapBoardroomAmount
-        );
-        emit UniswapBoardroomFunded(
-            syntheticTokenAddress,
-            uniswapBoardroomAmount
-        );
+        if (uniswapBoardroomRate() > 0) {
+            uint256 uniswapBoardroomAmount =
+                amount.sub(veBoardroomAmount).sub(liquidBoardroomAmount);
+            tokenManager.mintSynthetic(
+                syntheticTokenAddress,
+                address(uniswapBoardroom),
+                uniswapBoardroomAmount
+            );
+            uniswapBoardroom.notifyTransfer(
+                syntheticTokenAddress,
+                uniswapBoardroomAmount
+            );
+            emit UniswapBoardroomFunded(
+                syntheticTokenAddress,
+                uniswapBoardroomAmount
+            );
+        }
     }
 
     event DevFundChanged(address indexed operator, address newFund);
@@ -353,6 +373,8 @@ contract EmissionManager is
 
     event DevFundRateChanged(address indexed operator, uint256 newRate);
     event StableFundRateChanged(address indexed operator, uint256 newRate);
+    event VeBoardroomRateChanged(address indexed operator, uint256 newRate);
+    event LiquidBoardroomRateChanged(address indexed operator, uint256 newRate);
     event ThresholdChanged(address indexed operator, uint256 newThreshold);
     event MaxRebaseChanged(address indexed operator, uint256 newThreshold);
     event PositiveRebaseTotal(

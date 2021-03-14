@@ -1,3 +1,3 @@
 module.exports = {
-  skipFiles: ["StakingRewards.sol"],
+  skipFiles: ["synthetix/StakingRewards.sol"],
 };
