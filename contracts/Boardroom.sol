@@ -57,7 +57,7 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
     mapping(address => uint256) public stakingTokenBalances;
 
     /// Creates new Boardroom
-    /// @param _stakingToken address of the base token
+    /// @param _stakingToken address of the base token. Should have 18 decimals.
     /// @param _tokenManager address of the TokenManager
     /// @param _emissionManager address of the EmissionManager
     /// @param _start start of the boardroom date
@@ -68,7 +68,7 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
         uint256 _start
     ) public Timeboundable(_start, 0) {
         stakingToken = SyntheticToken(_stakingToken);
-        stakingUnit = uint256(10)**stakingToken.decimals();
+        stakingUnit = uint256(10)**18;
         tokenManager = ITokenManager(_tokenManager);
         emissionManager = _emissionManager;
     }

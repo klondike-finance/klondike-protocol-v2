@@ -58,10 +58,49 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await transferOwnerships(hre);
 }
 
+async function transferPoolOwnership(
+  hre: HardhatRuntimeEnvironment,
+  ownerName: string,
+  targetName: string
+) {
+  const owner = await findExistingContract(hre, ownerName);
+  const target = await getRegistryContract(hre, targetName);
+
+  console.log(`Transferring owner of ${ownerName} to ${target.address}`);
+  const ow = await owner.owner();
+  if (ow.toLowerCase() === target.address.toLowerCase()) {
+    console.log(
+      `${target.address} is already an owner of ${ownerName}. Skipping...`
+    );
+    return;
+  }
+  const nomow = await owner.nominatedOwner();
+  if (nomow.toLowerCase() === target.address.toLowerCase()) {
+    console.log(
+      `${target.address} is already nominated in ${ownerName}. Skipping...`
+    );
+    return;
+  }
+
+  const [signer] = await hre.ethers.getSigners();
+  const contractOwner = await owner.owner();
+  if (contractOwner.toLowerCase() != signer.address.toLowerCase()) {
+    console.log(
+      `Tx sender \`${signer.address}\` is not the owner of \`${owner.address}\`. The owner is \`${contractOwner}\`. Skipping...`
+    );
+    return;
+  }
+
+  console.log("Nominating new owner");
+  const tx = await owner.populateTransaction.nominateNewOwner(target.address);
+  await sendTransaction(hre, tx);
+}
+
 async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
   await transferFullOwnership(hre, "Dike", "KlonDikeSwapPool");
-  await transferOwnership(hre, "DikeDAILPDikePool", "MultisigWallet");
-  await transferOwnership(hre, "KWBTCWBTCLPDikePool", "MultisigWallet");
+
+  await transferPoolOwnership(hre, "DikeDAILPDikePool", "MultisigWallet");
+  await transferPoolOwnership(hre, "KWBTCWBTCLPDikePool", "MultisigWallet");
   await transferOperator(hre, "LiquidBoardroomV1", "MultisigWallet");
   await transferOwnership(hre, "LiquidBoardroomV1", "Timelock");
   await transferOperator(hre, "UniswapBoardroomV1", "MultisigWallet");
@@ -73,7 +112,18 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
   await transferOperator(hre, "EmissionManagerV1", "MultisigWallet");
   await transferOwnership(hre, "EmissionManagerV1", "Timelock");
   await transferOwnership(hre, "KlonDikeSwapPool", "Timelock");
-  await transferOwnership(hre, "VeDike", "Timelock");
+
+  const veDike = await findExistingContract(hre, "VeDike");
+  const timelock = await getRegistryContract(hre, "Timelock");
+  const veDikeOwner = await veDike.admin();
+  if (veDikeOwner.toLowerCase() != timelock.address.toLowerCase()) {
+    let tx = await veDike.populateTransaction.commit_transfer_ownership(
+      timelock.address
+    );
+    await sendTransaction(hre, tx);
+    tx = await veDike.populateTransaction.apply_transfer_ownership();
+    await sendTransaction(hre, tx);
+  }
 }
 
 async function addV1Token(hre: HardhatRuntimeEnvironment) {
@@ -111,8 +161,11 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   await setTreasuryLinks(hre, 1, 1, 1);
   const devFund = await getRegistryContract(hre, "DevFund");
   const stableFund = await getRegistryContract(hre, "StableFund");
-  const liquidBoardroom = await getRegistryContract(hre, "LiquidBoardroomV1");
-  const uniswapBoardroom = await getRegistryContract(hre, "UniswapBoardroomV1");
+  const liquidBoardroom = await findExistingContract(hre, "LiquidBoardroomV1");
+  const uniswapBoardroom = await findExistingContract(
+    hre,
+    "UniswapBoardroomV1"
+  );
   const emissionsManager = await findExistingContract(hre, "EmissionManagerV1");
   const lpPool = await findExistingContract(hre, "KWBTCWBTCLPDikePool");
   const veDike = await findExistingContract(hre, "VeDike");
@@ -199,7 +252,7 @@ async function deployBoardrooms(hre: HardhatRuntimeEnvironment) {
 
   await contractDeploy(
     hre,
-    "Boardroom",
+    "LiquidBoardroom",
     "LiquidBoardroomV1",
     dike.address,
     tokenManager.address,
@@ -208,7 +261,7 @@ async function deployBoardrooms(hre: HardhatRuntimeEnvironment) {
   );
   await contractDeploy(
     hre,
-    "Boardroom",
+    "UniswapBoardroom",
     "UniswapBoardroomV1",
     pairFor(UNISWAP_V2_FACTORY_ADDRESS, dike.address, daiAddress(hre)),
     tokenManager.address,
@@ -222,7 +275,8 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   const dike = await findExistingContract(hre, "Dike");
   const kwbtc = await findExistingContract(hre, "KWBTC");
   const wbtc = await findExistingContract(hre, "WBTC");
-  const multiSig = await getRegistryContract(hre, "MultisigWallet");
+  const timelock = await getRegistryContract(hre, "Timelock");
+  const [op] = await hre.ethers.getSigners();
   await contractDeploy(
     hre,
     "SwapPool",
@@ -237,8 +291,8 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
     "RewardsPool",
     "DikeDAILPDikePool",
     "DikeDAILPDikePool",
-    multiSig.address,
-    multiSig.address,
+    op.address,
+    timelock.address,
     dike.address,
     pairFor(UNISWAP_V2_FACTORY_ADDRESS, dike.address, daiAddress(hre)),
     REWARDS_POOL_INITIAL_DURATION
@@ -248,8 +302,8 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
     "RewardsPool",
     "KWBTCWBTCLPDikePool",
     "KWBTCWBTCLPDikePool",
-    multiSig.address,
-    multiSig.address,
+    op.address,
+    timelock.address,
     dike.address,
     pairFor(UNISWAP_V2_FACTORY_ADDRESS, kwbtc.address, wbtc.address),
     REWARDS_POOL_INITIAL_DURATION
