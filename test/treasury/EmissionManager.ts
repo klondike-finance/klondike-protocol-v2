@@ -237,7 +237,7 @@ describe("EmissionManager", () => {
       });
     });
   });
-  describe("#positiveRebaseAmount", () => {
+  describe("#makePositiveRebase", () => {
     describe("price move up 20% and threshold is 105", () => {
       describe("zero bonds", () => {
         it("makes rebase", async () => {
@@ -675,6 +675,67 @@ describe("EmissionManager", () => {
       });
     });
 
+    describe("when veBoardroomRate is 0", () => {
+      it("doesn't call veBoardroom", async () => {
+        await addPair(8, 18, 18, BigNumber.from(0));
+        await router.swapExactTokensForTokens(
+          BTC,
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await tokenManager.updateOracle(synthetic.address);
+        await fastForwardAndMine(ethers.provider, 3600);
+        await manager.setVeBoardroomRate(0);
+
+        await expect(manager.makePositiveRebase())
+          .to.emit(manager, "LiquidBoardroomFunded")
+          .and.not.to.emit(manager, "VeBoardroomFunded");
+      });
+    });
+
+    describe("when liquidBoardroomRate is 0", () => {
+      it("doesn't call liquidBoardroom", async () => {
+        await addPair(8, 18, 18, BigNumber.from(0));
+        await router.swapExactTokensForTokens(
+          BTC,
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await tokenManager.updateOracle(synthetic.address);
+        await fastForwardAndMine(ethers.provider, 3600);
+        await manager.setLiquidBoardroomRate(0);
+
+        await expect(manager.makePositiveRebase())
+          .to.emit(manager, "UniswapBoardroomFunded")
+          .and.to.not.emit(manager, "LiquidBoardroomFunded");
+      });
+    });
+
+    describe("when uniswapBoardroomRate is 0", () => {
+      it("doesn't call uniswapBoardroom", async () => {
+        await addPair(8, 18, 18, BigNumber.from(0));
+        await router.swapExactTokensForTokens(
+          BTC,
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+        await tokenManager.updateOracle(synthetic.address);
+        await fastForwardAndMine(ethers.provider, 3600);
+        await manager.setLiquidBoardroomRate(75);
+        await manager.setVeBoardroomRate(25);
+
+        await expect(manager.makePositiveRebase())
+          .to.emit(manager, "VeBoardroomFunded")
+          .and.to.not.emit(manager, "UniswapBoardroomFunded");
+      });
+    });
+
     describe("rebase called twice in less than `period` secs", () => {
       it("fails", async () => {
         await addPair(8, 18, 18, BigNumber.from(0));
@@ -735,7 +796,7 @@ describe("EmissionManager", () => {
     });
   });
 
-  describe("#setDevFund, #setStableFund, #setLiquidBoardroom, #setUniswapBoardroom, #setVeBoardroom, #setTokenManager, #setBondManager, #setDevFundRate, #setStableFundRate, #setThreshold, #setMaxRebase", () => {
+  describe("#setDevFund, #setStableFund, #setLiquidBoardroom, #setUniswapBoardroom, #setVeBoardroom, #setTokenManager, #setBondManager, #setDevFundRate, #setStableFundRate, #setVeBoardroomRate, #setLiquidBoardroomRate, #setThreshold, #setMaxRebase", () => {
     beforeEach(async () => {
       await manager.transferOperator(devFund.address);
     });
@@ -753,9 +814,11 @@ describe("EmissionManager", () => {
           .reverted;
         await expect(manager.setTokenManager(op.address)).to.not.be.reverted;
         await expect(manager.setBondManager(op.address)).to.not.be.reverted;
-        await expect(manager.setDevFundRate(op.address)).to.not.be.reverted;
-        await expect(manager.setStableFundRate(op.address)).to.not.be.reverted;
-        await expect(manager.setThreshold(op.address)).to.not.be.reverted;
+        await expect(manager.setDevFundRate(2)).to.not.be.reverted;
+        await expect(manager.setStableFundRate(2)).to.not.be.reverted;
+        await expect(manager.setVeBoardroomRate(2)).to.not.be.reverted;
+        await expect(manager.setLiquidBoardroomRate(2)).to.not.be.reverted;
+        await expect(manager.setThreshold(2)).to.not.be.reverted;
         await expect(manager.setMaxRebase(123)).to.not.be.reverted;
       });
     });
@@ -783,13 +846,20 @@ describe("EmissionManager", () => {
           manager.connect(devFund).setBondManager(op.address)
         ).to.be.revertedWith("Ownable: caller is not the owner");
         await expect(
-          manager.connect(devFund).setDevFundRate(op.address)
+          manager.connect(devFund).setDevFundRate(2)
         ).to.be.revertedWith("Ownable: caller is not the owner");
         await expect(
-          manager.connect(devFund).setStableFundRate(op.address)
+          manager.connect(devFund).setStableFundRate(2)
         ).to.be.revertedWith("Ownable: caller is not the owner");
         await expect(
-          manager.connect(devFund).setThreshold(op.address)
+          manager.connect(devFund).setVeBoardroomRate(2)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+        await expect(
+          manager.connect(devFund).setLiquidBoardroomRate(2)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+
+        await expect(
+          manager.connect(devFund).setThreshold(2)
         ).to.be.revertedWith("Ownable: caller is not the owner");
         await expect(
           manager.connect(devFund).setMaxRebase(123)

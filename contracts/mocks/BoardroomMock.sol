@@ -8,8 +8,10 @@ contract BoardroomMock is IBoardroom {
         emit NotifyTransfer(token, amount);
     }
 
+    function updateAccruals(address owner) public {
+        emit UpdateAccruals(msg.sender, owner);
+    }
+
     event NotifyTransfer(address token, uint256 amount);
-    event Stake(address to, uint256 amount);
-    event Withdraw(address to, uint256 amount);
-    event UpdateRewardsAfterLock(address owner);
+    event UpdateAccruals(address sender, address owner);
 }

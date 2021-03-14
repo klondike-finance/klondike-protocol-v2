@@ -43,6 +43,9 @@ interface ERC20:
     def transfer(to: address, amount: uint256) -> bool: nonpayable
     def transferFrom(spender: address, to: address, amount: uint256) -> bool: nonpayable
 
+interface IBoardroom:
+    def updateAccruals(owner: address): nonpayable
+
 
 # Interface for checking whether address belongs to a whitelisted
 # type of a smart wallet.
@@ -113,6 +116,9 @@ smart_wallet_checker: public(address)
 admin: public(address)  # Can and will be a smart contract
 future_admin: public(address)
 
+boardroom: public(address)
+future_boardroom: public(address)
+
 
 @external
 def __init__(token_addr: address, _name: String[64], _symbol: String[32], _version: String[32]):
@@ -180,6 +186,24 @@ def apply_smart_wallet_checker():
     assert msg.sender == self.admin
     self.smart_wallet_checker = self.future_smart_wallet_checker
 
+@external
+def commit_boardroom(addr: address):
+    """
+    @notice Set an external contract to callback for stake updates
+    @param addr Address of Smart contract checker
+    """
+    assert msg.sender == self.admin
+    self.future_boardroom = addr
+
+
+@external
+def apply_boardroom():
+    """
+    @notice Apply setting external contract to check approved boardroom
+    """
+    assert msg.sender == self.admin
+    self.boardroom = self.future_boardroom
+
 
 @internal
 def assert_not_contract(addr: address):
@@ -240,6 +264,15 @@ def locked__balance(_addr: address) -> uint256:
     if amount < 0:
         amount = 0
     return convert(amount, uint256)
+
+@internal
+def _update_boardroom_accruals(owner: address):
+    """
+    @notice Update boardroom accruals for owner (boardroom is affected by veToken stakes)
+    @param owner Address to be updated
+    """
+    if self.boardroom != ZERO_ADDRESS:
+        IBoardroom(self.boardroom).updateAccruals(owner)
 
 @internal
 def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBalance):
@@ -384,6 +417,8 @@ def _deposit_for(_addr: address, _value: uint256, unlock_time: uint256, locked_b
     # _locked.end > block.timestamp (always)
     self._checkpoint(_addr, old_locked, _locked)
 
+    self._update_boardroom_accruals(_addr)
+    
     if _value != 0:
         assert ERC20(self.token).transferFrom(_addr, self, _value)
 
@@ -497,12 +532,13 @@ def withdraw():
     # _locked has only 0 end
     # Both can have >= 0 amount
     self._checkpoint(msg.sender, old_locked, _locked)
+    self._update_boardroom_accruals(msg.sender)
 
     assert ERC20(self.token).transfer(msg.sender, value)
 
+
     log Withdraw(msg.sender, value, block.timestamp)
     log Supply(supply_before, supply_before - value)
-
 
 # The following ERC20/minime-compatible methods are not real balanceOf and supply!
 # They measure the weights for the purpose of voting, so they don't represent

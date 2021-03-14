@@ -1,13 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity =0.6.6;
 
-import "./interfaces/IVotingEscrow.sol";
+import "./interfaces/IRewardsPool.sol";
 import "./Boardroom.sol";
 
-/// Boardroom distributes token emission among shareholders that stake Klon and lock Klon in veToken
-contract LiquidBoardroom is Boardroom {
-    /// Address of veToken
-    IVotingEscrow public veToken;
+/// Boardroom distributes token emission among shareholders that stake Klon and lock Klon in lpPool
+contract UniswapBoardroom is Boardroom {
+    /// Address of lpPool
+    IRewardsPool public lpPool;
 
     /// Creates new Boardroom
     /// @param _stakingToken address of the base token
@@ -24,11 +24,11 @@ contract LiquidBoardroom is Boardroom {
         Boardroom(_stakingToken, _tokenManager, _emissionManager, _start)
     {}
 
-    /// Update veToken
-    /// @param _veToken new token address
-    function setVeToken(address _veToken) public onlyOwner {
-        veToken = IVotingEscrow(_veToken);
-        emit VeTokenChanged(msg.sender, _veToken);
+    /// Update lpPool
+    /// @param _lpPool new lp pool
+    function setLpPool(address _lpPool) public onlyOwner {
+        lpPool = IRewardsPool(_lpPool);
+        emit LpPoolChanged(msg.sender, _lpPool);
     }
 
     /// Shows the balance of the virtual token that participates in reward calculation
@@ -39,13 +39,13 @@ contract LiquidBoardroom is Boardroom {
         override
         returns (uint256)
     {
-        return stakingTokenBalances[owner].add(veToken.locked__balance(owner));
+        return stakingTokenBalances[owner].add(lpPool.balanceOf(owner));
     }
 
     /// Shows the supply of the virtual token that participates in reward calculation
     function shareTokenSupply() public view override returns (uint256) {
-        return stakingTokenSupply.add(veToken.supply());
+        return stakingTokenSupply.add(lpPool.totalSupply());
     }
 
-    event VeTokenChanged(address indexed operator, address newVeToken);
+    event LpPoolChanged(address indexed operator, address newLpPool);
 }

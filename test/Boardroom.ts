@@ -184,7 +184,7 @@ describe("Boardroom", () => {
       const stakers = [staker0, staker1, staker2, staker3];
       for (const staker of stakers) {
         if (Math.random() < probabality) {
-          await boardroom.connect(staker).updateAccruals();
+          await boardroom.connect(staker).updateAccruals(staker.address);
         }
       }
     }
@@ -283,7 +283,7 @@ describe("Boardroom", () => {
       ).to.eq(1500);
 
       for (const staker of stakers) {
-        await boardroom.connect(staker).updateAccruals();
+        await boardroom.connect(staker).updateAccruals(staker.address);
       }
 
       // staker0
@@ -363,7 +363,9 @@ describe("Boardroom", () => {
           .connect(emissionManagerMock)
           .notifyTransfer(kbtc.address, reward);
         for (let j = 0; j < 4; j++) {
-          await boardroom.connect(stakers[j]).updateAccruals();
+          await boardroom
+            .connect(stakers[j])
+            .updateAccruals(stakers[j].address);
         }
       }
       for (let m = 0; m < 4; m++) {
@@ -382,7 +384,7 @@ describe("Boardroom", () => {
     describe("when paused", () => {
       it("fails", async () => {
         await boardroom.setPause(true);
-        await expect(boardroom.updateAccruals()).to.be.revertedWith(
+        await expect(boardroom.updateAccruals(op.address)).to.be.revertedWith(
           "Boardroom operations are paused"
         );
       });
@@ -413,8 +415,8 @@ describe("Boardroom", () => {
       await boardroom
         .connect(emissionManagerMock)
         .notifyTransfer(keth.address, 2000);
-      await boardroom.connect(staker0).updateAccruals();
-      await boardroom.connect(staker1).updateAccruals();
+      // await boardroom.connect(staker0).updateAccruals(staker0.address);
+      // await boardroom.connect(staker1).updateAccruals(staker1.address);
       expect(await kbtc.balanceOf(boardroom.address)).to.eq(20000);
       expect(await keth.balanceOf(boardroom.address)).to.eq(2000);
       expect(await kbtc.balanceOf(staker0.address)).to.eq(0);
@@ -422,16 +424,16 @@ describe("Boardroom", () => {
       expect(await kbtc.balanceOf(staker1.address)).to.eq(0);
       expect(await keth.balanceOf(staker1.address)).to.eq(0);
 
-      await expect(boardroom.connect(staker0).claimRewards())
+      await expect(boardroom.connect(staker0).claimRewards(staker2.address))
         .to.emit(boardroom, "RewardPaid")
-        .withArgs(kbtc.address, staker0.address, 5000)
+        .withArgs(kbtc.address, staker0.address, staker2.address, 5000)
         .and.to.emit(boardroom, "RewardPaid")
-        .withArgs(keth.address, staker0.address, 500);
-      await expect(boardroom.connect(staker1).claimRewards())
+        .withArgs(keth.address, staker0.address, staker2.address, 500);
+      await expect(boardroom.connect(staker1).claimRewards(staker1.address))
         .to.emit(boardroom, "RewardPaid")
-        .withArgs(kbtc.address, staker1.address, 15000)
+        .withArgs(kbtc.address, staker1.address, staker1.address, 15000)
         .and.to.emit(boardroom, "RewardPaid")
-        .withArgs(keth.address, staker1.address, 1500);
+        .withArgs(keth.address, staker1.address, staker1.address, 1500);
 
       expect(
         (await boardroom.personRewardAccruals(kbtc.address, staker0.address))[1]
@@ -446,26 +448,26 @@ describe("Boardroom", () => {
         (await boardroom.personRewardAccruals(keth.address, staker1.address))[1]
       ).to.eq(BigNumber.from(0));
 
-      expect(await kbtc.balanceOf(staker0.address)).to.eq(5000);
-      expect(await keth.balanceOf(staker0.address)).to.eq(500);
+      expect(await kbtc.balanceOf(staker2.address)).to.eq(5000);
+      expect(await keth.balanceOf(staker2.address)).to.eq(500);
       expect(await kbtc.balanceOf(staker1.address)).to.eq(15000);
       expect(await keth.balanceOf(staker1.address)).to.eq(1500);
 
       expect(await kbtc.balanceOf(boardroom.address)).to.eq(0);
       expect(await keth.balanceOf(boardroom.address)).to.eq(0);
 
-      await boardroom.connect(staker0).claimRewards();
-      await boardroom.connect(staker1).claimRewards();
+      await boardroom.connect(staker0).claimRewards(staker2.address);
+      await boardroom.connect(staker1).claimRewards(staker1.address);
 
-      expect(await kbtc.balanceOf(staker0.address)).to.eq(5000);
-      expect(await keth.balanceOf(staker0.address)).to.eq(500);
+      expect(await kbtc.balanceOf(staker2.address)).to.eq(5000);
+      expect(await keth.balanceOf(staker2.address)).to.eq(500);
       expect(await kbtc.balanceOf(staker1.address)).to.eq(15000);
       expect(await keth.balanceOf(staker1.address)).to.eq(1500);
     });
     describe("when paused", () => {
       it("fails", async () => {
         await boardroom.setPause(true);
-        await expect(boardroom.claimRewards()).to.be.revertedWith(
+        await expect(boardroom.claimRewards(op.address)).to.be.revertedWith(
           "Boardroom operations are paused"
         );
       });
