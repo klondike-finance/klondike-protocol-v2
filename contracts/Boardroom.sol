@@ -121,7 +121,7 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
         unpaused
     {
         require((amount > 0), "Boardroom: amount should be > 0");
-        updateAccruals();
+        updateAccruals(msg.sender);
         stakingTokenBalances[to] = stakingTokenBalances[to].add(amount);
         stakingTokenSupply = stakingTokenSupply.add(amount);
         _doStakeTransfer(msg.sender, to, amount);
@@ -133,7 +133,7 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
     /// @param amount amount of base token
     function withdraw(address to, uint256 amount) public nonReentrant {
         require((amount > 0), "Boardroom: amount should be > 0");
-        updateAccruals();
+        updateAccruals(msg.sender);
         stakingTokenBalances[msg.sender] = stakingTokenBalances[msg.sender].sub(
             amount
         );
@@ -181,18 +181,21 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
     }
 
     /// Update accrued rewards for all tokens of sender
-    function updateAccruals() public unpaused {
+    /// @param owner address to update accruals
+    function updateAccruals(address owner) public unpaused {
         address[] memory tokens = tokenManager.allTokens();
         for (uint256 i = 0; i < tokens.length; i++) {
-            _updateAccrual(tokens[i], msg.sender);
+            _updateAccrual(tokens[i], owner);
         }
     }
 
     /// Transfer all rewards to sender
-    function claimRewards() public nonReentrant unpaused {
+    /// @param to reward receiver
+    function claimRewards(address to) public nonReentrant unpaused {
+        updateAccruals(msg.sender);
         address[] memory tokens = tokenManager.allTokens();
         for (uint256 i = 0; i < tokens.length; i++) {
-            _claimReward(tokens[i]);
+            _claimReward(to, tokens[i]);
         }
     }
 
@@ -255,7 +258,7 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
 
     // ------- Internal ----------
 
-    function _claimReward(address syntheticTokenAddress) internal {
+    function _claimReward(address to, address syntheticTokenAddress) internal {
         uint256 reward =
             personRewardAccruals[syntheticTokenAddress][msg.sender]
                 .accruedReward;
@@ -263,8 +266,8 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
             personRewardAccruals[syntheticTokenAddress][msg.sender]
                 .accruedReward = 0;
             SyntheticToken token = SyntheticToken(syntheticTokenAddress);
-            token.transfer(msg.sender, reward);
-            emit RewardPaid(syntheticTokenAddress, msg.sender, reward);
+            token.transfer(to, reward);
+            emit RewardPaid(syntheticTokenAddress, msg.sender, to, reward);
         }
     }
 
@@ -317,6 +320,7 @@ contract Boardroom is IBoardroom, ReentrancyGuard, Timeboundable, Operatable {
     );
     event RewardPaid(
         address indexed syntheticTokenAddress,
+        address indexed from,
         address indexed to,
         uint256 reward
     );

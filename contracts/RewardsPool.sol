@@ -3,9 +3,16 @@ pragma solidity ^0.5.16;
 
 import "synthetix/contracts/StakingRewards.sol";
 
+interface IBoardroom {
+    /// Update accrued rewards for all tokens of owner
+    /// @param owner address to update accruals
+    function updateAccruals(address owner) external;
+}
+
 /// @title Rewards pool for distributing synthetic tokens
 contract RewardsPool is StakingRewards {
     string public name;
+    IBoardroom boardroom;
 
     /// Creates a new contract.
     /// @param _name an address allowed to add rewards
@@ -32,5 +39,25 @@ contract RewardsPool is StakingRewards {
     {
         name = _name;
         rewardsDuration = _rewardsDuration;
+    }
+
+    function stake(uint256 amount) external {
+        _updateBoardroomAccruals(msg.sender);
+        // super.stake(amount);
+    }
+
+    function withdraw(uint256 amount) public {
+        _updateBoardroomAccruals(msg.sender);
+        super.withdraw(amount);
+    }
+
+    function setBoardroom(address _boardroom) external onlyOwner {
+        boardroom = IBoardroom(_boardroom);
+    }
+
+    function _updateBoardroomAccruals(address owner) internal {
+        if (address(boardroom) != address(0)) {
+            boardroom.updateAccruals(owner);
+        }
     }
 }

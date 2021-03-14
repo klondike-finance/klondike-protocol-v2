@@ -288,14 +288,20 @@ contract EmissionManager is
             return;
         }
 
-        uint256 veBoardroomAmount = amount.mul(veBoardroomRate).div(100);
-        tokenManager.mintSynthetic(
-            syntheticTokenAddress,
-            address(veBoardroom),
-            veBoardroomAmount
-        );
-        veBoardroom.notifyTransfer(syntheticTokenAddress, veBoardroomAmount);
-        emit VeBoardroomFunded(syntheticTokenAddress, veBoardroomAmount);
+        uint256 veBoardroomAmount = 0;
+        if (veBoardroomRate > 0) {
+            veBoardroomAmount = amount.mul(veBoardroomRate).div(100);
+            tokenManager.mintSynthetic(
+                syntheticTokenAddress,
+                address(veBoardroom),
+                veBoardroomAmount
+            );
+            veBoardroom.notifyTransfer(
+                syntheticTokenAddress,
+                veBoardroomAmount
+            );
+            emit VeBoardroomFunded(syntheticTokenAddress, veBoardroomAmount);
+        }
 
         uint256 liquidBoardroomAmount =
             amount.mul(liquidBoardroomRate).div(100);
