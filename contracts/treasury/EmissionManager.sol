@@ -48,9 +48,9 @@ contract EmissionManager is
     /// Stable fund allocation rate (in percentage points)
     uint256 public stableFundRate = 69;
     /// LiquidBoardroom allocation rate (in percentage points)
-    uint256 public liquidBoardroomRate = 15;
+    uint256 public liquidBoardroomRate = 75;
     /// VeBoardroom allocation rate (in percentage points)
-    uint256 public veBoardroomRate = 80;
+    uint256 public veBoardroomRate = 0;
 
     /// Pauses positive rebases
     bool public pausePositiveRebase;

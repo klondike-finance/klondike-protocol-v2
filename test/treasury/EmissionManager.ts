@@ -62,6 +62,8 @@ describe("EmissionManager", () => {
     tokenManager = await TokenManager.deploy(factory.address);
     bondManager = await BondManager.deploy(await now());
     manager = await EmissionManager.deploy(await now(), PERIOD);
+    await manager.setLiquidBoardroomRate(15);
+    await manager.setVeBoardroomRate(80);
     liquidBoardroomMock = await BoardroomMock.deploy();
     veBoardroomMock = await BoardroomMock.deploy();
     uniswapBoardroomMock = await BoardroomMock.deploy();
