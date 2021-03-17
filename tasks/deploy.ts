@@ -97,10 +97,10 @@ async function transferPoolOwnership(
 }
 
 async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
-  await transferFullOwnership(hre, "Dike", "KlonDikeSwapPool");
+  await transferFullOwnership(hre, "Rush", "KlonRushSwapPool");
 
-  await transferPoolOwnership(hre, "DikeDAILPDikePool", "MultisigWallet");
-  await transferPoolOwnership(hre, "KWBTCWBTCLPDikePool", "MultisigWallet");
+  await transferPoolOwnership(hre, "RushDAILPRushPool", "MultisigWallet");
+  await transferPoolOwnership(hre, "KWBTCWBTCLPRushPool", "MultisigWallet");
   await transferOperator(hre, "LiquidBoardroomV1", "MultisigWallet");
   await transferOwnership(hre, "LiquidBoardroomV1", "Timelock");
   await transferOperator(hre, "UniswapBoardroomV1", "MultisigWallet");
@@ -111,17 +111,17 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
   await transferOwnership(hre, "BondManagerV1", "Timelock");
   await transferOperator(hre, "EmissionManagerV1", "MultisigWallet");
   await transferOwnership(hre, "EmissionManagerV1", "Timelock");
-  await transferOwnership(hre, "KlonDikeSwapPool", "Timelock");
+  await transferOwnership(hre, "KlonRushSwapPool", "Timelock");
 
-  const veDike = await findExistingContract(hre, "VeDike");
+  const veRush = await findExistingContract(hre, "VeRush");
   const timelock = await getRegistryContract(hre, "Timelock");
-  const veDikeOwner = await veDike.admin();
-  if (veDikeOwner.toLowerCase() != timelock.address.toLowerCase()) {
-    let tx = await veDike.populateTransaction.commit_transfer_ownership(
+  const veRushOwner = await veRush.admin();
+  if (veRushOwner.toLowerCase() != timelock.address.toLowerCase()) {
+    let tx = await veRush.populateTransaction.commit_transfer_ownership(
       timelock.address
     );
     await sendTransaction(hre, tx);
-    tx = await veDike.populateTransaction.apply_transfer_ownership();
+    tx = await veRush.populateTransaction.apply_transfer_ownership();
     await sendTransaction(hre, tx);
   }
 }
@@ -167,8 +167,8 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
     "UniswapBoardroomV1"
   );
   const emissionsManager = await findExistingContract(hre, "EmissionManagerV1");
-  const lpPool = await findExistingContract(hre, "KWBTCWBTCLPDikePool");
-  const veDike = await findExistingContract(hre, "VeDike");
+  const lpPool = await findExistingContract(hre, "KWBTCWBTCLPRushPool");
+  const veRush = await findExistingContract(hre, "VeRush");
   const devFundAddress = await emissionsManager.devFund();
   if (devFundAddress.toLowerCase() !== devFund.address.toLowerCase()) {
     console.log(
@@ -223,7 +223,7 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
     uniswapBoardroom.address.toLowerCase()
   ) {
     console.log(
-      `KWBTCWBTCLPDikePool: Boardroom is ${lpPoolBoardroomAddress}. Setting to ${uniswapBoardroom.address}`
+      `KWBTCWBTCLPRushPool: Boardroom is ${lpPoolBoardroomAddress}. Setting to ${uniswapBoardroom.address}`
     );
 
     const tx = await lpPool.populateTransaction.setBoardroom(
@@ -232,21 +232,21 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
     await sendTransaction(hre, tx);
   }
 
-  const veDikeAddress = await liquidBoardroom.veToken();
-  if (veDikeAddress.toLowerCase() != veDike.address.toLowerCase()) {
+  const veRushAddress = await liquidBoardroom.veToken();
+  if (veRushAddress.toLowerCase() != veRush.address.toLowerCase()) {
     console.log(
-      `LiquidBoardroom: VeToken is ${veDikeAddress}. Setting to ${veDike.address}`
+      `LiquidBoardroom: VeToken is ${veRushAddress}. Setting to ${veRush.address}`
     );
 
     const tx = await liquidBoardroom.populateTransaction.setVeToken(
-      veDike.address
+      veRush.address
     );
     await sendTransaction(hre, tx);
   }
 }
 
 async function deployBoardrooms(hre: HardhatRuntimeEnvironment) {
-  const dike = await findExistingContract(hre, "Dike");
+  const dike = await findExistingContract(hre, "Rush");
   const tokenManager = await findExistingContract(hre, "TokenManagerV1");
   const emissionManager = await findExistingContract(hre, "EmissionManagerV1");
 
@@ -272,15 +272,15 @@ async function deployBoardrooms(hre: HardhatRuntimeEnvironment) {
 
 async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   const klon = await findExistingContract(hre, "Klon");
-  const dike = await findExistingContract(hre, "Dike");
+  const dike = await findExistingContract(hre, "Rush");
   const kwbtc = await findExistingContract(hre, "KWBTC");
   const wbtc = await findExistingContract(hre, "WBTC");
-  const timelock = await getRegistryContract(hre, "Timelock");
+  const multisig = await getRegistryContract(hre, "MultiSigWallet");
   const [op] = await hre.ethers.getSigners();
   await contractDeploy(
     hre,
     "SwapPool",
-    "KlonDikeSwapPool",
+    "KlonRushSwapPool",
     klon.address,
     dike.address,
     SWAP_POOL_START_DATE,
@@ -289,10 +289,10 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   await contractDeploy(
     hre,
     "RewardsPool",
-    "DikeDAILPDikePool",
-    "DikeDAILPDikePool",
+    "RushDAILPRushPool",
+    "RushDAILPRushPool",
     op.address,
-    timelock.address,
+    multisig.address,
     dike.address,
     pairFor(UNISWAP_V2_FACTORY_ADDRESS, dike.address, daiAddress(hre)),
     REWARDS_POOL_INITIAL_DURATION
@@ -300,10 +300,10 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   await contractDeploy(
     hre,
     "RewardsPool",
-    "KWBTCWBTCLPDikePool",
-    "KWBTCWBTCLPDikePool",
+    "KWBTCWBTCLPRushPool",
+    "KWBTCWBTCLPRushPool",
     op.address,
-    timelock.address,
+    multisig.address,
     dike.address,
     pairFor(UNISWAP_V2_FACTORY_ADDRESS, kwbtc.address, wbtc.address),
     REWARDS_POOL_INITIAL_DURATION
@@ -354,18 +354,18 @@ async function deployTokensAndMint(hre: HardhatRuntimeEnvironment) {
   const dike = await contractDeploy(
     hre,
     "SyntheticToken",
-    "Dike",
-    "Dike",
-    "Dike",
+    "Rush",
+    "Rush",
+    "Rush",
     18
   );
   await contractDeploy(
     hre,
     "VeToken",
-    "VeDike",
+    "VeRush",
     dike.address,
-    "VeDike",
-    "VeDike",
+    "VeRush",
+    "VeRush",
     "1"
   );
 }
