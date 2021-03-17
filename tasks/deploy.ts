@@ -97,10 +97,10 @@ async function transferPoolOwnership(
 }
 
 async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
-  await transferFullOwnership(hre, "Rush", "KlonRushSwapPool");
+  await transferFullOwnership(hre, "KlonX", "KlonKlonXSwapPool");
 
-  await transferPoolOwnership(hre, "RushDAILPRushPool", "MultisigWallet");
-  await transferPoolOwnership(hre, "KWBTCWBTCLPRushPool", "MultisigWallet");
+  await transferPoolOwnership(hre, "KlonXDAILPKlonXPool", "MultisigWallet");
+  await transferPoolOwnership(hre, "KWBTCWBTCLPKlonXPool", "MultisigWallet");
   await transferOperator(hre, "LiquidBoardroomV1", "MultisigWallet");
   await transferOwnership(hre, "LiquidBoardroomV1", "Timelock");
   await transferOperator(hre, "UniswapBoardroomV1", "MultisigWallet");
@@ -111,17 +111,17 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
   await transferOwnership(hre, "BondManagerV1", "Timelock");
   await transferOperator(hre, "EmissionManagerV1", "MultisigWallet");
   await transferOwnership(hre, "EmissionManagerV1", "Timelock");
-  await transferOwnership(hre, "KlonRushSwapPool", "Timelock");
+  await transferOwnership(hre, "KlonKlonXSwapPool", "Timelock");
 
-  const veRush = await findExistingContract(hre, "VeRush");
+  const veKlonX = await findExistingContract(hre, "VeKlonX");
   const timelock = await getRegistryContract(hre, "Timelock");
-  const veRushOwner = await veRush.admin();
-  if (veRushOwner.toLowerCase() != timelock.address.toLowerCase()) {
-    let tx = await veRush.populateTransaction.commit_transfer_ownership(
+  const veKlonXOwner = await veKlonX.admin();
+  if (veKlonXOwner.toLowerCase() != timelock.address.toLowerCase()) {
+    let tx = await veKlonX.populateTransaction.commit_transfer_ownership(
       timelock.address
     );
     await sendTransaction(hre, tx);
-    tx = await veRush.populateTransaction.apply_transfer_ownership();
+    tx = await veKlonX.populateTransaction.apply_transfer_ownership();
     await sendTransaction(hre, tx);
   }
 }
@@ -167,8 +167,8 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
     "UniswapBoardroomV1"
   );
   const emissionsManager = await findExistingContract(hre, "EmissionManagerV1");
-  const lpPool = await findExistingContract(hre, "KWBTCWBTCLPRushPool");
-  const veRush = await findExistingContract(hre, "VeRush");
+  const lpPool = await findExistingContract(hre, "KWBTCWBTCLPKlonXPool");
+  const veKlonX = await findExistingContract(hre, "VeKlonX");
   const devFundAddress = await emissionsManager.devFund();
   if (devFundAddress.toLowerCase() !== devFund.address.toLowerCase()) {
     console.log(
@@ -223,7 +223,7 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
     uniswapBoardroom.address.toLowerCase()
   ) {
     console.log(
-      `KWBTCWBTCLPRushPool: Boardroom is ${lpPoolBoardroomAddress}. Setting to ${uniswapBoardroom.address}`
+      `KWBTCWBTCLPKlonXPool: Boardroom is ${lpPoolBoardroomAddress}. Setting to ${uniswapBoardroom.address}`
     );
 
     const tx = await lpPool.populateTransaction.setBoardroom(
@@ -232,21 +232,21 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
     await sendTransaction(hre, tx);
   }
 
-  const veRushAddress = await liquidBoardroom.veToken();
-  if (veRushAddress.toLowerCase() != veRush.address.toLowerCase()) {
+  const veKlonXAddress = await liquidBoardroom.veToken();
+  if (veKlonXAddress.toLowerCase() != veKlonX.address.toLowerCase()) {
     console.log(
-      `LiquidBoardroom: VeToken is ${veRushAddress}. Setting to ${veRush.address}`
+      `LiquidBoardroom: VeToken is ${veKlonXAddress}. Setting to ${veKlonX.address}`
     );
 
     const tx = await liquidBoardroom.populateTransaction.setVeToken(
-      veRush.address
+      veKlonX.address
     );
     await sendTransaction(hre, tx);
   }
 }
 
 async function deployBoardrooms(hre: HardhatRuntimeEnvironment) {
-  const dike = await findExistingContract(hre, "Rush");
+  const dike = await findExistingContract(hre, "KlonX");
   const tokenManager = await findExistingContract(hre, "TokenManagerV1");
   const emissionManager = await findExistingContract(hre, "EmissionManagerV1");
 
@@ -272,7 +272,7 @@ async function deployBoardrooms(hre: HardhatRuntimeEnvironment) {
 
 async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   const klon = await findExistingContract(hre, "Klon");
-  const dike = await findExistingContract(hre, "Rush");
+  const dike = await findExistingContract(hre, "KlonX");
   const kwbtc = await findExistingContract(hre, "KWBTC");
   const wbtc = await findExistingContract(hre, "WBTC");
   const multisig = await getRegistryContract(hre, "MultiSigWallet");
@@ -280,7 +280,7 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   await contractDeploy(
     hre,
     "SwapPool",
-    "KlonRushSwapPool",
+    "KlonKlonXSwapPool",
     klon.address,
     dike.address,
     SWAP_POOL_START_DATE,
@@ -289,8 +289,8 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   await contractDeploy(
     hre,
     "RewardsPool",
-    "RushDAILPRushPool",
-    "RushDAILPRushPool",
+    "KlonXDAILPKlonXPool",
+    "KlonXDAILPKlonXPool",
     op.address,
     multisig.address,
     dike.address,
@@ -300,8 +300,8 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   await contractDeploy(
     hre,
     "RewardsPool",
-    "KWBTCWBTCLPRushPool",
-    "KWBTCWBTCLPRushPool",
+    "KWBTCWBTCLPKlonXPool",
+    "KWBTCWBTCLPKlonXPool",
     op.address,
     multisig.address,
     dike.address,
@@ -354,18 +354,18 @@ async function deployTokensAndMint(hre: HardhatRuntimeEnvironment) {
   const dike = await contractDeploy(
     hre,
     "SyntheticToken",
-    "Rush",
-    "Rush",
-    "Rush",
+    "KlonX",
+    "KlonX",
+    "KlonX",
     18
   );
   await contractDeploy(
     hre,
     "VeToken",
-    "VeRush",
+    "VeKlonX",
     dike.address,
-    "VeRush",
-    "VeRush",
+    "VeKlonX",
+    "VeKlonX",
     "1"
   );
 }
