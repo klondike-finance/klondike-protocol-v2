@@ -5,7 +5,7 @@ import Token from '../../components/Token';
 const FundsPage = () => {
   return (
     <Grid container spacing={3}>
-      {['Jedi', 'Droid', 'KWBTC', 'KB-WBTC', 'Klon', 'WBTC', 'DAI'].map((name) => (
+      {['KlonX', 'KWBTC', 'KB-WBTC', 'Klon', 'WBTC', 'DAI'].map((name) => (
         <Token key={name} name={name} />
       ))}
     </Grid>
