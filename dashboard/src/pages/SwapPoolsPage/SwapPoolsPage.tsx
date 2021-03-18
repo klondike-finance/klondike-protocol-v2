@@ -3,11 +3,9 @@ import LockPool from '../../components/LockPool';
 import SwapPool from '../../components/SwapPool';
 
 const SwapPoolsPage = () => {
-  const pools = ['KWBTCWBTCLPDroidPool', 'JediDAILPDroidPool', 'DroidDAILPDroidPool'];
   return (
     <Grid container spacing={3}>
       <SwapPool />
-      <LockPool />
     </Grid>
   );
 };

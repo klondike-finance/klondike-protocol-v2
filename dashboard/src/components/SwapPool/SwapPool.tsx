@@ -13,7 +13,7 @@ const SwapPool = () => {
   useEffect(() => {
     (async () => {
       if (!provider || !deployments) return;
-      const { address, abi } = deployments['KlonJediSwapPool'];
+      const { address, abi } = deployments['KlonKlonXSwapPool'];
       const pool = new ethers.Contract(address, abi, provider);
       try {
         const inToken = await pool.inToken();
@@ -42,8 +42,8 @@ const SwapPool = () => {
     <Grid item xs={12} md={6} lg={6}>
       <Card>
         <CardHeader
-          title={'KlonJedi Swap Pool'}
-          subheader={deployments && <Entry v={deployments['KlonJediSwapPool'].address} />}
+          title={'KlonKlonX Swap Pool'}
+          subheader={deployments && <Entry v={deployments['KlonKlonXSwapPool'].address} />}
         />
         <CardContent>
           {error && <Alert severity="error">{`Error fetching pair data: ${error}`}</Alert>}

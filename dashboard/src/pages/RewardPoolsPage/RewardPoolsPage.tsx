@@ -2,7 +2,7 @@ import { Grid } from '@material-ui/core';
 import RewardPool from '../../components/RewardPool';
 
 const RewardPoolsPage = () => {
-  const pools = ['KWBTCWBTCLPDroidPool', 'JediDAILPDroidPool', 'DroidDAILPDroidPool'];
+  const pools = ['KWBTCWBTCLPKlonXPool', 'KlonXWBTCLPKlonXPool'];
   return (
     <Grid container spacing={3}>
       {pools.map((name) => (
