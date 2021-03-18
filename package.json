@@ -13,7 +13,9 @@
     "front:kovan": "hardhat abi:generate --network kovan",
     "deploy:mainnet": "rm -rf ./artifacts && hardhat compile && hardhat deploy --network mainnet",
     "verify:mainnet": "rm -rf ./artifacts && hardhat compile && hardhat contract:verify:all --network mainnet",
-    "front:mainnet": "hardhat abi:generate --network mainnet"
+    "front:mainnet": "hardhat abi:generate --network mainnet",
+    "cron:kovan": "hardhat cron:tick --network kovan",
+    "cron:mainnet": "hardhat cron:tick --network mainnet"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
