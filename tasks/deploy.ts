@@ -276,7 +276,7 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   const klonx = await findExistingContract(hre, "KlonX");
   const kwbtc = await findExistingContract(hre, "KWBTC");
   const wbtc = await findExistingContract(hre, "WBTC");
-  const multisig = await getRegistryContract(hre, "MultiSigWallet");
+  const multisig = await getRegistryContract(hre, "MultisigWallet");
   const [op] = await hre.ethers.getSigners();
   await contractDeploy(
     hre,
