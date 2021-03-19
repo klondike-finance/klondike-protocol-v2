@@ -1,39 +1,39 @@
 {
   "WBTC": {
-    "address": "0xd48281204bbbb77146a14ed5eedbbf66bc903901",
+    "address": "0x718a412b16c0c27755510198ffe4ccf41cbe20c2",
     "args": [],
     "name": "SyntheticToken",
     "registryName": "WBTC"
   },
   "KWBTC": {
-    "address": "0xf42a1eb32ef8ef987f1f052156ee69d096c05aab",
+    "address": "0x016ad90cd53a8bc819ce47158d12c6243f42f50b",
     "args": [],
     "name": "SyntheticToken",
     "registryName": "KWBTC"
   },
   "KB-WBTC": {
-    "address": "0x8bc64158fba890dd60384644817abf70e51cff6e",
+    "address": "0x808341bf935ec347167bb8a8cd42982d704818b6",
     "args": [],
     "name": "SyntheticToken",
     "registryName": "KB-WBTC"
   },
   "Klon": {
-    "address": "0xfb591282c5f70673d2c65b2292fb7c6cae0a2386",
+    "address": "0xb9b4e3dae4593f789df58ed78bd8bad13abb308c",
     "args": [],
     "name": "SyntheticToken",
     "registryName": "Klon"
   },
   "DevFund": {
-    "address": "0xc62280eeab558b68d1bb9975ec790c9fd7f422f7",
+    "address": "0x9fe71007d5e87cfa45a2b35647d41283cb955a7b",
     "args": [],
     "name": null,
     "registryName": "DevFund"
   },
   "StableFund": {
-    "address": "0x168d9351f2e955f691b1787729b0db7e11fe9709",
+    "address": "0x13dc1a61029c5624302daf3131ffc226969be880",
     "args": [
-      "0xd48281204BBbb77146a14ED5eeDBbf66Bc903901",
-      "0xF42a1eB32eF8Ef987f1F052156eE69D096C05aAb",
+      "0x718a412b16c0C27755510198FFe4ccf41cbe20C2",
+      "0x016ad90cd53a8Bc819cE47158D12c6243F42F50B",
       "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
       "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
       "0xac602665f618652d53565519eaf24d0326c2ec1a"
@@ -42,7 +42,7 @@
     "registryName": "StableFund"
   },
   "MultisigWallet": {
-    "address": "0x28ddbda3052142972df7d1ca6a715df7db72f952",
+    "address": "0xf38e21cc981abb24fa321e09ce5ef0b66f87c50f",
     "args": [
       "[\"0x6323a5ddCcc4f7A736477756e80947B823291528\",\"0xCEbc1DEcABb266e064FB9759fd413A885dA885dd\",\"0x2CEFFCA5C29c3E1d9a2586E49D80c7A057d8c5F9\"]",
       "2"
@@ -51,9 +51,9 @@
     "registryName": "MultisigWallet"
   },
   "Timelock": {
-    "address": "0xa9e4c8f93e48d8c964c398d2587a322170469e72",
+    "address": "0x4503f8eb360f25d9db19ae95b633d5a542db2cc7",
     "args": [
-      "0x28DdBDa3052142972df7d1Ca6a715df7DB72F952",
+      "0xF38E21Cc981ABB24fa321E09ce5ef0b66F87c50f",
       "120"
     ],
     "name": null,
@@ -72,7 +72,7 @@
   "KlonX": {
     "registryName": "KlonX",
     "name": "SyntheticToken",
-    "address": "0x52f5a69b1d123519dc0ade1e1e227278f9d6175a",
+    "address": "0x3c076d0c8f6c4ec7a030cc47b36e23e618f6a598",
     "args": [
       "KlonX",
       "KlonX",
@@ -82,9 +82,9 @@
   "VeKlonX": {
     "registryName": "VeKlonX",
     "name": "VeToken",
-    "address": "0x01a002d3977e88ed67586a4e0836b37350d276e1",
+    "address": "0xd53686328a1de7aead1ff5ac212ef95fec1bd039",
     "args": [
-      "0x52f5a69b1d123519dc0ade1e1e227278f9d6175a",
+      "0x3c076d0c8f6c4ec7a030cc47b36e23e618f6a598",
       "VeKlonX",
       "VeKlonX",
       "1"
@@ -93,7 +93,7 @@
   "TokenManagerV1": {
     "registryName": "TokenManagerV1",
     "name": "TokenManager",
-    "address": "0x3575b0756d27755c77c3d3664a9aa1225d5a75d6",
+    "address": "0x69cd36b0198be5ce4dbbf2a99714df55b0d83735",
     "args": [
       "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
     ]
@@ -101,89 +101,89 @@
   "BondManagerV1": {
     "registryName": "BondManagerV1",
     "name": "BondManager",
-    "address": "0x516954c992126ce190ed42a8adec88a9436da6cd",
+    "address": "0x4128ab8d430bd757b8f407352f4040a9073f3956",
     "args": [
-      1616105495
+      1616142205
     ]
   },
   "EmissionManagerV1": {
     "registryName": "EmissionManagerV1",
     "name": "EmissionManager",
-    "address": "0xc5e79a7c269f8f726b5be4cb05bf74d75d5e28b7",
+    "address": "0xad769143551edc5dec8be6336a0f231f5e030f16",
     "args": [
-      1616105495,
+      1616142205,
       86400
     ]
   },
   "KlonKlonXSwapPool": {
     "registryName": "KlonKlonXSwapPool",
     "name": "SwapPool",
-    "address": "0x81a9d5589d102e1e43a04b8b08de6e320ab104b2",
+    "address": "0x5cdadc54bc713ed882d605e6fb53bca552ed406f",
     "args": [
-      "0xfb591282c5f70673d2c65b2292fb7c6cae0a2386",
-      "0x52f5a69b1d123519dc0ade1e1e227278f9d6175a",
-      1616105495,
-      1618697495
+      "0xb9b4e3dae4593f789df58ed78bd8bad13abb308c",
+      "0x3c076d0c8f6c4ec7a030cc47b36e23e618f6a598",
+      1616142205,
+      1618734205
     ]
   },
   "KlonXWBTCLPKlonXPool": {
     "registryName": "KlonXWBTCLPKlonXPool",
     "name": "RewardsPool",
-    "address": "0xb85d71c289132843b20f2cb96108b0ef72ba3290",
+    "address": "0x193e34397e8d9e4079d85c20816875a176d02fc1",
     "args": [
       "KlonXWBTCLPKlonXPool",
       "0x6323a5ddCcc4f7A736477756e80947B823291528",
-      "0x28ddbda3052142972df7d1ca6a715df7db72f952",
-      "0x52f5a69b1d123519dc0ade1e1e227278f9d6175a",
-      "0x16c737e2bab7dc258edb107af119f4db14f98ff5",
+      "0xf38e21cc981abb24fa321e09ce5ef0b66f87c50f",
+      "0x3c076d0c8f6c4ec7a030cc47b36e23e618f6a598",
+      "0x7b3feaa270248934ffcb3e4968d531a5467dec59",
       604800
     ]
   },
   "KWBTCWBTCLPKlonXPool": {
     "registryName": "KWBTCWBTCLPKlonXPool",
     "name": "RewardsPool",
-    "address": "0x8f86a0e8e0300e054c644d9da6269dd2c544052f",
+    "address": "0x575054994c6bc95477c1fc94e4b7d3e19c854c22",
     "args": [
       "KWBTCWBTCLPKlonXPool",
       "0x6323a5ddCcc4f7A736477756e80947B823291528",
-      "0x28ddbda3052142972df7d1ca6a715df7db72f952",
-      "0x52f5a69b1d123519dc0ade1e1e227278f9d6175a",
-      "0xd9d094f89214eae863dc176fc555e6e9ab336db8",
+      "0xf38e21cc981abb24fa321e09ce5ef0b66f87c50f",
+      "0x3c076d0c8f6c4ec7a030cc47b36e23e618f6a598",
+      "0x8fc1382146b19208ae350d4afa2e591d137d5d1f",
       604800
     ]
   },
   "LiquidBoardroomV1": {
     "registryName": "LiquidBoardroomV1",
     "name": "LiquidBoardroom",
-    "address": "0xd515aba437ccf6d2927faa3b0364428f1d5f07bd",
+    "address": "0x955cd37e74cb79e06100e1a3b6e0fa6270fdbd0a",
     "args": [
-      "0x52f5a69b1d123519dc0ade1e1e227278f9d6175a",
-      "0x3575b0756d27755c77c3d3664a9aa1225d5a75d6",
-      "0xc5e79a7c269f8f726b5be4cb05bf74d75d5e28b7",
-      1616105495
+      "0x3c076d0c8f6c4ec7a030cc47b36e23e618f6a598",
+      "0x69cd36b0198be5ce4dbbf2a99714df55b0d83735",
+      "0xad769143551edc5dec8be6336a0f231f5e030f16",
+      1616142205
     ]
   },
   "UniswapBoardroomV1": {
     "registryName": "UniswapBoardroomV1",
     "name": "UniswapBoardroom",
-    "address": "0x7d7d324fcd43f17719be702a40e87297d70b704c",
+    "address": "0xf1a24ca80c96d07c439d7b53d80962c8f4fdf575",
     "args": [
-      "0x16c737e2bab7dc258edb107af119f4db14f98ff5",
-      "0x3575b0756d27755c77c3d3664a9aa1225d5a75d6",
-      "0xc5e79a7c269f8f726b5be4cb05bf74d75d5e28b7",
-      1616105495
+      "0x7b3feaa270248934ffcb3e4968d531a5467dec59",
+      "0x69cd36b0198be5ce4dbbf2a99714df55b0d83735",
+      "0xad769143551edc5dec8be6336a0f231f5e030f16",
+      1616142205
     ]
   },
   "KWBTCWBTCOracle": {
     "registryName": "KWBTCWBTCOracle",
     "name": "Oracle",
-    "address": "0xdc6a3382a2757689885bc99e91241442f03a537f",
+    "address": "0x4c8cdb0680329099d4413695d38e7fbe6d0d3d8b",
     "args": [
       "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
-      "0xf42a1eb32ef8ef987f1f052156ee69d096c05aab",
-      "0xd48281204bbbb77146a14ed5eedbbf66bc903901",
+      "0x016ad90cd53a8bc819ce47158d12c6243f42f50b",
+      "0x718a412b16c0c27755510198ffe4ccf41cbe20c2",
       120,
-      1616105495
+      1616142205
     ]
   }
 }
