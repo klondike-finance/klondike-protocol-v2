@@ -90,7 +90,7 @@ contract BondManager is
     /// This is the price of synthetic in underlying (und / syn)
     /// but corrected for bond mechanics, i.e. max of oracle / current uniswap price
     /// @param syntheticTokenAddress The address of the synthetic token
-    /// @return The price of one unit (e.g. BTC, ETH, etc.) syn token in underlying token (e.g. sat, wei, etc)
+    /// @return The price of one unit (e.g. KBTC) syn token in underlying token (e.g. WBTC)
     /// @dev Fails if the token is not managed
     function bondPriceUndPerUnitSyn(address syntheticTokenAddress)
         public
