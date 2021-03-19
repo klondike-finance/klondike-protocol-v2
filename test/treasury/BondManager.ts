@@ -424,6 +424,14 @@ describe("BondManager", () => {
     describe("when there's enough BondManager balance, bonds are approved", () => {
       it("burns the bonds and transfers synthetic", async () => {
         await setupUniswap();
+        await router.swapExactTokensForTokens(
+          123,
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
+		
         const amount = 12345;
         await bond.approve(manager.address, amount);
         await expect(manager.sellBonds(synthetic.address, amount, amount))
@@ -455,6 +463,13 @@ describe("BondManager", () => {
     describe("when there's not enough balance", () => {
       it("fails", async () => {
         await setupUniswap();
+        await router.swapExactTokensForTokens(
+          123,
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
         const managerBalance = await synthetic.balanceOf(manager.address);
         const opBalance = await bond.balanceOf(op.address);
         assert(managerBalance < opBalance);
@@ -474,6 +489,13 @@ describe("BondManager", () => {
     describe("when bonds are not approved", () => {
       it("fails", async () => {
         await setupUniswap();
+        await router.swapExactTokensForTokens(
+          123,
+          0,
+          [underlying.address, synthetic.address],
+          op.address,
+          (await now()) + 1800
+        );
         const amount = 12345;
         await bond.approve(manager.address, amount - 1);
         await expect(
