@@ -186,6 +186,15 @@ contract BondManager is
         SyntheticToken syntheticToken = SyntheticToken(syntheticTokenAddress); // trusted address since this is a managedToken
         SyntheticToken bondToken =
             SyntheticToken(bondIndex[syntheticTokenAddress]);
+			
+        uint256 underlyingUnit =
+            tokenManager.oneUnderlyingUnit(syntheticTokenAddress);
+        uint256 bondPrice = bondPriceUndPerUnitSyn(syntheticTokenAddress);
+        require(
+            bondPrice > underlyingUnit,
+            "BondManager: Synthetic price is not eligible for bond redemption"
+        );
+		
         uint256 amount =
             Math.min(syntheticToken.balanceOf(address(this)), amountOfBondsIn);
         require(

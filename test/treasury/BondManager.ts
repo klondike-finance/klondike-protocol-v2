@@ -434,7 +434,7 @@ describe("BondManager", () => {
       });
     });
     describe("when price is below 1", () => {
-      it("still sells below one", async () => {
+      it("redemption will fail", async () => {
         await setupUniswap();
         await router.swapExactTokensForTokens(
           BigNumber.from(10).pow(SYNTHETIC_DECIMALS),
@@ -445,11 +445,11 @@ describe("BondManager", () => {
         );
 		const amount = 12345;
         await bond.approve(manager.address, amount);
-        await expect(manager.sellBonds(synthetic.address, amount, amount))
-          .to.emit(bond, "Transfer")
-          .withArgs(op.address, ethers.constants.AddressZero, amount)
-          .and.to.emit(synthetic, "Transfer")
-          .withArgs(manager.address, op.address, amount);
+        await expect(
+		  manager.sellBonds(synthetic.address, amount, amount)
+        ).to.be.revertedWith(
+          "BondManager: Synthetic price is not eligible for bond redemption"
+        );
       });
     });
     describe("when there's not enough balance", () => {
