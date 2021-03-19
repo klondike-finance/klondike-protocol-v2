@@ -29,9 +29,9 @@ const RewardPool = ({ name }: PropsType) => {
         const rewardPerTokenStored = await pool.rewardPerTokenStored();
         const totalSupply = await pool.totalSupply();
 
-        const stakingTokenContract = new ethers.Contract(stakingToken, deployments['Jedi'].abi, provider);
+        const stakingTokenContract = new ethers.Contract(stakingToken, deployments['KlonX'].abi, provider);
         const stakingTokenDecimals = await stakingTokenContract.decimals();
-        const rewardsTokenContract = new ethers.Contract(rewardsToken, deployments['Jedi'].abi, provider);
+        const rewardsTokenContract = new ethers.Contract(rewardsToken, deployments['KlonX'].abi, provider);
         const rewardTokenBalance = await rewardsTokenContract.balanceOf(address);
         const rewardTokenDecimals = await rewardsTokenContract.decimals();
         const lastTimeRewardApplicable = await pool.lastTimeRewardApplicable();

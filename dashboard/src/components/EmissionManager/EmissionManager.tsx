@@ -20,7 +20,9 @@ const EmissionManager = () => {
         const operator = await pool.operator();
         const tokenManager = await pool.tokenManager();
         const bondManager = await pool.bondManager();
-        const boardroom = await pool.boardroom();
+        const liquidBoardroom = await pool.liquidBoardroom();
+        const uniswapBoardroom = await pool.uniswapBoardroom();
+        const veBoardroom = await pool.veBoardroom();
         const devFund = await pool.devFund();
         const stableFund = await pool.stableFund();
 
@@ -43,7 +45,9 @@ const EmissionManager = () => {
           operator,
           tokenManager,
           bondManager,
-          boardroom,
+          liquidBoardroom,
+          uniswapBoardroom,
+          veBoardroom,
           devFund,
           stableFund,
           blank1: null,
