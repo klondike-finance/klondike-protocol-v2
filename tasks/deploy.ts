@@ -18,16 +18,14 @@ import { deployTreasury, setTreasuryLinks } from "./treasury";
 import { UNISWAP_V2_FACTORY_ADDRESS } from "./uniswap";
 import { isProd, now, pairFor, sendTransaction } from "./utils";
 
-const SWAP_POOL_START_DATE = Math.floor(new Date().getTime() / 1000);
-const SWAP_POOL_END_DATE = Math.floor(new Date().getTime() / 1000) + 86400 * 30;
-const LOCK_POOL_START_DATE = Math.floor(new Date().getTime() / 1000);
-const ORACLE_START_DATE = Math.floor(new Date().getTime() / 1000);
+const T = Math.floor(new Date("2021-03-22T18:00:00.000Z").getTime() / 1000);
+const SWAP_POOL_START_DATE = T + 86400;
+const SWAP_POOL_END_DATE = T + 86400 * 8;
+const ORACLE_START_DATE = T;
 const REWARDS_POOL_INITIAL_DURATION = 86400 * 7;
-const BOARDROOM_START_DATE = Math.floor(new Date().getTime() / 1000);
-const TREASURY_START_DATE = Math.floor(new Date().getTime() / 1000);
-const BOOST_FACTOR = 4;
-const BOOST_DENOMINATOR = 500;
-const ORACLE_PERIOD = 120;
+const BOARDROOM_START_DATE = T + 86400 * 3;
+const TREASURY_START_DATE = BOARDROOM_START_DATE;
+const ORACLE_PERIOD = 3600;
 
 task("deploy", "Deploys the system").setAction(async (_, hre) => {
   await deploy(hre);
