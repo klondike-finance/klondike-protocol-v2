@@ -6,12 +6,14 @@ import { findExistingContract } from "./contract";
 import { getRegistryContract } from "./registry";
 import { sendTransaction } from "./utils";
 
+const CALL_BEFORE_REBASE_SECS = 90 * 60;
+
 task("cron:tick").setAction(async ({}, hre: HardhatRuntimeEnvironment) => {
   const tokenManager = await findExistingContract(hre, "TokenManagerV1");
   const emissionManager = await findExistingContract(hre, "EmissionManagerV1");
   const tokens = await tokenManager.allTokens();
   for (const token of tokens) {
-    await oracleTick(hre, token, tokenManager);
+    await oracleTick(hre, token, tokenManager, emissionManager);
   }
   await emissionManagerTick(hre, emissionManager);
 });
@@ -43,7 +45,8 @@ async function emissionManagerTick(
 async function oracleTick(
   hre: HardhatRuntimeEnvironment,
   token: string,
-  tokenManager: Contract
+  tokenManager: Contract,
+  emissionManager: Contract
 ) {
   const [
     tokenAAddress,
@@ -92,28 +95,44 @@ async function oracleTick(
     `[${new Date()}] Token ${token}. Price \`${price}\`. OraclePrice \`${oraclePrice}\``
   );
 
-  if (price >= 1 && oraclePrice >= 1) {
-    // Bonds are not available => no need to update
-    console.log(
-      `[${new Date()}] Token ${token}. Price \`${price}\` and OraclePrice \`${oraclePrice}\` >= \`1.00\`. Skipping.`
-    );
-    return;
-  }
-
-  if (price >= oraclePrice) {
-    // Bonds are priced at `price`, not `oraclePrice` => no need to update
-    console.log(
-      `[${new Date()}] Token ${token}. Price \`${price}\` >= OraclePrice \`${oraclePrice}\`. Skipping.`
-    );
-    return;
-  }
-
   const oracleLastCalled = (await oracle.lastCalled()).toNumber();
   const debouncePeriod = (await oracle.debouncePeriod()).toNumber();
 
   const oracleNextCallDate = new Date(
     (oracleLastCalled + debouncePeriod) * 1000
   );
+
+  const emissionManagerLastCalled = (
+    await emissionManager.lastCalled()
+  ).toNumber();
+  const emDebouncePeriod = (await emissionManager.debouncePeriod()).toNumber();
+
+  const oracleRebaseCallTime =
+    emissionManagerLastCalled + emDebouncePeriod - CALL_BEFORE_REBASE_SECS;
+  const updateBeforeRebase =
+    oracleLastCalled < oracleRebaseCallTime &&
+    new Date().getTime() / 1000 > oracleRebaseCallTime;
+
+  if (!updateBeforeRebase) {
+    if (price >= 1 && oraclePrice >= 1) {
+      // Bonds are not available => no need to update
+      console.log(
+        `[${new Date()}] Token ${token}. Price \`${price}\` and OraclePrice \`${oraclePrice}\` >= \`1.00\`. Skipping.`
+      );
+      return;
+    }
+
+    if (price >= oraclePrice) {
+      // Bonds are priced at `price`, not `oraclePrice` => no need to update
+      console.log(
+        `[${new Date()}] Token ${token}. Price \`${price}\` >= OraclePrice \`${oraclePrice}\`. Skipping.`
+      );
+      return;
+    }
+  } else {
+    console.log(`[${new Date()}] Token ${token}. Force call before rebase`);
+  }
+
   if (oracleNextCallDate > new Date()) {
     console.log(
       `[${new Date()}] Token ${token}. Oracle update date \`${oracleNextCallDate}\` is in future. Skipping.`
