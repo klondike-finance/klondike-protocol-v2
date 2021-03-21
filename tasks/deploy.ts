@@ -243,6 +243,17 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
     );
     await sendTransaction(hre, tx);
   }
+
+  const lpPoolAddress = await uniswapBoardroom.lpPool();
+  if (lpPoolAddress.toLowerCase() != lpPool.address.toLowerCase()) {
+    console.log(
+      `UniswapBoardroom: LpPool is ${lpPoolAddress}. Setting to ${lpPool.address}`
+    );
+    const tx = await liquidBoardroom.populateTransaction.setLpPool(
+      lpPool.address
+    );
+    await sendTransaction(hre, tx);
+  }
 }
 
 async function deployBoardrooms(hre: HardhatRuntimeEnvironment) {
