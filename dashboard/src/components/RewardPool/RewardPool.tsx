@@ -19,6 +19,7 @@ const RewardPool = ({ name }: PropsType) => {
       const pool = new ethers.Contract(address, abi, provider);
       try {
         const owner = await pool.owner();
+        const nominatedOwner = await pool.nominatedOwner();
         const rewardsDistribution = await pool.rewardsDistribution();
         const rewardsToken = await pool.rewardsToken();
         const stakingToken = await pool.stakingToken();
@@ -39,6 +40,7 @@ const RewardPool = ({ name }: PropsType) => {
         const paused = await pool.paused();
         const values = {
           owner,
+          nominatedOwner,
           rewardsDistribution,
           rewardsToken,
           stakingToken,
