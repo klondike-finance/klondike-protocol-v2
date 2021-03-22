@@ -249,7 +249,7 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
     console.log(
       `UniswapBoardroom: LpPool is ${lpPoolAddress}. Setting to ${lpPool.address}`
     );
-    const tx = await liquidBoardroom.populateTransaction.setLpPool(
+    const tx = await uniswapBoardroom.populateTransaction.setLpPool(
       lpPool.address
     );
     await sendTransaction(hre, tx);
