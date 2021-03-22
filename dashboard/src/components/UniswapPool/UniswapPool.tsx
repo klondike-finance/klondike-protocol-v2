@@ -12,6 +12,7 @@ type PropsType = { token0: string; token1: string; pair: string };
 
 const UniswapPool = ({ token0, token1, pair }: PropsType) => {
   const name = `${token1} - ${token0} Uniswap Pool`;
+  const [t0, t1] = token0.toLowerCase() < token1.toLowerCase() ? [token0, token1] : [token1, token0];
   const { provider, deployments } = useContext(EthereumContext);
   const [reserve0, setReserve0] = useState<number | null>(null);
   const [reserve1, setReserve1] = useState<number | null>(null);
@@ -27,8 +28,9 @@ const UniswapPool = ({ token0, token1, pair }: PropsType) => {
         const decimals1 = await contract1.decimals();
         const [reserveA, reserveB] = await p.getReserves();
         const [res0, res1] = token0.toLowerCase() < token1.toLowerCase() ? [reserveA, reserveB] : [reserveB, reserveA];
-        const reserve0 = res0 / 10 ** decimals0;
-        const reserve1 = res1 / 10 ** decimals1;
+        const [dec0, dec1] = token0.toLowerCase() < token1.toLowerCase() ? [decimals0, decimals1] : [decimals1, decimals0];
+        const reserve0 = res0 / (10 ** dec0);
+        const reserve1 = res1 / (10 ** dec1);
         setReserve0(reserve0);
         setReserve1(reserve1);
       } catch (e) {
@@ -43,10 +45,10 @@ const UniswapPool = ({ token0, token1, pair }: PropsType) => {
         <CardContent>
           {error && <Alert severity="error">{`Error fetching pair data: ${error}`}</Alert>}
           {(!reserve0 || !reserve1) && !error && <CircularProgress />}
-          <p>{reserve0 && reserve1 && `Reserve0: ${reserve0} ${token0}`}</p>
-          <p>{reserve0 && reserve1 && `Reserve1: ${reserve1} ${token1}`}</p>
-          <p>{reserve0 && reserve1 && `Price0: ${(reserve1 as any) / (reserve0 as any)} ${token1}/${token0}`}</p>
-          <p>{reserve0 && reserve1 && `Price1: ${(reserve0 as any) / (reserve1 as any)} ${token0}/${token1}`}</p>
+          <p>{reserve0 && reserve1 && `Reserve0: ${reserve0} ${t0}`}</p>
+          <p>{reserve0 && reserve1 && `Reserve1: ${reserve1} ${t1}`}</p>
+          <p>{reserve0 && reserve1 && `Price0: ${(reserve1 as any) / (reserve0 as any)} ${t1}/${t0}`}</p>
+          <p>{reserve0 && reserve1 && `Price1: ${(reserve0 as any) / (reserve1 as any)} ${t0}/${t1}`}</p>
         </CardContent>
       </Card>
     </Grid>

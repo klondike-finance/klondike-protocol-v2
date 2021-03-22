@@ -55,7 +55,7 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await deployBoardrooms(hre);
   await setLinks(hre);
   await addV1Token(hre);
-  await transferOwnerships(hre);
+  // await transferOwnerships(hre);
 }
 
 async function transferPoolOwnership(
@@ -167,7 +167,7 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
     "UniswapBoardroomV1"
   );
   const emissionsManager = await findExistingContract(hre, "EmissionManagerV1");
-  const lpPool = await findExistingContract(hre, "KWBTCWBTCLPKlonXPool");
+  const lpPool = await findExistingContract(hre, "KlonXWBTCLPKlonXPool");
   const veKlonX = await findExistingContract(hre, "VeKlonX");
   const devFundAddress = await emissionsManager.devFund();
   if (devFundAddress.toLowerCase() !== devFund.address.toLowerCase()) {

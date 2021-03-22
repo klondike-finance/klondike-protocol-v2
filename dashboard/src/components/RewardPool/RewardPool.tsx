@@ -23,6 +23,7 @@ const RewardPool = ({ name }: PropsType) => {
         const rewardsDistribution = await pool.rewardsDistribution();
         const rewardsToken = await pool.rewardsToken();
         const stakingToken = await pool.stakingToken();
+        const boardroom = await pool.boardroom();
         const periodFinish = await pool.periodFinish();
         const rewardsDuration = await pool.rewardsDuration();
         const rewardRate = await pool.rewardRate();
@@ -44,6 +45,7 @@ const RewardPool = ({ name }: PropsType) => {
           rewardsDistribution,
           rewardsToken,
           stakingToken,
+          boardroom,
           blank1: null,
           periodFinish: parseInt(periodFinish) === 0 ? 'Never' : toDate(periodFinish),
           rewardsDuration: `${rewardsDuration / 86400} days`,

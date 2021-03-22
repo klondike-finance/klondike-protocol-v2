@@ -1,0 +1,179 @@
+{
+    "mainnet": {
+      "UniswapV2Factory": {
+        "address": "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
+        "args": [
+          "0xc699c2611e81a0995f26D4F293Ef9DD5bEF4da92"
+        ],
+        "frozen": true
+      },
+      "UniswapV2Router02": {
+        "address": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+        "args": [
+          "0x63C2D6172266132E3933602b51ebC7D9f3C2616D",
+          "0xc699c2611e81a0995f26D4F293Ef9DD5bEF4da92"
+        ],
+        "frozen": true
+      },
+      "WBTC": {
+        "address": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+        "args": [],
+        "frozen": true
+      },
+      "BDIGG": {
+        "address": "0x7e7e112a68d8d2e221e11047a72ffc1065c38e1a",
+        "args": [],
+        "frozen": true
+      },
+      "RenBTC": {
+        "address": "0xeb4c2781e4eba804ce9a9803c67d0893436bb27d",
+        "args": [],
+        "frozen": true
+      },
+      "KBTC": {
+        "address": "0xE6C3502997f97F9BDe34CB165fBce191065E068f",
+        "args": [],
+        "frozen": true
+      },
+      "Kbond": {
+        "address": "0xA8c2af8c403704a31F32F0aa70a43e63aFcd54d0",
+        "args": [],
+        "frozen": true
+      },
+      "Klon": {
+        "address": "0xB97D5cF2864FB0D08b34a484FF48d5492B2324A0",
+        "args": [],
+        "frozen": true
+      },
+      "Boardroom": {
+        "address": "0x869345629f8393780ac8421DF411ccEa38A5C851",
+        "args": [
+          "0xE6C3502997f97F9BDe34CB165fBce191065E068f",
+          "0xB97D5cF2864FB0D08b34a484FF48d5492B2324A0"
+        ],
+        "frozen": true
+      },
+      "Oracle": {
+        "address": "0xdCf4Bb4C749a805CfA03F51041FF6Bb031BbcEDF",
+        "args": [
+          "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
+          "0xE6C3502997f97F9BDe34CB165fBce191065E068f",
+          "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "3600",
+          "1612116000"
+        ],
+        "frozen": true
+      },
+      "DevFund": {
+        "address": "0x3BE908C22D21ab32C5A04CFCa3a9A70d4FEfc098",
+        "args": [],
+        "frozen": true
+      },
+      "StableFund": {
+        "address": "0xd4997A502dC06314afa17E03542F96198f7D36e5",
+        "args": [
+          "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "0xE6C3502997f97F9BDe34CB165fBce191065E068f",
+          "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
+          "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+          "0x1be8DAA03cc29E39d6E6710a1570CDaf3f413Ef2"
+        ],
+        "frozen": true
+      },
+      "Treasury": {
+        "address": "0x3249A682779fe2C3dd3B37D3A7347aaFe06D49DA",
+        "args": [
+          "0xE6C3502997f97F9BDe34CB165fBce191065E068f",
+          "0xA8c2af8c403704a31F32F0aa70a43e63aFcd54d0",
+          "0xB97D5cF2864FB0D08b34a484FF48d5492B2324A0",
+          "0xdCf4Bb4C749a805CfA03F51041FF6Bb031BbcEDF",
+          "0xdCf4Bb4C749a805CfA03F51041FF6Bb031BbcEDF",
+          "0x869345629f8393780ac8421DF411ccEa38A5C851",
+          "0x3BE908C22D21ab32C5A04CFCa3a9A70d4FEfc098",
+          "0x117b810363800A8639Db9Ae0f196F14D051a3BE5",
+          "1612288800",
+          "86400"
+        ],
+        "frozen": true
+      },
+      "KBTCRenBTCPool": {
+        "address": "0x4110D9A6b9aB2e388d572237284e74768342E0DA",
+        "args": [
+          "0xE6C3502997f97F9BDe34CB165fBce191065E068f",
+          "0xeb4c2781e4eba804ce9a9803c67d0893436bb27d",
+          "1611770400"
+        ],
+        "frozen": true
+      },
+      "KBTCBDIGGPool": {
+        "address": "0xB331b698dc99e897Cfe43C398B37d5DE9C46BBe4",
+        "args": [
+          "0xE6C3502997f97F9BDe34CB165fBce191065E068f",
+          "0x7e7e112a68d8d2e221e11047a72ffc1065c38e1a",
+          "1611770400"
+        ],
+        "frozen": true
+      },
+      "KBTCWBTCPool": {
+        "address": "0xa705C6cD257320cBAEFDB781FB78A50868785De3",
+        "args": [
+          "0xE6C3502997f97F9BDe34CB165fBce191065E068f",
+          "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "1611770400"
+        ],
+        "frozen": true
+      },
+      "WBTCKBTCLPTokenKlonPool": {
+        "address": "0xDE8fBa1447f7c29F31Bd4aa0b9b1b51Eb6348148",
+        "args": [
+          "0xB97D5cF2864FB0D08b34a484FF48d5492B2324A0",
+          "0x1F3D61248EC81542889535595903078109707941",
+          "1611770400",
+          "75"
+        ],
+        "frozen": true
+      },
+      "WBTCKLONLPTokenKlonPool": {
+        "address": "0xC3503F004aa2cd689803A0D4E6ed07E8949525Fd",
+        "args": [
+          "0xB97D5cF2864FB0D08b34a484FF48d5492B2324A0",
+          "0x734e48A1FfEA1cdF4F5172210C322f3990d6D760",
+          "1611770400"
+        ],
+        "frozen": true
+      },
+      "InitialKBTCDistributor": {
+        "address": "0x084aA943c74f6D17D9a4Ef5b1B2BBD37e5fc62AD",
+        "args": [
+          "0xE6C3502997f97F9BDe34CB165fBce191065E068f",
+          "[\"0xa705C6cD257320cBAEFDB781FB78A50868785De3\",\"0x4110D9A6b9aB2e388d572237284e74768342E0DA\",\"0xB331b698dc99e897Cfe43C398B37d5DE9C46BBe4\"]",
+          "3000000000000000000"
+        ],
+        "frozen": true
+      },
+      "InitialKlonDistributor": {
+        "address": "0xf271CED01fD7665Ac48447fD8000596FeE71B903",
+        "args": [
+          "0xB97D5cF2864FB0D08b34a484FF48d5492B2324A0",
+          "0xDE8fBa1447f7c29F31Bd4aa0b9b1b51Eb6348148",
+          "750000000000000000000000",
+          "0xC3503F004aa2cd689803A0D4E6ed07E8949525Fd",
+          "250000000000000000000000"
+        ],
+        "frozen": true
+      },
+      "MultiSigWallet": {
+        "address": "0x901f9da0bc4b6327a18322717d0f29a34dffecc0",
+        "frozen": true
+      },
+      "Timelock": {
+        "address": "0x2C5bA02bB750a24af83105beD28734e0e22933DF",
+        "args": [
+          "0x901f9da0bc4b6327a18322717d0f29a34dffecc0",
+          "172800"
+        ],
+        "frozen": true
+      }
+    }
+  }
+  
