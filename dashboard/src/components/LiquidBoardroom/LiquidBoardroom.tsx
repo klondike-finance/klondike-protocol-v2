@@ -6,7 +6,7 @@ import { EthereumContext } from '../../App';
 import { toDate, toDecimal } from '../../lib/utils';
 import Entry from '../Entry';
 
-const UniswapBoardroom = () => {
+const LiquidBoardroom = () => {
   const { provider, deployments } = useContext(EthereumContext);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<any>(null);
@@ -62,8 +62,8 @@ const UniswapBoardroom = () => {
     <Grid item xs={12} md={6} lg={6}>
       <Card>
         <CardHeader
-          title="UniswapBoardroomV1"
-          subheader={deployments && <Entry v={deployments['UniswapBoardroomV1'].address} />}
+          title="LiquidBoardroomV1"
+          subheader={deployments && <Entry v={deployments['LiquidBoardroomV1'].address} />}
         />
         <CardContent>
           {error && <Alert severity="error">{`Error fetching pair data: ${error}`}</Alert>}
@@ -75,4 +75,4 @@ const UniswapBoardroom = () => {
   );
 };
 
-export default UniswapBoardroom;
+export default LiquidBoardroom;
