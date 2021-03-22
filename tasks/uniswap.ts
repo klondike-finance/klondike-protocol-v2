@@ -119,7 +119,7 @@ export async function addLiquidity(
     amountA,
     amountB,
     to,
-    (await now(hre)) + 180
+    (await now(hre)) + 300
   );
   await sendTransaction(hre, tx);
   console.log("Done");
