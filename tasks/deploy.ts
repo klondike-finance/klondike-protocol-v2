@@ -55,7 +55,7 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await deployBoardrooms(hre);
   await setLinks(hre);
   await addV1Token(hre);
-  // await transferOwnerships(hre);
+  await transferOwnerships(hre);
 }
 
 async function transferPoolOwnership(
