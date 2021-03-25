@@ -44,3 +44,7 @@ export function pairFor(factory: string, token0: string, token1: string) {
     ).slice(26)
   );
 }
+
+export function log(message: string) {
+  console.log(`[${new Date().toLocaleString()}] ${message}`);
+}
