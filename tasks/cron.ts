@@ -1,27 +1,45 @@
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
-import { task } from "hardhat/config";
+import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { findExistingContract } from "./contract";
 import { getRegistryContract } from "./registry";
-import { sendTransaction } from "./utils";
+import { log, sendTransaction } from "./utils";
 
 const CALL_BEFORE_REBASE_SECS = 90 * 60;
 
-task("cron:tick").setAction(async ({}, hre: HardhatRuntimeEnvironment) => {
-  const tokenManager = await findExistingContract(hre, "TokenManagerV1");
-  const emissionManager = await findExistingContract(hre, "EmissionManagerV1");
-  const tokens = await tokenManager.allTokens();
-  for (const token of tokens) {
-    await oracleTick(hre, token, tokenManager, emissionManager);
-  }
-  await emissionManagerTick(hre, emissionManager);
-});
+task("cron:tick")
+  .addFlag("dry", "Dry run")
+  .setAction(async ({ dry }, hre: HardhatRuntimeEnvironment) => {
+    log("Starting new tick");
+    const tokenManager = await findExistingContract(hre, "TokenManagerV1");
+    const emissionManager = await findExistingContract(
+      hre,
+      "EmissionManagerV1"
+    );
+    const tokens = await tokenManager.allTokens();
+    log(
+      `Processing oracle updates for tokens ${tokens} at TokenManager ${tokenManager.address}`
+    );
+    for (const token of tokens) {
+      await oracleTick(hre, token, tokenManager, emissionManager, dry);
+    }
+
+    await emissionManagerTick(hre, emissionManager, dry);
+  });
 
 async function emissionManagerTick(
   hre: HardhatRuntimeEnvironment,
-  emissionManager: Contract
+  emissionManager: Contract,
+  dry: boolean
 ) {
+  log(`Processing EmissionManager (${emissionManager.address}) update`);
+  const start = (await emissionManager.start()).toNumber();
+  const now = Math.floor(new Date().getTime() / 1000);
+  if (start > now) {
+    log(`Starts at ${new Date(start * 1000)} - skipping`);
+    return;
+  }
   const emissionManagerLastCalled = (
     await emissionManager.lastCalled()
   ).toNumber();
@@ -38,7 +56,9 @@ async function emissionManagerTick(
   }
   console.log(`[${new Date()}] Updating EmissionManager`);
   const tx = await emissionManager.populateTransaction.makePositiveRebase();
-  await sendTransaction(hre, tx);
+  if (!dry) {
+    await sendTransaction(hre, tx);
+  }
   console.log(`[${new Date()}]. Done`);
 }
 
@@ -46,38 +66,16 @@ async function oracleTick(
   hre: HardhatRuntimeEnvironment,
   token: string,
   tokenManager: Contract,
-  emissionManager: Contract
+  emissionManager: Contract,
+  dry: boolean
 ) {
+  log(`Processing oracle for token ${token}`);
   const [
-    tokenAAddress,
-    tokenBAddress,
+    synAddress,
+    undAddress,
     pairAddress,
     oracleAddress,
   ] = await tokenManager.tokenIndex(token);
-  const pair = new Contract(
-    pairAddress,
-    (await hre.artifacts.readArtifact("UniswapV2Pair")).abi,
-    hre.ethers.provider
-  );
-  const [reserve0, reserve1] = await pair.getReserves();
-  const [reserveA, reserveB] =
-    tokenAAddress.toLowerCase() < tokenBAddress.toLowerCase()
-      ? [reserve0, reserve1]
-      : [reserve1, reserve0];
-  const tokenAbi = (await hre.artifacts.readArtifact("SyntheticToken")).abi;
-  const tokenA = new Contract(tokenAAddress, tokenAbi, hre.ethers.provider);
-  const tokenB = new Contract(tokenBAddress, tokenAbi, hre.ethers.provider);
-  const aDecimals = await tokenA.decimals();
-  const bDecimals = await tokenB.decimals();
-  let adjReserveA = reserveA;
-  let adjReserveB = reserveB;
-  if (aDecimals > bDecimals) {
-    adjReserveB = adjReserveB.mul(10 ** (aDecimals - bDecimals));
-  } else {
-    adjReserveA = adjReserveA.mul(10 ** (bDecimals - aDecimals));
-  }
-  let price = adjReserveB.mul(10000).div(adjReserveA);
-  price = price.toNumber() / 10000;
 
   const oracle = new Contract(
     oracleAddress,
@@ -85,15 +83,55 @@ async function oracleTick(
     hre.ethers.provider
   );
 
+  const pair = new Contract(
+    pairAddress,
+    (await hre.artifacts.readArtifact("UniswapV2Pair")).abi,
+    hre.ethers.provider
+  );
+  const start = (await oracle.start()).toNumber();
+  const now = Math.floor(new Date().getTime() / 1000);
+  if (start > now) {
+    log(`Starts at ${new Date(start * 1000)} - skipping`);
+    return;
+  }
+
+  const [reserve0, reserve1] = await pair.getReserves();
+  const [synReserve, undReserve] =
+    synAddress.toLowerCase() < undAddress.toLowerCase()
+      ? [reserve0, reserve1]
+      : [reserve1, reserve0];
+  const tokenAbi = (await hre.artifacts.readArtifact("SyntheticToken")).abi;
+  const synToken = new Contract(synAddress, tokenAbi, hre.ethers.provider);
+  const undToken = new Contract(undAddress, tokenAbi, hre.ethers.provider);
+  const synDecimals = await synToken.decimals();
+  const undDecimals = await undToken.decimals();
+  let adjSynReserve = synReserve;
+  let adjUndReserve = undReserve;
+  log(`AdjUndReserve: ${adjUndReserve}`);
+  if (synDecimals > undDecimals) {
+    adjUndReserve = adjUndReserve.mul(
+      BigNumber.from(10).pow(synDecimals - undDecimals)
+    );
+  } else {
+    adjSynReserve = adjSynReserve.mul(
+      BigNumber.from(10).pow(undDecimals - synDecimals)
+    );
+  }
+  let price = adjUndReserve.mul(10000).div(adjSynReserve);
+  price = price.toNumber() / 10000;
+  log(`reserve0: ${reserve0}`);
+  log(`reserve1: ${reserve1}`);
+  log(`SynReserve: ${synReserve}`);
+  log(`UndReserve: ${undReserve}`);
+  log(`AdjSynReserve: ${adjSynReserve}`);
+  log(`AdjUndReserve: ${adjUndReserve}`);
   let oraclePrice = await oracle.consult(
-    tokenAAddress,
-    BigNumber.from(10).pow(aDecimals)
+    synAddress,
+    BigNumber.from(10).pow(synDecimals)
   );
-  oraclePrice = oraclePrice.mul(10000).div(BigNumber.from(10).pow(bDecimals));
+  oraclePrice = oraclePrice.mul(10000).div(BigNumber.from(10).pow(undDecimals));
   oraclePrice = oraclePrice.toNumber() / 10000;
-  console.log(
-    `[${new Date()}] Token ${token}. Price \`${price}\`. OraclePrice \`${oraclePrice}\``
-  );
+  log(` Price \`${price}\`. OraclePrice \`${oraclePrice}\``);
 
   const oracleLastCalled = (await oracle.lastCalled()).toNumber();
   const debouncePeriod = (await oracle.debouncePeriod()).toNumber();
@@ -101,6 +139,12 @@ async function oracleTick(
   const oracleNextCallDate = new Date(
     (oracleLastCalled + debouncePeriod) * 1000
   );
+
+  log(`Next oracle call date: ${oracleNextCallDate}`);
+  if (oracleNextCallDate > new Date()) {
+    log(`Oracle update date \`${oracleNextCallDate}\` is in future. Skipping.`);
+    return;
+  }
 
   const emissionManagerLastCalled = (
     await emissionManager.lastCalled()
@@ -112,35 +156,30 @@ async function oracleTick(
   const updateBeforeRebase =
     oracleLastCalled < oracleRebaseCallTime &&
     new Date().getTime() / 1000 > oracleRebaseCallTime;
+  log(
+    `Should update before rebase: ${updateBeforeRebase}. Rebase call time: ${oracleRebaseCallTime}`
+  );
 
   if (!updateBeforeRebase) {
     if (price >= 1 && oraclePrice >= 1) {
-      // Bonds are not available => no need to update
-      console.log(
-        `[${new Date()}] Token ${token}. Price \`${price}\` and OraclePrice \`${oraclePrice}\` >= \`1.00\`. Skipping.`
-      );
+      log("Bonds are not available to buy -> no need to update price");
       return;
     }
 
     if (price >= oraclePrice) {
-      // Bonds are priced at `price`, not `oraclePrice` => no need to update
-      console.log(
-        `[${new Date()}] Token ${token}. Price \`${price}\` >= OraclePrice \`${oraclePrice}\`. Skipping.`
+      log(
+        "Bonds are priced at `price`, not `oraclePrice` -> no need to update"
       );
       return;
     }
   } else {
-    console.log(`[${new Date()}] Token ${token}. Force call before rebase`);
+    log(`Force call before rebase`);
   }
 
-  if (oracleNextCallDate > new Date()) {
-    console.log(
-      `[${new Date()}] Token ${token}. Oracle update date \`${oracleNextCallDate}\` is in future. Skipping.`
-    );
-    return;
-  }
-  console.log(`[${new Date()}] Token ${token}. Updating oracle`);
+  log(`Updating oracle`);
   const tx = await oracle.populateTransaction.update();
-  await sendTransaction(hre, tx);
-  console.log(`[${new Date()}] Token ${token}. Done`);
+  if (!dry) {
+    await sendTransaction(hre, tx);
+  }
+  log(`Updated`);
 }
