@@ -73,6 +73,7 @@ export async function approveUniswap(
   const allowance = await token.allowance(operator.address, router.address);
   if (allowance > 0) {
     console.log("Allowance is set, skipping...");
+    return;
   }
   await token.approve(router.address, hre.ethers.constants.MaxUint256);
   console.log("Done");
@@ -118,7 +119,7 @@ export async function addLiquidity(
     amountA,
     amountB,
     to,
-    (await now(hre)) + 180
+    (await now(hre)) + 300
   );
   await sendTransaction(hre, tx);
   console.log("Done");

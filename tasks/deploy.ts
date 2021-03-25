@@ -15,19 +15,19 @@ import {
   transferOwnership,
 } from "./token";
 import { deployTreasury, setTreasuryLinks } from "./treasury";
-import { UNISWAP_V2_FACTORY_ADDRESS } from "./uniswap";
-import { isProd, now, pairFor, sendTransaction } from "./utils";
+import { addLiquidity, UNISWAP_V2_FACTORY_ADDRESS } from "./uniswap";
+import { ETH, isProd, now, pairFor, sendTransaction } from "./utils";
 
-const SWAP_POOL_START_DATE = Math.floor(new Date().getTime() / 1000);
-const SWAP_POOL_END_DATE = Math.floor(new Date().getTime() / 1000) + 86400 * 30;
-const LOCK_POOL_START_DATE = Math.floor(new Date().getTime() / 1000);
-const ORACLE_START_DATE = Math.floor(new Date().getTime() / 1000);
+const T = Math.floor(new Date("2021-03-22T18:00:00.000Z").getTime() / 1000);
+const SWAP_POOL_START_DATE = T + 86400;
+const SWAP_POOL_END_DATE = T + 86400 * 8;
+const ORACLE_START_DATE = T;
 const REWARDS_POOL_INITIAL_DURATION = 86400 * 7;
-const BOARDROOM_START_DATE = Math.floor(new Date().getTime() / 1000);
-const TREASURY_START_DATE = Math.floor(new Date().getTime() / 1000);
-const BOOST_FACTOR = 4;
-const BOOST_DENOMINATOR = 500;
-const ORACLE_PERIOD = 120;
+const BOARDROOM_START_DATE = T + 86400 * 3;
+const TREASURY_START_DATE = BOARDROOM_START_DATE;
+const ORACLE_PERIOD = 3600;
+const UNISWAP_WBTC_AMOUNT = BigNumber.from(213000);
+const UNISWAP_KLONX_AMOUNT = ETH;
 
 task("deploy", "Deploys the system").setAction(async (_, hre) => {
   await deploy(hre);
@@ -167,7 +167,7 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
     "UniswapBoardroomV1"
   );
   const emissionsManager = await findExistingContract(hre, "EmissionManagerV1");
-  const lpPool = await findExistingContract(hre, "KWBTCWBTCLPKlonXPool");
+  const lpPool = await findExistingContract(hre, "KlonXWBTCLPKlonXPool");
   const veKlonX = await findExistingContract(hre, "VeKlonX");
   const devFundAddress = await emissionsManager.devFund();
   if (devFundAddress.toLowerCase() !== devFund.address.toLowerCase()) {
@@ -249,7 +249,7 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
     console.log(
       `UniswapBoardroom: LpPool is ${lpPoolAddress}. Setting to ${lpPool.address}`
     );
-    const tx = await liquidBoardroom.populateTransaction.setLpPool(
+    const tx = await uniswapBoardroom.populateTransaction.setLpPool(
       lpPool.address
     );
     await sendTransaction(hre, tx);
@@ -363,6 +363,14 @@ async function migrateRegistry(hre: HardhatRuntimeEnvironment) {
 }
 
 async function deployTokensAndMint(hre: HardhatRuntimeEnvironment) {
+  const [op] = await hre.ethers.getSigners();
+  const wbtc = await findExistingContract(hre, "WBTC");
+  const wbtcBalance = await wbtc.balanceOf(op.address);
+  if (wbtcBalance < UNISWAP_WBTC_AMOUNT) {
+    throw new Error(
+      `Current WBTC balance \`${wbtcBalance}\` < required Uniswap balance \`${UNISWAP_WBTC_AMOUNT}\``
+    );
+  }
   const klonx = await contractDeploy(
     hre,
     "SyntheticToken",
@@ -379,5 +387,13 @@ async function deployTokensAndMint(hre: HardhatRuntimeEnvironment) {
     "VeKlonX",
     "VeKlonX",
     "1"
+  );
+  await mint(hre, "KlonX", op.address, ETH);
+  await addLiquidity(
+    hre,
+    "KlonX",
+    "WBTC",
+    UNISWAP_KLONX_AMOUNT,
+    UNISWAP_WBTC_AMOUNT
   );
 }

@@ -4,6 +4,7 @@ import { ethers } from 'ethers';
 import { BrowserRouter as Router, Switch, Route, Redirect } from 'react-router-dom';
 import Toolbar from './components/Toolbar';
 import UniswapPage from './pages/UniswapPage';
+import BoardroomsPage from './pages/BoardroomsPage';
 import RewardPoolsPage from './pages/RewardPoolsPage';
 import FundsPage from './pages/FundsPage';
 import ManagersPage from './pages/Managers';
@@ -68,6 +69,7 @@ const Inner = (props: any) => {
           <Route path="/swap_pools" component={SwapPoolsPage} />
           <Route path="/funds" component={FundsPage} />
           <Route path="/managers" component={ManagersPage} />
+          <Route path="/boardrooms" component={BoardroomsPage} />
           <Route path="/tokens" component={TokensPage} />
           <Redirect to="/uniswap" />
         </Switch>
