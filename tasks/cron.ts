@@ -119,12 +119,7 @@ async function oracleTick(
   }
   let price = adjUndReserve.mul(10000).div(adjSynReserve);
   price = price.toNumber() / 10000;
-  log(`reserve0: ${reserve0}`);
-  log(`reserve1: ${reserve1}`);
-  log(`SynReserve: ${synReserve}`);
-  log(`UndReserve: ${undReserve}`);
-  log(`AdjSynReserve: ${adjSynReserve}`);
-  log(`AdjUndReserve: ${adjUndReserve}`);
+  log(`AdjSynReserve: ${adjSynReserve}, AdjUndReserve: ${adjUndReserve}`);
   let oraclePrice = await oracle.consult(
     synAddress,
     BigNumber.from(10).pow(synDecimals)
