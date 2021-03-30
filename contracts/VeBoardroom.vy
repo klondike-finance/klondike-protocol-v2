@@ -1,6 +1,6 @@
-# @version 0.2.7
+# @version 0.2.11
 """
-@title Curve Fee Distribution
+@title Boardroom Distribution
 @author Curve Finance
 @license MIT
 """
@@ -45,19 +45,21 @@ struct Point:
 
 WEEK: constant(uint256) = 7 * 86400
 TOKEN_CHECKPOINT_DEADLINE: constant(uint256) = 86400
+MAX_TOKENS: constant(uint256) = 10000
 
-start_time: public(uint256)
+start_time: public(HashMap[address, uint256])
 time_cursor: public(uint256)
 time_cursor_of: public(HashMap[address, uint256])
 user_epoch_of: public(HashMap[address, uint256])
 
-last_token_time: public(uint256)
-tokens_per_week: public(uint256[1000000000000000])
+last_token_time: public(HashMap[address, uint256])
+tokens_per_week: public(HashMap[address, uint256[1000000000000000]])
 
 voting_escrow: public(address)
-token: public(address)
+tokens: public(address[MAX_TOKENS])
+tokens_len: public(uint256)
 total_received: public(uint256)
-token_last_balance: public(uint256)
+token_last_balance: public(HashMap[address, uint256])
 
 ve_supply: public(uint256[1000000000000000])  # VE total supply at week bounds
 
@@ -72,7 +74,6 @@ is_killed: public(bool)
 def __init__(
     _voting_escrow: address,
     _start_time: uint256,
-    _token: address,
     _admin: address,
     _emergency_return: address
 ):
@@ -80,7 +81,6 @@ def __init__(
     @notice Contract constructor
     @param _voting_escrow VotingEscrow contract address
     @param _start_time Epoch time for fee distribution to start
-    @param _token Fee token address (3CRV)
     @param _admin Admin address
     @param _emergency_return Address to transfer `_token` balance to
                              if this contract is killed
@@ -89,17 +89,16 @@ def __init__(
     self.start_time = t
     self.last_token_time = t
     self.time_cursor = t
-    self.token = _token
     self.voting_escrow = _voting_escrow
     self.admin = _admin
     self.emergency_return = _emergency_return
 
 
 @internal
-def _checkpoint_token():
-    token_balance: uint256 = ERC20(self.token).balanceOf(self)
-    to_distribute: uint256 = token_balance - self.token_last_balance
-    self.token_last_balance = token_balance
+def _checkpoint_token(token: address):
+    token_balance: uint256 = ERC20(token).balanceOf(self)
+    to_distribute: uint256 = token_balance - self.token_last_balance[token]
+    self.token_last_balance[token] = token_balance
 
     t: uint256 = self.last_token_time
     since_last: uint256 = block.timestamp - t
@@ -111,15 +110,19 @@ def _checkpoint_token():
         next_week = this_week + WEEK
         if block.timestamp < next_week:
             if since_last == 0 and block.timestamp == t:
-                self.tokens_per_week[this_week] += to_distribute
+                # edge case - div by 0
+                self.tokens_per_week[token][this_week] += to_distribute
             else:
-                self.tokens_per_week[this_week] += to_distribute * (block.timestamp - t) / since_last
+                # distribute incoming reward in current week evenly across weeks
+                self.tokens_per_week[token][this_week] += to_distribute * (block.timestamp - t) / since_last
             break
         else:
             if since_last == 0 and next_week == t:
-                self.tokens_per_week[this_week] += to_distribute
+                # edge case - div by 0
+                self.tokens_per_week[token][this_week] += to_distribute
             else:
-                self.tokens_per_week[this_week] += to_distribute * (next_week - t) / since_last
+                # distribute incoming reward evenly across weeks
+                self.tokens_per_week[token][this_week] += to_distribute * (next_week - t) / since_last
         t = next_week
         this_week = next_week
 
@@ -127,7 +130,7 @@ def _checkpoint_token():
 
 
 @external
-def checkpoint_token():
+def checkpoint_token(token: address):
     """
     @notice Update the token checkpoint
     @dev Calculates the total number of tokens to be distributed in a given week.
@@ -137,7 +140,7 @@ def checkpoint_token():
     """
     assert (msg.sender == self.admin) or\
            (self.can_checkpoint_token and (block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE))
-    self._checkpoint_token()
+    self._checkpoint_token(token)
 
 
 @internal
@@ -225,7 +228,7 @@ def checkpoint_total_supply():
 
 
 @internal
-def _claim(addr: address, ve: address, _last_token_time: uint256) -> uint256:
+def _claim(token: address, addr: address, ve: address, _last_token_time: uint256) -> uint256:
     # Minimal user_epoch is 0 (if user had no point)
     user_epoch: uint256 = 0
     to_distribute: uint256 = 0
@@ -280,7 +283,7 @@ def _claim(addr: address, ve: address, _last_token_time: uint256) -> uint256:
             if balance_of == 0 and user_epoch > max_user_epoch:
                 break
             if balance_of > 0:
-                to_distribute += balance_of * self.tokens_per_week[week_cursor] / self.ve_supply[week_cursor]
+                to_distribute += balance_of * self.tokens_per_week[token][week_cursor] / self.ve_supply[week_cursor]
 
             week_cursor += WEEK
 
@@ -295,7 +298,7 @@ def _claim(addr: address, ve: address, _last_token_time: uint256) -> uint256:
 
 @external
 @nonreentrant('lock')
-def claim(_addr: address = msg.sender) -> uint256:
+def claim(token: address, _addr: address = msg.sender) -> uint256:
     """
     @notice Claim fees for `_addr`
     @dev Each call to claim look at a maximum of 50 user veCRV points.
@@ -303,6 +306,7 @@ def claim(_addr: address = msg.sender) -> uint256:
          may need to be called more than once to claim all available
          fees. In the `Claimed` event that fires, if `claim_epoch` is
          less than `max_epoch`, the account may claim again.
+    @param token Address of the token to claim
     @param _addr Address to claim fees for
     @return uint256 Amount of fees claimed in the call
     """
@@ -314,28 +318,28 @@ def claim(_addr: address = msg.sender) -> uint256:
     last_token_time: uint256 = self.last_token_time
 
     if self.can_checkpoint_token and (block.timestamp > last_token_time + TOKEN_CHECKPOINT_DEADLINE):
-        self._checkpoint_token()
+        self._checkpoint_token(token)
         last_token_time = block.timestamp
 
     last_token_time = last_token_time / WEEK * WEEK
 
-    amount: uint256 = self._claim(_addr, self.voting_escrow, last_token_time)
+    amount: uint256 = self._claim(token, _addr, self.voting_escrow, last_token_time)
     if amount != 0:
-        token: address = self.token
         assert ERC20(token).transfer(_addr, amount)
-        self.token_last_balance -= amount
+        self.token_last_balance[token] -= amount
 
     return amount
 
 
 @external
 @nonreentrant('lock')
-def claim_many(_receivers: address[20]) -> bool:
+def claim_many(token: address, _receivers: address[20]) -> bool:
     """
     @notice Make multiple fee claims in a single call
     @dev Used to claim for many accounts at once, or to make
          multiple claims for the same address when that address
          has significant veCRV history
+    @param token Address of the token to claim
     @param _receivers List of addresses to claim for. Claiming
                       terminates at the first `ZERO_ADDRESS`.
     @return bool success
@@ -348,27 +352,70 @@ def claim_many(_receivers: address[20]) -> bool:
     last_token_time: uint256 = self.last_token_time
 
     if self.can_checkpoint_token and (block.timestamp > last_token_time + TOKEN_CHECKPOINT_DEADLINE):
-        self._checkpoint_token()
+        self._checkpoint_token(token)
         last_token_time = block.timestamp
 
     last_token_time = last_token_time / WEEK * WEEK
     voting_escrow: address = self.voting_escrow
-    token: address = self.token
     total: uint256 = 0
 
     for addr in _receivers:
         if addr == ZERO_ADDRESS:
             break
 
-        amount: uint256 = self._claim(addr, voting_escrow, last_token_time)
+        amount: uint256 = self._claim(token, addr, voting_escrow, last_token_time)
         if amount != 0:
             assert ERC20(token).transfer(addr, amount)
             total += amount
 
     if total != 0:
-        self.token_last_balance -= total
+        self.token_last_balance[token] -= total
 
     return True
+
+@view
+@internal
+def _has_token(token: address) -> bool:
+    """
+    @notice Check if token is allowed
+    @param token address of the token to check
+    """
+    for i in range(MAX_TOKENS):
+        if i >= self.tokens_len:
+            return False
+        if self.tokens[i] == token:
+            return True
+    return False
+
+@external 
+def add_token(_addr: address, _start_time):
+    """
+    @notice Add token to allowlist
+    @param _addr address of the token to add
+    @param _start_time Epoch time for distribution to start
+    """
+    assert msg.sender == self.admin
+    assert not self._has_token(_addr)
+    self.tokens[self.tokens_len] = _addr
+    self.tokens_len += 1
+    t: uint256 = _start_time / WEEK * WEEK
+    # self.start_time = t
+    self.last_token_time[_addr] = t
+
+
+@external 
+def delete_token(_addr: address):
+    """
+    @notice Remove token from allowlist
+    @param _addr address of the token to remove
+    """
+    assert msg.sender == self.admin
+    for i in range(MAX_TOKENS):
+        if i >= self.tokens_len:
+            return
+        if self.tokens[i] == _addr:
+            self.tokens[i] = ZERO_ADDRESS
+            return
 
 
 @external
@@ -378,14 +425,14 @@ def burn(_coin: address) -> bool:
     @param _coin Address of the coin being received (must be 3CRV)
     @return bool success
     """
-    assert _coin == self.token
+    assert self._has_token(_coin), "token is not whitelisted"
     assert not self.is_killed
 
     amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
     if amount != 0:
         ERC20(_coin).transferFrom(msg.sender, self, amount)
         if self.can_checkpoint_token and (block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE):
-            self._checkpoint_token()
+            self._checkpoint_token(_coin)
 
     return True
 
@@ -435,8 +482,13 @@ def kill_me():
 
     self.is_killed = True
 
-    token: address = self.token
-    assert ERC20(token).transfer(self.emergency_return, ERC20(token).balanceOf(self))
+    for i in range(MAX_TOKENS):
+        if i >= self.tokens_len:
+            return
+        token: address = self.tokens[i]
+        if token == ZERO_ADDRESS:
+            continue
+        assert ERC20(token).transfer(self.emergency_return, ERC20(token).balanceOf(self))
 
 
 @external
@@ -448,7 +500,7 @@ def recover_balance(_coin: address) -> bool:
     @return bool success
     """
     assert msg.sender == self.admin
-    assert _coin != self.token
+    assert not self._has_token(_coin)
 
     amount: uint256 = ERC20(_coin).balanceOf(self)
     response: Bytes[32] = raw_call(
