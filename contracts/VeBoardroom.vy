@@ -49,7 +49,7 @@ MAX_TOKENS: constant(uint256) = 10000
 
 start_time: public(HashMap[address, uint256])
 time_cursor: public(uint256)
-time_cursor_of: public(HashMap[address, uint256])
+time_cursor_of: public(HashMap[address, HashMap[address, uint256]])
 user_epoch_of: public(HashMap[address, uint256])
 
 last_token_time: public(HashMap[address, uint256])
@@ -73,7 +73,6 @@ is_killed: public(bool)
 @external
 def __init__(
     _voting_escrow: address,
-    _start_time: uint256,
     _admin: address,
     _emergency_return: address
 ):
@@ -85,10 +84,7 @@ def __init__(
     @param _emergency_return Address to transfer `_token` balance to
                              if this contract is killed
     """
-    t: uint256 = _start_time / WEEK * WEEK
-    self.start_time = t
-    self.last_token_time = t
-    self.time_cursor = t
+    self.time_cursor = block.timestamp / WEEK * WEEK
     self.voting_escrow = _voting_escrow
     self.admin = _admin
     self.emergency_return = _emergency_return
@@ -100,9 +96,9 @@ def _checkpoint_token(token: address):
     to_distribute: uint256 = token_balance - self.token_last_balance[token]
     self.token_last_balance[token] = token_balance
 
-    t: uint256 = self.last_token_time
+    t: uint256 = self.last_token_time[token]
     since_last: uint256 = block.timestamp - t
-    self.last_token_time = block.timestamp
+    self.last_token_time[token] = block.timestamp
     this_week: uint256 = t / WEEK * WEEK
     next_week: uint256 = 0
 
@@ -139,7 +135,7 @@ def checkpoint_token(token: address):
          to call.
     """
     assert (msg.sender == self.admin) or\
-           (self.can_checkpoint_token and (block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE))
+           (self.can_checkpoint_token and (block.timestamp > self.last_token_time[token] + TOKEN_CHECKPOINT_DEADLINE))
     self._checkpoint_token(token)
 
 
@@ -234,13 +230,13 @@ def _claim(token: address, addr: address, ve: address, _last_token_time: uint256
     to_distribute: uint256 = 0
 
     max_user_epoch: uint256 = VotingEscrow(ve).user_point_epoch(addr)
-    _start_time: uint256 = self.start_time
+    _start_time: uint256 = self.start_time[token]
 
     if max_user_epoch == 0:
         # No lock = no fees
         return 0
 
-    week_cursor: uint256 = self.time_cursor_of[addr]
+    week_cursor: uint256 = self.time_cursor_of[token][addr]
     if week_cursor == 0:
         # Need to do the initial binary search
         user_epoch = self._find_timestamp_user_epoch(ve, addr, _start_time, max_user_epoch)
@@ -289,7 +285,7 @@ def _claim(token: address, addr: address, ve: address, _last_token_time: uint256
 
     user_epoch = min(max_user_epoch, user_epoch - 1)
     self.user_epoch_of[addr] = user_epoch
-    self.time_cursor_of[addr] = week_cursor
+    self.time_cursor_of[token][addr] = week_cursor
 
     log Claimed(addr, to_distribute, user_epoch, max_user_epoch)
 
@@ -315,7 +311,7 @@ def claim(token: address, _addr: address = msg.sender) -> uint256:
     if block.timestamp >= self.time_cursor:
         self._checkpoint_total_supply()
 
-    last_token_time: uint256 = self.last_token_time
+    last_token_time: uint256 = self.last_token_time[token]
 
     if self.can_checkpoint_token and (block.timestamp > last_token_time + TOKEN_CHECKPOINT_DEADLINE):
         self._checkpoint_token(token)
@@ -349,7 +345,7 @@ def claim_many(token: address, _receivers: address[20]) -> bool:
     if block.timestamp >= self.time_cursor:
         self._checkpoint_total_supply()
 
-    last_token_time: uint256 = self.last_token_time
+    last_token_time: uint256 = self.last_token_time[token]
 
     if self.can_checkpoint_token and (block.timestamp > last_token_time + TOKEN_CHECKPOINT_DEADLINE):
         self._checkpoint_token(token)
@@ -388,7 +384,7 @@ def _has_token(token: address) -> bool:
     return False
 
 @external 
-def add_token(_addr: address, _start_time):
+def add_token(_addr: address, _start_time: uint256):
     """
     @notice Add token to allowlist
     @param _addr address of the token to add
@@ -399,7 +395,7 @@ def add_token(_addr: address, _start_time):
     self.tokens[self.tokens_len] = _addr
     self.tokens_len += 1
     t: uint256 = _start_time / WEEK * WEEK
-    # self.start_time = t
+    self.start_time[_addr] = t
     self.last_token_time[_addr] = t
 
 
@@ -431,7 +427,7 @@ def burn(_coin: address) -> bool:
     amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
     if amount != 0:
         ERC20(_coin).transferFrom(msg.sender, self, amount)
-        if self.can_checkpoint_token and (block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE):
+        if self.can_checkpoint_token and (block.timestamp > self.last_token_time[_coin] + TOKEN_CHECKPOINT_DEADLINE):
             self._checkpoint_token(_coin)
 
     return True
