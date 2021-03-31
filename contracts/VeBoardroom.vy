@@ -1,7 +1,7 @@
 # @version 0.2.11
 """
 @title Boardroom Distribution
-@author Curve Finance
+@author Klondike Finance, Curve Finance
 @license MIT
 """
 
@@ -79,7 +79,6 @@ def __init__(
     """
     @notice Contract constructor
     @param _voting_escrow VotingEscrow contract address
-    @param _start_time Epoch time for fee distribution to start
     @param _admin Admin address
     @param _emergency_return Address to transfer `_token` balance to
                              if this contract is killed
