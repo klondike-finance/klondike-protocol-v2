@@ -3,7 +3,7 @@ from brownie import ZERO_ADDRESS
 WEEK = 86400 * 7
 
 
-def test_claim_many(alice, bob, charlie, chain, ve_token, ve_boardroom, coin_a, token):
+def test_claim_many(alice, bob, charlie, chain, ve_token, ve_boardroom, coin_a, token, fn_isolation):
     amount = 1000 * 10 ** 18
 
     for acct in (alice, bob, charlie):
@@ -58,7 +58,7 @@ def test_claim_many_same_account(
     chain.sleep(WEEK)
     ve_boardroom.checkpoint_token(coin_a)
 
-    expected = ve_boardroom.claim.call({"from": alice})
+    expected = ve_boardroom.claim.call(coin_a, {"from": alice})
 
     ve_boardroom.claim_many(coin_a, [alice] * 20, {"from": alice})
 
