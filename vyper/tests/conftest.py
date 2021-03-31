@@ -1,17 +1,32 @@
 import pytest
 
+@pytest.fixture(scope="session")
+def alice(accounts):
+    yield accounts[0]
+
+
+@pytest.fixture(scope="session")
+def bob(accounts):
+    yield accounts[1]
+
+@pytest.fixture(scope="session")
+def charlie(accounts):
+    yield accounts[2]
+
 @pytest.fixture(scope="module")
 def token(ERC20, accounts):
-    yield ERC20.deploy("KlonX", "KlonX", 18, {"from": accounts[0]})
+    tkn = ERC20.deploy("KlonX", "KlonX", 18, {"from": accounts[0]})
+    tkn._mint_for_testing(10 ** 30, {"from": accounts[0]})
+    yield tkn
 
 @pytest.fixture(scope="module")
-def syn_token1(ERC20, accounts):
-    yield ERC20.deploy("KBTC", "KBTC", 18, {"from": accounts[0]})
+def coin_a(ERC20, accounts):
+    yield ERC20.deploy("Coin A", "USDA", 18, {"from": accounts[0]})
+
 
 @pytest.fixture(scope="module")
-def syn_token2(ERC20, accounts):
-    yield ERC20.deploy("KUSD", "KUSD", 18, {"from": accounts[0]})
-
+def coin_b(ERC20, accounts):
+    yield ERC20.deploy("Coin B", "USDB", 18, {"from": accounts[0]})
 
 @pytest.fixture(scope="module")
 def ve_token(VeToken, accounts, token):

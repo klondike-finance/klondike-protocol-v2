@@ -3,14 +3,13 @@ import pytest
 WEEK = 86400 * 7
 
 @pytest.fixture(scope="module")
-def distributor(accounts, chain, ve_boardroom, ve_token, token, syn_token1, syn_token2):
+def distributor(accounts, chain, ve_boardroom, ve_token, token, coin_a, coin_b):
     distributor = ve_boardroom()
     t = chain.time()
-    distributor.add_token(syn_token1, t)
-    distributor.add_token(syn_token2, t)
+    distributor.add_token(coin_a, t)
+    distributor.add_token(coin_b, t)
 
     token.approve(ve_token, 2 ** 256 - 1, {"from": accounts[0]})
-    token._mint_for_testing(10 ** 21, {"from": accounts[0]})
     ve_token.create_lock(10 ** 21, chain.time() + WEEK * 52, {"from": accounts[0]})
 
     yield distributor
@@ -51,26 +50,26 @@ def test_advance_time_cursor(accounts, chain, distributor):
     assert distributor.ve_supply(start_time + WEEK * 40) == 0
 
 
-def test_claim_checkpoints_total_supply(accounts, chain, distributor, syn_token1):
+def test_claim_checkpoints_total_supply(accounts, chain, distributor, coin_a):
     # update time cursor to current
-    distributor.claim(syn_token1, {"from": accounts[0]})
+    distributor.claim(coin_a, {"from": accounts[0]})
     start_time = distributor.time_cursor()
     chain.sleep(WEEK)
     chain.mine()
-    distributor.claim(syn_token1, {"from": accounts[0]})
+    distributor.claim(coin_a, {"from": accounts[0]})
 
     assert distributor.time_cursor() == start_time + WEEK
 
 
-def test_toggle_allow_checkpoint(accounts, chain, distributor, syn_token1):
+def test_toggle_allow_checkpoint(accounts, chain, distributor, coin_a):
 
-    last_token_time = distributor.last_token_time(syn_token1)
+    last_token_time = distributor.last_token_time(coin_a)
     chain.sleep(WEEK)
 
-    distributor.claim(syn_token1, {"from": accounts[0]})
-    assert distributor.last_token_time(syn_token1) == last_token_time
+    distributor.claim(coin_a, {"from": accounts[0]})
+    assert distributor.last_token_time(coin_a) == last_token_time
 
     distributor.toggle_allow_checkpoint_token({"from": accounts[0]})
-    tx = distributor.claim(syn_token1, {"from": accounts[0]})
+    tx = distributor.claim(coin_a, {"from": accounts[0]})
 
-    assert distributor.last_token_time(syn_token1) == tx.timestamp
+    assert distributor.last_token_time(coin_a) == tx.timestamp
