@@ -73,6 +73,7 @@ def test_deposited_before(web3, chain, accounts, ve_token, ve_boardroom, coin_a,
 
     token.approve(ve_token.address, amount * 10, {"from": alice})
     coin_a._mint_for_testing(100 * 10 ** 18, {"from": bob})
+    coin_b._mint_for_testing(100 * 10 ** 17, {"from": bob})
 
     ve_token.create_lock(
         amount, chain[-1].timestamp + 8 * WEEK, {"from": alice})
@@ -87,13 +88,18 @@ def test_deposited_before(web3, chain, accounts, ve_token, ve_boardroom, coin_a,
     chain.sleep(WEEK * 5)
 
     coin_a.transfer(ve_boardroom, 10 ** 19, {"from": bob})
+    coin_b.transfer(ve_boardroom, 10 ** 18, {"from": bob})
     ve_boardroom.checkpoint_token(coin_a)
+    ve_boardroom.checkpoint_token(coin_b)
     chain.sleep(WEEK)
     ve_boardroom.checkpoint_token(coin_a)
+    ve_boardroom.checkpoint_token(coin_b)
 
     ve_boardroom.claim(coin_a, {"from": alice})
+    ve_boardroom.claim(coin_b, {"from": alice})
 
     assert abs(coin_a.balanceOf(alice) - 10 ** 19) < 10
+    assert abs(coin_b.balanceOf(alice) - 10 ** 18) < 10
 
 
 def test_deposited_twice(web3, chain, accounts, ve_token, ve_boardroom, coin_a, coin_b, coin_c, token, fn_isolation):
@@ -102,6 +108,7 @@ def test_deposited_twice(web3, chain, accounts, ve_token, ve_boardroom, coin_a, 
 
     token.approve(ve_token.address, amount * 10, {"from": alice})
     coin_a._mint_for_testing(100 * 10 ** 18, {"from": bob})
+    coin_b._mint_for_testing(100 * 10 ** 17, {"from": bob})
 
     ve_token.create_lock(
         amount, chain[-1].timestamp + 4 * WEEK, {"from": alice})
@@ -121,14 +128,20 @@ def test_deposited_twice(web3, chain, accounts, ve_token, ve_boardroom, coin_a, 
     chain.sleep(WEEK * 2)
 
     coin_a.transfer(ve_boardroom, 10 ** 19, {"from": bob})
+    coin_b.transfer(ve_boardroom, 10 ** 18, {"from": bob})
     ve_boardroom.checkpoint_token(coin_a)
+    ve_boardroom.checkpoint_token(coin_b)
     chain.sleep(WEEK)
     ve_boardroom.checkpoint_token(coin_a)
+    ve_boardroom.checkpoint_token(coin_b)
 
     ve_boardroom.claim(coin_a, {"from": alice})
+    ve_boardroom.claim(coin_b, {"from": alice})
 
-    tokens_to_exclude = ve_boardroom.tokens_per_week(coin_a, exclude_time)
-    assert abs(10 ** 19 - coin_a.balanceOf(alice) - tokens_to_exclude) < 10
+    tokens_to_exclude_a = ve_boardroom.tokens_per_week(coin_a, exclude_time)
+    tokens_to_exclude_b = ve_boardroom.tokens_per_week(coin_b, exclude_time)
+    assert abs(10 ** 19 - coin_a.balanceOf(alice) - tokens_to_exclude_a) < 10
+    assert abs(10 ** 18 - coin_b.balanceOf(alice) - tokens_to_exclude_b) < 10
 
 
 def test_deposited_parallel(web3, chain, accounts, ve_token, ve_boardroom, coin_a, coin_b, coin_c, token, fn_isolation):
@@ -139,6 +152,7 @@ def test_deposited_parallel(web3, chain, accounts, ve_token, ve_boardroom, coin_
     token.approve(ve_token.address, amount * 10, {"from": bob})
     token.transfer(bob, amount, {"from": alice})
     coin_a._mint_for_testing(100 * 10 ** 18, {"from": charlie})
+    coin_b._mint_for_testing(100 * 10 ** 17, {"from": charlie})
 
     ve_token.create_lock(
         amount, chain[-1].timestamp + 8 * WEEK, {"from": alice})
@@ -154,14 +168,24 @@ def test_deposited_parallel(web3, chain, accounts, ve_token, ve_boardroom, coin_
     chain.sleep(WEEK * 5)
 
     coin_a.transfer(ve_boardroom, 10 ** 19, {"from": charlie})
+    coin_b.transfer(ve_boardroom, 10 ** 18, {"from": charlie})
     ve_boardroom.checkpoint_token(coin_a)
+    ve_boardroom.checkpoint_token(coin_b)
     chain.sleep(WEEK)
     ve_boardroom.checkpoint_token(coin_a)
+    ve_boardroom.checkpoint_token(coin_b)
 
     ve_boardroom.claim(coin_a, {"from": alice})
     ve_boardroom.claim(coin_a, {"from": bob})
+    ve_boardroom.claim(coin_b, {"from": alice})
+    ve_boardroom.claim(coin_b, {"from": bob})
 
     balance_alice = coin_a.balanceOf(alice)
     balance_bob = coin_a.balanceOf(bob)
     assert balance_alice == balance_bob
     assert abs(balance_alice + balance_bob - 10 ** 19) < 20
+
+    balance_alice = coin_b.balanceOf(alice)
+    balance_bob = coin_b.balanceOf(bob)
+    assert balance_alice == balance_bob
+    assert abs(balance_alice + balance_bob - 10 ** 18) < 20
