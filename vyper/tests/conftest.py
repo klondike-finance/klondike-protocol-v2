@@ -1,5 +1,9 @@
 import pytest
 
+@pytest.fixture(autouse=True)
+def isolation_setup(fn_isolation):
+    pass
+
 @pytest.fixture(scope="session")
 def alice(accounts):
     yield accounts[0]
