@@ -3,12 +3,14 @@ import pytest
 
 
 @pytest.fixture(scope="module")
-def ve_boardroom(VeBoardroom, accounts, chain, ve_token, coin_a, coin_b):
+def ve_boardroom(VeBoardroom, accounts, chain, ve_token, coin_a, coin_b, coin_c):
     boardroom = VeBoardroom.deploy(
         ve_token, accounts[0], accounts[1], {"from": accounts[0]},
     )
     boardroom.add_token(coin_a, chain.time())
+    boardroom.add_token(coin_c, chain.time())
     boardroom.add_token(coin_b, chain.time())
+    boardroom.delete_token(coin_c)
     yield boardroom
 
 
@@ -90,4 +92,4 @@ def test_cannot_claim_many_after_killed(ve_boardroom, accounts, alice, idx, coin
     with brownie.reverts():
         ve_boardroom.claim_many(coin_a, [alice] * 20, {"from": accounts[idx]})
     with brownie.reverts():
-        ve_boardroom.claim_many(coin_b, [alice] * 20, {"from": accounts[idx]})    
+        ve_boardroom.claim_many(coin_b, [alice] * 20, {"from": accounts[idx]})

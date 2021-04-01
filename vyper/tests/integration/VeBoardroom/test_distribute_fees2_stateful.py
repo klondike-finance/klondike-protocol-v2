@@ -275,7 +275,7 @@ class StateMachine:
         assert self.fee2_coin.balanceOf(self.distributor) < 100
 
 
-def test_stateful(state_machine, accounts, ve_token, ve_boardroom, coin_a, coin_b, token):
+def test_stateful(state_machine, accounts, ve_token, ve_boardroom, coin_a, coin_b, coin_c, token):
     for i in range(5):
         # ensure accounts[:5] all have tokens that may be locked
         token.approve(ve_token, 2 ** 256 - 1, {"from": accounts[i]})
@@ -289,7 +289,9 @@ def test_stateful(state_machine, accounts, ve_token, ve_boardroom, coin_a, coin_
     chain.sleep(WEEK)
     distributor = ve_boardroom()
     distributor.add_token(coin_a, chain.time())
+    distributor.add_token(coin_c, chain.time())
     distributor.add_token(coin_b, chain.time())
+    distributor.delete_token(coin_c)
 
     state_machine(
         StateMachine,
