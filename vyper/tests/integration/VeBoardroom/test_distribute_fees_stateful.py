@@ -138,7 +138,7 @@ class StateMachine:
         claimed = self.fee_coin.balanceOf(st_acct) - claimed
         self.user_claims[st_acct][tx.timestamp] = (
             claimed,
-            self.distributor.time_cursor_of(st_acct),
+            self.distributor.time_cursor_of(self.fee_coin, st_acct),
         )
 
     def rule_transfer_fees(self, st_amount, st_time):
