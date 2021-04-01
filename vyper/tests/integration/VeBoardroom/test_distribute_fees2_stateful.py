@@ -25,9 +25,11 @@ class StateMachine:
         self.locked_until = {
             self.accounts[0]: self.ve_token.locked__end(self.accounts[0])}
         self.fees = {}
+        self.fees2 = {}
         self.user_claims = defaultdict(dict)
         self.user2_claims = defaultdict(dict)
         self.total_fees = 10 ** 18
+        self.total_fees2 = 10 ** 18
 
     def _check_active_lock(self, st_acct):
         # check if `st_acct` has an active lock
@@ -178,6 +180,17 @@ class StateMachine:
         self.fees[tx.timestamp] = amount
         self.total_fees += amount
 
+        amount = int(st_amount * 10 ** 18)
+        tx = self.fee2_coin._mint_for_testing(
+            amount, {"from": self.distributor.address})
+
+        if not self.distributor.can_checkpoint_token():
+            self.distributor.toggle_allow_checkpoint_token()
+            self.distributor.checkpoint_token(self.fee2_coin)
+
+        self.fees2[tx.timestamp] = amount
+        self.total_fees2 += amount
+
     def rule_transfer_fees_without_checkpoint(self, st_amount, st_time):
         """
         Transfer fees into the distributor without checkpointing.
@@ -197,6 +210,13 @@ class StateMachine:
         self.fees[tx.timestamp] = amount
         self.total_fees += amount
 
+        amount = int(st_amount * 10 ** 18)
+        tx = self.fee2_coin._mint_for_testing(
+            amount, {"from": self.distributor.address})
+
+        self.fees2[tx.timestamp] = amount
+        self.total_fees2 += amount
+
     def teardown(self):
         """
         Claim fees for all accounts and verify that only dust remains.
@@ -209,11 +229,14 @@ class StateMachine:
         # Because tokens for current week are obtained in the next week
         # And that is by design
         self.distributor.checkpoint_token(self.fee_coin)
+        self.distributor.checkpoint_token(self.fee2_coin)
         chain.sleep(WEEK * 2)
         self.distributor.checkpoint_token(self.fee_coin)
+        self.distributor.checkpoint_token(self.fee2_coin)
 
         for acct in self.accounts:
             self.distributor.claim(self.fee_coin, {"from": acct})
+            self.distributor.claim(self.fee2_coin, {"from": acct})
 
         t0 = self.distributor.start_time(self.fee_coin)
         t1 = chain[-1].timestamp // WEEK * WEEK
@@ -233,8 +256,26 @@ class StateMachine:
 
         assert self.fee_coin.balanceOf(self.distributor) < 100
 
+        t0 = self.distributor.start_time(self.fee2_coin)
+        t1 = chain[-1].timestamp // WEEK * WEEK
+        tokens_per_user_per_week = {
+            acct: [
+                self.distributor.tokens_per_week(self.fee2_coin, w)
+                * self.distributor.ve_for_at(acct, w)
+                // self.distributor.ve_supply(w)
+                for w in range(t0, t1 + WEEK, WEEK)
+            ]
+            for acct in self.accounts[:5]
+        }
 
-def test_stateful(state_machine, accounts, ve_token, ve_boardroom, coin_a, token):
+        for acct in self.accounts:
+            assert sum(
+                tokens_per_user_per_week[acct]) == self.fee2_coin.balanceOf(acct)
+
+        assert self.fee2_coin.balanceOf(self.distributor) < 100
+
+
+def test_stateful(state_machine, accounts, ve_token, ve_boardroom, coin_a, coin_b, token):
     for i in range(5):
         # ensure accounts[:5] all have tokens that may be locked
         token.approve(ve_token, 2 ** 256 - 1, {"from": accounts[i]})
@@ -248,6 +289,7 @@ def test_stateful(state_machine, accounts, ve_token, ve_boardroom, coin_a, token
     chain.sleep(WEEK)
     distributor = ve_boardroom()
     distributor.add_token(coin_a, chain.time())
+    distributor.add_token(coin_b, chain.time())
 
     state_machine(
         StateMachine,
@@ -255,5 +297,6 @@ def test_stateful(state_machine, accounts, ve_token, ve_boardroom, coin_a, token
         accounts[:5],
         ve_token,
         coin_a,
+        coin_b,
         settings={"stateful_step_count": 30},
     )
