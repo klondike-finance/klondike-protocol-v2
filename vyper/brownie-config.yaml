@@ -1,0 +1,11 @@
+hypothesis:
+  deadline: null
+  max_examples: 5
+  report_multiple_bugs: False
+  stateful_step_count: 10
+  phases:
+    explicit: true
+    reuse: true
+    generate: true
+    target: true
+    shrink: true
