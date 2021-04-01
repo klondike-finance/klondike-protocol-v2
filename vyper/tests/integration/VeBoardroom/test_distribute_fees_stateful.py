@@ -133,7 +133,7 @@ class StateMachine:
 
         claimed = self.fee_coin.balanceOf(st_acct)
 
-        tx = self.distributor.claim({"from": st_acct})
+        tx = self.distributor.claim(self.fee_coin, {"from": st_acct})
 
         claimed = self.fee_coin.balanceOf(st_acct) - claimed
         self.user_claims[st_acct][tx.timestamp] = (
