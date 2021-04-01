@@ -9,6 +9,24 @@ jobs:
     steps:
       - uses: actions/checkout@v1
 
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
+
+      - name: Install vyper and dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install vyper==0.2.11
+          pip install brownie
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          yarn global add ganache-cli
+
+      - name: Test vyper
+        run: |
+          pushd vyper
+          brownie test
+          popd
+
       - name: Use Node.js 14.x
         uses: actions/setup-node@v1
         with:
