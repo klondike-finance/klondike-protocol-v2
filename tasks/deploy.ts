@@ -394,6 +394,7 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   const klon = await findExistingContract(hre, "Klon");
   const klonx = await findExistingContract(hre, "KlonX");
   const kwbtc = await findExistingContract(hre, "KWBTC");
+  const kxusd = await findExistingContract(hre, "KXUSD");
   const wbtc = await findExistingContract(hre, "WBTC");
   const multisig = await getRegistryContract(hre, "MultisigWallet");
   const [op] = await hre.ethers.getSigners();
@@ -426,6 +427,17 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
     multisig.address,
     klonx.address,
     pairFor(UNISWAP_V2_FACTORY_ADDRESS, kwbtc.address, wbtc.address),
+    REWARDS_POOL_INITIAL_DURATION
+  );
+  await contractDeploy(
+    hre,
+    "RewardsPool",
+    "KXUSDDAILPKlonXPool",
+    "KXUSDDAILPKlonXPool",
+    op.address,
+    multisig.address,
+    klonx.address,
+    pairFor(UNISWAP_V2_FACTORY_ADDRESS, kxusd.address, daiAddress(hre)),
     REWARDS_POOL_INITIAL_DURATION
   );
 }
