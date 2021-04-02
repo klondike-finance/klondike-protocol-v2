@@ -107,6 +107,7 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
 
   await transferPoolOwnership(hre, "KlonXWBTCLPKlonXPool", "MultisigWallet");
   await transferPoolOwnership(hre, "KWBTCWBTCLPKlonXPool", "MultisigWallet");
+  await transferPoolOwnership(hre, "KXUSDDAILPKlonXPool", "MultisigWallet");
   await transferOperator(hre, "LiquidBoardroomV1", "MultisigWallet");
   await transferOwnership(hre, "LiquidBoardroomV1", "Timelock");
   await transferOperator(hre, "UniswapBoardroomV1", "MultisigWallet");
