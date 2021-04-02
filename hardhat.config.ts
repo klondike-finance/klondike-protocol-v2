@@ -27,6 +27,7 @@ const config: HardhatUserConfig = {
         process.env["TEST_OPERATOR_PK"] ||
           "0x0000000000000000000000000000000000000000000000000000000000000000",
       ],
+      // gasPrice: 20000000000,
     },
     mainnet: {
       url: process.env["INFURA_ENDPOINT"] || "http://localhost:8545",

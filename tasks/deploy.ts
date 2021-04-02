@@ -16,6 +16,7 @@ import {
 } from "./token";
 import { deployTreasury, setTreasuryLinks } from "./treasury";
 import { addLiquidity, UNISWAP_V2_FACTORY_ADDRESS } from "./uniswap";
+import { tokenDeploy } from "./token";
 import { ETH, isProd, now, pairFor, sendTransaction } from "./utils";
 
 const DAY_TICK = 60; // for prod deploy set to 86400
@@ -57,7 +58,8 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await deploySpecificPools(hre);
   await deployUniswapAndLiquidBoardrooms(hre);
   await setLinks(hre);
-  await addWbtcToken(hre);
+  await addKWBTCToken(hre);
+  await addKXUSDToken(hre);
   await transferOwnerships(hre);
 }
 
@@ -129,7 +131,7 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
   }
 }
 
-async function addWbtcToken(hre: HardhatRuntimeEnvironment) {
+async function addKWBTCToken(hre: HardhatRuntimeEnvironment) {
   console.log("Adding WBTC token...");
   const kwbtc = await findExistingContract(hre, "KWBTC");
   const kbwbtc = await findExistingContract(hre, "KB-WBTC");
@@ -155,6 +157,52 @@ async function addWbtcToken(hre: HardhatRuntimeEnvironment) {
     kwbtc.address,
     kbwbtc.address,
     wbtc.address,
+    oracle.address
+  );
+  await sendTransaction(hre, tx);
+}
+
+async function addKXUSDToken(hre: HardhatRuntimeEnvironment) {
+  console.log("Adding KXUSD token...");
+  const tokenManager = await findExistingContract(hre, "TokenManagerV1");
+  const [op] = await hre.ethers.getSigners();
+  const kxusd = await tokenDeploy(hre, "KXUSD", "KXUSD");
+  await mint(hre, "KXUSD", op.address, BigNumber.from(UNISWAP_KXUSD_AMOUNT));
+  const kbusd = await tokenDeploy(hre, "KB-USD", "KB-USD");
+  await addLiquidity(
+    hre,
+    "KXUSD",
+    "DAI",
+    BigNumber.from(UNISWAP_KXUSD_AMOUNT),
+    BigNumber.from(UNISWAP_KXUSD_AMOUNT)
+  );
+  const oracle = await contractDeploy(
+    hre,
+    "Oracle",
+    "KXUSDDAIOracle",
+    UNISWAP_V2_FACTORY_ADDRESS,
+    kxusd.address,
+    daiAddress(hre),
+    ORACLE_PERIOD,
+    ORACLE_START_DATE
+  );
+  const isManagedToken = await tokenManager.isManagedToken(kxusd.address);
+  if (isManagedToken) {
+    console.log(`KXUSD is already managed. Skipping...`);
+    return;
+  }
+  console.log(`Adding KXUSD token to TokenManager...`);
+  const tokenManagerOperator = await tokenManager.operator();
+  if (tokenManagerOperator.toLowerCase() !== op.address.toLowerCase()) {
+    console.log(
+      `TokenManager ownership is set to ${tokenManagerOperator}. Current operator is ${op.address}. Skipping...`
+    );
+    return;
+  }
+  const tx = await tokenManager.populateTransaction.addToken(
+    kxusd.address,
+    kbusd.address,
+    daiAddress(hre),
     oracle.address
   );
   await sendTransaction(hre, tx);
