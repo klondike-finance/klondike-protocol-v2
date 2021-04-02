@@ -21,6 +21,7 @@ import { ETH, isProd, now, pairFor, sendTransaction } from "./utils";
 
 const DAY_TICK = 60; // for prod deploy set to 86400
 const T = Math.floor(new Date().getTime() / 1000);
+const VE_TOKEN_START = T;
 const SWAP_POOL_START_DATE = T + DAY_TICK;
 const SWAP_POOL_END_DATE = T + DAY_TICK * 8;
 const ORACLE_START_DATE = T;
@@ -56,7 +57,7 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await deployVeKlonX(hre);
   await deployTreasury(hre, 1, TREASURY_START_DATE);
   await deploySpecificPools(hre);
-  await deployUniswapAndLiquidBoardrooms(hre);
+  await deployBoardrooms(hre);
   await setLinks(hre);
   await addKWBTCToken(hre);
   await addKXUSDToken(hre);
@@ -132,11 +133,12 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
 }
 
 async function addKWBTCToken(hre: HardhatRuntimeEnvironment) {
-  console.log("Adding WBTC token...");
+  console.log("Adding KWBTC token...");
   const kwbtc = await findExistingContract(hre, "KWBTC");
   const kbwbtc = await findExistingContract(hre, "KB-WBTC");
   const wbtc = await findExistingContract(hre, "WBTC");
   const tokenManager = await findExistingContract(hre, "TokenManagerV1");
+  const veBoardroom = await findExistingContract(hre, "VeBoardroomV1");
   const oracle = await contractDeploy(
     hre,
     "Oracle",
@@ -149,15 +151,33 @@ async function addKWBTCToken(hre: HardhatRuntimeEnvironment) {
   );
   const isManagedToken = await tokenManager.isManagedToken(kwbtc.address);
   if (isManagedToken) {
-    console.log(`KWBTC is already managed. Skipping...`);
+    console.log(`KWBTC is already managed by TokenManager. Skipping...`);
+  } else {
+    console.log(`Adding KBTC token to TokenManager...`);
+    const tx = await tokenManager.populateTransaction.addToken(
+      kwbtc.address,
+      kbwbtc.address,
+      wbtc.address,
+      oracle.address
+    );
+    await sendTransaction(hre, tx);
+  }
+  const veTokensLen = await veBoardroom.tokens_len();
+  const promises = [];
+  for (let i = 0; i < veTokensLen; i++) {
+    promises.push(veBoardroom.tokens(i));
+  }
+  const veTokens = (await Promise.all(promises)).map((x) => x.toLowerCase());
+
+  const isManagedByVeBoadroom = veTokens.includes(kwbtc.address.toLowerCase());
+  if (isManagedByVeBoadroom) {
+    console.log(`KWBTC is already managed by VeBoardroom. Skipping...`);
     return;
   }
-  console.log(`Adding KBTC token to TokenManager...`);
-  const tx = await tokenManager.populateTransaction.addToken(
+  console.log("Adding KWBTC to VeBoardroom");
+  const tx = await veBoardroom.populateTransaction.add_token(
     kwbtc.address,
-    kbwbtc.address,
-    wbtc.address,
-    oracle.address
+    VE_TOKEN_START
   );
   await sendTransaction(hre, tx);
 }
@@ -165,6 +185,7 @@ async function addKWBTCToken(hre: HardhatRuntimeEnvironment) {
 async function addKXUSDToken(hre: HardhatRuntimeEnvironment) {
   console.log("Adding KXUSD token...");
   const tokenManager = await findExistingContract(hre, "TokenManagerV1");
+  const veBoardroom = await findExistingContract(hre, "VeBoardroomV1");
   const [op] = await hre.ethers.getSigners();
   const kxusd = await tokenDeploy(hre, "KXUSD", "KXUSD");
   await mint(hre, "KXUSD", op.address, BigNumber.from(UNISWAP_KXUSD_AMOUNT));
@@ -197,13 +218,30 @@ async function addKXUSDToken(hre: HardhatRuntimeEnvironment) {
     console.log(
       `TokenManager ownership is set to ${tokenManagerOperator}. Current operator is ${op.address}. Skipping...`
     );
+  } else {
+    const tx = await tokenManager.populateTransaction.addToken(
+      kxusd.address,
+      kbusd.address,
+      daiAddress(hre),
+      oracle.address
+    );
+    await sendTransaction(hre, tx);
+  }
+  const veTokensLen = await veBoardroom.tokens_len();
+  const promises = [];
+  for (let i = 0; i < veTokensLen; i++) {
+    promises.push(veBoardroom.tokens(i));
+  }
+  const veTokens = (await Promise.all(promises)).map((x) => x.toLowerCase());
+  const isManagedByVeBoadroom = veTokens.includes(kxusd.address.toLowerCase());
+  if (isManagedByVeBoadroom) {
+    console.log(`KXUSD is already managed by VeBoardroom. Skipping...`);
     return;
   }
-  const tx = await tokenManager.populateTransaction.addToken(
+  console.log("Adding KXUSD to VeBoardroom");
+  const tx = await veBoardroom.populateTransaction.add_token(
     kxusd.address,
-    kbusd.address,
-    daiAddress(hre),
-    oracle.address
+    VE_TOKEN_START
   );
   await sendTransaction(hre, tx);
 }
@@ -315,13 +353,14 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   }
 }
 
-async function deployUniswapAndLiquidBoardrooms(
-  hre: HardhatRuntimeEnvironment
-) {
+async function deployBoardrooms(hre: HardhatRuntimeEnvironment) {
+  const [op] = await hre.ethers.getSigners();
   const klonx = await findExistingContract(hre, "KlonX");
   const tokenManager = await findExistingContract(hre, "TokenManagerV1");
   const emissionManager = await findExistingContract(hre, "EmissionManagerV1");
   const wbtc = await findExistingContract(hre, "WBTC");
+  const veklonx = await findExistingContract(hre, "VeKlonX");
+  const timelock = await getRegistryContract(hre, "Timelock");
 
   await contractDeploy(
     hre,
@@ -340,6 +379,14 @@ async function deployUniswapAndLiquidBoardrooms(
     tokenManager.address,
     emissionManager.address,
     BOARDROOM_START_DATE
+  );
+  await contractDeploy(
+    hre,
+    "VeBoardroom",
+    "VeBoardroomV1",
+    veklonx.address,
+    op.address,
+    timelock.address
   );
 }
 
