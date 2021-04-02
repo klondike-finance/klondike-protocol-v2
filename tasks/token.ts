@@ -221,7 +221,7 @@ export async function mint(
 // }
 
 export function deriveSyntheticName(underlyingName: string) {
-  return `K${underlyingName}`;
+  return `KX${underlyingName}`;
 }
 
 export function deriveBondName(underlyingName: string) {
