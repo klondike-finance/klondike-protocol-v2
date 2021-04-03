@@ -8,6 +8,7 @@ describe("StabFund", () => {
   const INITIAL_MINT = ETH.mul(100);
   let StabFund: ContractFactory;
   let SyntheticToken: ContractFactory;
+  let Vault: ContractFactory;
   let op: SignerWithAddress;
   let trader: SignerWithAddress;
   let other: SignerWithAddress;
@@ -19,10 +20,12 @@ describe("StabFund", () => {
   let factory: Contract;
   let router: Contract;
   let stabFund: Contract;
+  let vault: Contract;
 
   before(async () => {
     StabFund = await ethers.getContractFactory("StabFund");
     SyntheticToken = await ethers.getContractFactory("SyntheticToken");
+    Vault = await ethers.getContractFactory("VaultMock");
     const signers = await ethers.getSigners();
     op = signers[0];
     trader = signers[1];
@@ -41,7 +44,7 @@ describe("StabFund", () => {
     wbtc.mint(op.address, INITIAL_MINT);
     kdai.mint(op.address, INITIAL_MINT);
     dai.mint(op.address, INITIAL_MINT);
-
+    vault = await Vault.deploy(wbtc.address);
     stabFund = await StabFund.deploy(router.address, [], []);
   });
 
@@ -143,6 +146,56 @@ describe("StabFund", () => {
     });
   });
 
+  describe("#addVault", () => {
+    it("adds vault to vaults list", async () => {
+      expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(false);
+      await stabFund.addVault(kwbtc.address);
+      expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(true);
+    });
+    describe("when called twice for the same vault", async () => {
+      it("adds only one vault", async () => {
+        expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(false);
+        await stabFund.addVault(kwbtc.address);
+        const allowedVaults = await stabFund.allAllowedVaults();
+        expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(true);
+        await stabFund.addVault(kwbtc.address);
+        expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(true);
+        expect(await stabFund.allAllowedVaults()).to.eql(allowedVaults);
+      });
+    });
+    describe("when called not by Owner", () => {
+      it("fails", async () => {
+        await stabFund.transferOperator(other.address);
+        await expect(
+          stabFund.connect(other).addVault(kwbtc.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe("#deleteVault", () => {
+    it("deletes vault from vaults list", async () => {
+      await stabFund.addVault(kwbtc.address);
+      await stabFund.addVault(kdai.address);
+      expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(true);
+      expect(await stabFund.isAllowedVault(kdai.address)).to.eq(true);
+      await stabFund.deleteVault(kwbtc.address);
+      expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(false);
+      expect(await stabFund.isAllowedVault(kdai.address)).to.eq(true);
+      await stabFund.deleteVault(kdai.address);
+      expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(false);
+      expect(await stabFund.isAllowedVault(kdai.address)).to.eq(false);
+    });
+    describe("when called not by Owner", () => {
+      it("fails", async () => {
+        await stabFund.transferOperator(other.address);
+        await expect(
+          stabFund.connect(other).deleteVault(other.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
   describe("#allAllowedTokens", () => {
     it("returns all allowed tokens", async () => {
       await stabFund.addToken(kwbtc.address);
@@ -159,6 +212,17 @@ describe("StabFund", () => {
       await stabFund.addTrader(other.address);
       await stabFund.addTrader(another.address);
       expect(await stabFund.allAllowedTraders()).to.eql([
+        other.address,
+        another.address,
+      ]);
+    });
+  });
+
+  describe("#allAllowedVaults", () => {
+    it("returns all allowed tokens", async () => {
+      await stabFund.addVault(other.address);
+      await stabFund.addVault(another.address);
+      expect(await stabFund.allAllowedVaults()).to.eql([
         other.address,
         another.address,
       ]);
@@ -381,6 +445,94 @@ describe("StabFund", () => {
             [wbtc.address, kwbtc.address],
             (await now()) + 1000
           )
+        ).to.be.revertedWith("StabFund: Not a trader");
+      });
+    });
+  });
+
+  describe("#deposit", () => {
+    it("approves token and calls deposit on vault", async () => {
+      await stabFund.addToken(wbtc.address);
+      await stabFund.addTrader(op.address);
+      await stabFund.addVault(vault.address);
+      const amount = 123;
+      await expect(stabFund.deposit(vault.address, wbtc.address, amount))
+        .to.emit(vault, "VaultDeposited")
+        .withArgs(amount);
+    });
+    describe("when token address and vault token doesn't match", () => {
+      it("fails", async () => {
+        await stabFund.addToken(wbtc.address);
+        await stabFund.addToken(dai.address);
+        await stabFund.addTrader(op.address);
+        await stabFund.addVault(vault.address);
+        const amount = 123;
+        await expect(
+          stabFund.deposit(vault.address, dai.address, amount)
+        ).to.be.revertedWith("StabFund: Token doesn't match vault token");
+      });
+    });
+    describe("when vault is not whitelisted", () => {
+      it("fails", async () => {
+        await stabFund.addToken(wbtc.address);
+        await stabFund.addTrader(op.address);
+        const amount = 123;
+        await expect(
+          stabFund.deposit(vault.address, kwbtc.address, amount)
+        ).to.be.revertedWith("StabFund: Vault is not allowed");
+      });
+    });
+
+    describe("when token is not whitelisted", () => {
+      it("fails", async () => {
+        await stabFund.addTrader(op.address);
+        await stabFund.addVault(vault.address);
+        const amount = 123;
+        await expect(
+          stabFund.deposit(vault.address, kwbtc.address, amount)
+        ).to.be.revertedWith("StabFund: Token is not allowed");
+      });
+    });
+    describe("when called not by Trander", () => {
+      it("fails", async () => {
+        await stabFund.addToken(wbtc.address);
+        await stabFund.addVault(vault.address);
+        const amount = 123;
+        await expect(
+          stabFund.deposit(vault.address, wbtc.address, amount)
+        ).to.be.revertedWith("StabFund: Not a trader");
+      });
+    });
+  });
+
+  describe("#withdraw", () => {
+    it("approves token and calls withdraw on vault", async () => {
+      await stabFund.addToken(wbtc.address);
+      await stabFund.addTrader(op.address);
+      await stabFund.addVault(vault.address);
+      const amount = 123;
+      await expect(stabFund.withdraw(vault.address, amount))
+        .to.emit(vault, "VaultWithdrawn")
+        .withArgs(amount);
+    });
+    describe("when vault is not whitelisted", () => {
+      it("fails", async () => {
+        await stabFund.addToken(wbtc.address);
+        await stabFund.addTrader(op.address);
+        const amount = 123;
+        await expect(
+          stabFund.withdraw(vault.address, amount)
+        ).to.be.revertedWith("StabFund: Vault is not allowed");
+      });
+    });
+
+    describe("when called not by Trander", () => {
+      it("fails", async () => {
+        await stabFund.addToken(wbtc.address);
+        await stabFund.addVault(vault.address);
+        const amount = 123;
+        await expect(
+          stabFund.withdraw(vault.address, amount)
         ).to.be.revertedWith("StabFund: Not a trader");
       });
     });
