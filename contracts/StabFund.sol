@@ -142,6 +142,10 @@ contract StabFund is Operatable, Migratable {
         address token,
         uint256 amount
     ) external onlyAllowedVault(vault) onlyAllowedToken(token) onlyTrader {
+        require(
+            token == IVault(vault).token(),
+            "StabFund: Token doesn't match vault token"
+        );
         IERC20(token).approve(vault, amount);
         IVault(vault).deposit(amount);
     }
