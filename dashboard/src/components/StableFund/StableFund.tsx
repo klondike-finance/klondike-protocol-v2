@@ -5,7 +5,6 @@ import { useContext, useEffect, useState } from 'react';
 import { EthereumContext } from '../../App';
 import { toDate, toDecimal } from '../../lib/utils';
 import Entry from '../Entry';
-import stablefundabi from '../../data/stablefundabi.json';
 
 const StableFund = () => {
   const { provider, registry, deployments } = useContext(EthereumContext);
@@ -16,35 +15,35 @@ const StableFund = () => {
       if (!provider || !registry || !deployments) return;
       const kwbtc = new ethers.Contract(deployments['KWBTC'].address, deployments['KWBTC'].abi, provider);
       const wbtc = new ethers.Contract(deployments['WBTC'].address, deployments['WBTC'].abi, provider);
-      const pool = new ethers.Contract(registry['StableFund'].address, stablefundabi, provider);
+      const kxusd = new ethers.Contract(deployments['KXUSD'].address, deployments['KXUSD'].abi, provider);
+      const dai = new ethers.Contract(deployments['DAI'].address, deployments['DAI'].abi, provider);
+      const pool = new ethers.Contract(deployments['StabFundV1'].address, deployments['StabFundV1'].abi, provider);
       try {
         const owner = await pool.owner();
         const operator = await pool.operator();
-        const pair = await pool.pair();
         const router = await pool.router();
-        const tokenA = await pool.tokenA();
-        const tokenB = await pool.tokenB();
-        const trader = await pool.trader();
+        const traders = await pool.allAllowedTraders();
+        const vaults = await pool.allAllowedVaults();
+        const tokens = await pool.allAllowedTokens();
 
-        const balanceKWBTC = await kwbtc.balanceOf(registry['StableFund'].address);
-        const balanceWBTC = await wbtc.balanceOf(registry['StableFund'].address);
-
-        const migrated = await pool.migrated();
+        const balanceKWBTC = await kwbtc.balanceOf(registry['StabFundV1'].address);
+        const balanceWBTC = await wbtc.balanceOf(registry['StabFundV1'].address);
+        const balanceKXUSD = await kxusd.balanceOf(registry['StabFundV1'].address);
+        const balanceDAI = await dai.balanceOf(registry['StabFundV1'].address);
 
         const values = {
           owner,
           operator,
-          blank1: null,
-          pair,
           router,
-          tokenA,
-          tokenB,
-          trader,
+          blank1: null,
+          traders,
+          tokens,
+          vaults,
           blank2: null,
           WBTC: toDecimal(balanceWBTC, 8),
           KBTC: toDecimal(balanceKWBTC, 18),
-          blank3: null,
-          migrated,
+          DAI: toDecimal(balanceDAI, 18),
+          KXUSD: toDecimal(balanceKXUSD, 18),
         };
         setData(values);
       } catch (e) {
@@ -56,7 +55,7 @@ const StableFund = () => {
   return (
     <Grid item xs={12} md={6} lg={6}>
       <Card>
-        <CardHeader title="StableFund" subheader={registry && <Entry v={registry['StableFund'].address} />} />
+        <CardHeader title="StabFundV1" subheader={registry && <Entry v={registry['StabFundV1'].address} />} />
         <CardContent>
           {error && <Alert severity="error">{`Error fetching pair data: ${error}`}</Alert>}
           {!data && !error && <CircularProgress />}
