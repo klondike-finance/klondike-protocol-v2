@@ -5,10 +5,12 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "./access/Operatable.sol";
 import "./access/Migratable.sol";
+import "./interfaces/IVault.sol";
 
 contract StabFund is Operatable, Migratable {
     address[] public allowedTokens;
     address[] public allowedTraders;
+    address[] public allowedVaults;
     address public router;
 
     /// Creates a new contract.
@@ -35,6 +37,11 @@ contract StabFund is Operatable, Migratable {
         return allowedTraders;
     }
 
+    /// Returns a list of all allowed vaults
+    function allAllowedVaults() public view returns (address[] memory) {
+        return allowedVaults;
+    }
+
     /// Checks if token is allowed for trade
     /// @param token token to check
     function isAllowedToken(address token) public view returns (bool) {
@@ -51,6 +58,17 @@ contract StabFund is Operatable, Migratable {
     function isAllowedTrader(address trader) public view returns (bool) {
         for (uint256 i = 0; i < allowedTraders.length; i++) {
             if (allowedTraders[i] == trader) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// Checks if vault is allowed
+    /// @param vault vault to check
+    function isAllowedVault(address vault) public view returns (bool) {
+        for (uint256 i = 0; i < allowedVaults.length; i++) {
+            if (allowedVaults[i] == vault) {
                 return true;
             }
         }
@@ -80,6 +98,13 @@ contract StabFund is Operatable, Migratable {
         _;
     }
 
+    /// Requires vault to be allowed
+    /// @param vault vault to check
+    modifier onlyAllowedVault(address vault) {
+        require(isAllowedVault(vault), "StabFund: Vault is not allowed");
+        _;
+    }
+
     /// Requires sender to be a trader
     modifier onlyTrader() {
         require(isAllowedTrader(msg.sender), "StabFund: Not a trader");
@@ -106,6 +131,30 @@ contract StabFund is Operatable, Migratable {
             address(this),
             deadline
         );
+    }
+
+    /// Deposit token to yVault
+    /// @param vault address of the vault
+    /// @param token address of the token
+    /// @param amount amount of the token to deposit
+    function deposit(
+        address vault,
+        address token,
+        uint256 amount
+    ) external onlyAllowedVault(vault) onlyAllowedToken(token) onlyTrader {
+        IERC20(token).approve(vault, amount);
+        IVault(vault).deposit(amount);
+    }
+
+    /// Withdraw tokens from yVault
+    /// @param vault address of the vault
+    /// @param amount amount of yToken to withdraw
+    function withdraw(address vault, uint256 amount)
+        external
+        onlyAllowedVault(vault)
+        onlyTrader
+    {
+        IVault(vault).withdraw(amount);
     }
 
     /// Approve token for trading at Uniswap
@@ -166,8 +215,31 @@ contract StabFund is Operatable, Migratable {
         }
     }
 
+    /// Adds vault to allowed vaults
+    /// @param vault address of the new vault
+    function addVault(address vault) public onlyOwner {
+        if (isAllowedVault(vault)) {
+            return;
+        }
+        allowedVaults.push(vault);
+        emit VaultAdded(msg.sender, vault);
+    }
+
+    /// Deletes vault from allowed vaults
+    /// @param vault address of the deleted vault
+    function deleteVault(address vault) public onlyOwner {
+        for (uint256 i = 0; i < allowedVaults.length; i++) {
+            if (allowedVaults[i] == vault) {
+                delete allowedVaults[i];
+                emit VaultDeleted(msg.sender, vault);
+            }
+        }
+    }
+
     event TraderAdded(address indexed operator, address trader);
     event TraderDeleted(address indexed operator, address trader);
     event TokenAdded(address indexed operator, address token);
     event TokenDeleted(address indexed operator, address token);
+    event VaultAdded(address indexed operator, address vault);
+    event VaultDeleted(address indexed operator, address vault);
 }
