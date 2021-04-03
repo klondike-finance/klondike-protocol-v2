@@ -19,13 +19,13 @@ import { addLiquidity, UNISWAP_V2_FACTORY_ADDRESS } from "./uniswap";
 import { tokenDeploy } from "./token";
 import { ETH, isProd, now, pairFor, sendTransaction } from "./utils";
 
-const DAY_TICK = 60; // for prod deploy set to 86400
+const DAY_TICK = 60; // for mainnet deploy set to 86400
 const T = Math.floor(new Date().getTime() / 1000);
 const VE_TOKEN_START = T;
 const SWAP_POOL_START_DATE = T + DAY_TICK;
 const SWAP_POOL_END_DATE = T + DAY_TICK * 8;
 const ORACLE_START_DATE = T;
-const REWARDS_POOL_INITIAL_DURATION = DAY_TICK * 7;
+const REWARDS_POOL_INITIAL_DURATION = 86400 * 7;
 const BOARDROOM_START_DATE = T + DAY_TICK * 3;
 const TREASURY_START_DATE = BOARDROOM_START_DATE;
 const ORACLE_PERIOD = Math.round(DAY_TICK / 24);
@@ -107,6 +107,7 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
 
   await transferPoolOwnership(hre, "KlonXWBTCLPKlonXPool", "MultisigWallet");
   await transferPoolOwnership(hre, "KWBTCWBTCLPKlonXPool", "MultisigWallet");
+  await transferPoolOwnership(hre, "KXUSDDAILPKlonXPool", "MultisigWallet");
   await transferOperator(hre, "LiquidBoardroomV1", "MultisigWallet");
   await transferOwnership(hre, "LiquidBoardroomV1", "Timelock");
   await transferOperator(hre, "UniswapBoardroomV1", "MultisigWallet");
@@ -128,6 +129,16 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
     );
     await sendTransaction(hre, tx);
     tx = await veKlonX.populateTransaction.apply_transfer_ownership();
+    await sendTransaction(hre, tx);
+  }
+  const veBoardroom = await findExistingContract(hre, "VeBoardroom");
+  const veBoardroomOwner = await veBoardroom.admin();
+  if (veBoardroomOwner.toLowerCase() != timelock.address.toLowerCase()) {
+    let tx = await veBoardroom.populateTransaction.commit_admin(
+      timelock.address
+    );
+    await sendTransaction(hre, tx);
+    tx = await veBoardroom.populateTransaction.apply_admin();
     await sendTransaction(hre, tx);
   }
 }
@@ -394,6 +405,7 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   const klon = await findExistingContract(hre, "Klon");
   const klonx = await findExistingContract(hre, "KlonX");
   const kwbtc = await findExistingContract(hre, "KWBTC");
+  const kxusd = await findExistingContract(hre, "KXUSD");
   const wbtc = await findExistingContract(hre, "WBTC");
   const multisig = await getRegistryContract(hre, "MultisigWallet");
   const [op] = await hre.ethers.getSigners();
@@ -426,6 +438,17 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
     multisig.address,
     klonx.address,
     pairFor(UNISWAP_V2_FACTORY_ADDRESS, kwbtc.address, wbtc.address),
+    REWARDS_POOL_INITIAL_DURATION
+  );
+  await contractDeploy(
+    hre,
+    "RewardsPool",
+    "KXUSDDAILPKlonXPool",
+    "KXUSDDAILPKlonXPool",
+    op.address,
+    multisig.address,
+    klonx.address,
+    pairFor(UNISWAP_V2_FACTORY_ADDRESS, kxusd.address, daiAddress(hre)),
     REWARDS_POOL_INITIAL_DURATION
   );
 }
