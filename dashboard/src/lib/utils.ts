@@ -36,6 +36,7 @@ export function buildIndex(registry: { [key: string]: any }) {
   }
   idx[pairFor(UNISWAP_V2_FACTORY_ADDRESS, registry['KWBTC'].address, registry['WBTC'].address)] = 'KWBTC-WBTC-LP';
   idx[pairFor(UNISWAP_V2_FACTORY_ADDRESS, registry['KlonX'].address, registry['WBTC'].address)] = 'KlonX-WBTC-LP';
+  idx[pairFor(UNISWAP_V2_FACTORY_ADDRESS, registry['KXUSD'].address, registry['DAI'].address)] = 'KXUSD-DAI-LP';
   idx[UNISWAP_V2_FACTORY_ADDRESS.toLowerCase()] = 'UniswapFactory';
   idx[UNISWAP_V2_ROUTER_ADDRESS.toLowerCase()] = 'UniswapRouter';
   return idx;

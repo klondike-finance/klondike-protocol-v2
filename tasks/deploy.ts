@@ -19,13 +19,13 @@ import { addLiquidity, UNISWAP_V2_FACTORY_ADDRESS } from "./uniswap";
 import { tokenDeploy } from "./token";
 import { ETH, isProd, now, pairFor, sendTransaction } from "./utils";
 
-const DAY_TICK = 60; // for prod deploy set to 86400
+const DAY_TICK = 60; // for mainnet deploy set to 86400
 const T = Math.floor(new Date().getTime() / 1000);
 const VE_TOKEN_START = T;
 const SWAP_POOL_START_DATE = T + DAY_TICK;
 const SWAP_POOL_END_DATE = T + DAY_TICK * 8;
 const ORACLE_START_DATE = T;
-const REWARDS_POOL_INITIAL_DURATION = DAY_TICK * 7;
+const REWARDS_POOL_INITIAL_DURATION = 86400 * 7;
 const BOARDROOM_START_DATE = T + DAY_TICK * 3;
 const TREASURY_START_DATE = BOARDROOM_START_DATE;
 const ORACLE_PERIOD = Math.round(DAY_TICK / 24);

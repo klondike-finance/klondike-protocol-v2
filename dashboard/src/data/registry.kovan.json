@@ -72,7 +72,7 @@
   "KlonX": {
     "registryName": "KlonX",
     "name": "SyntheticToken",
-    "address": "0x3c076d0c8f6c4ec7a030cc47b36e23e618f6a598",
+    "address": "0x138aec6a1828577588ab96ea4231dff09c3c39be",
     "args": [
       "KlonX",
       "KlonX",
@@ -82,9 +82,9 @@
   "VeKlonX": {
     "registryName": "VeKlonX",
     "name": "VeToken",
-    "address": "0xd53686328a1de7aead1ff5ac212ef95fec1bd039",
+    "address": "0x17208079ce802c0fb9b3ee5a09e3341bfab8c445",
     "args": [
-      "0x3c076d0c8f6c4ec7a030cc47b36e23e618f6a598",
+      "0x138aec6a1828577588ab96ea4231dff09c3c39be",
       "VeKlonX",
       "VeKlonX",
       "1"
@@ -93,7 +93,7 @@
   "TokenManagerV1": {
     "registryName": "TokenManagerV1",
     "name": "TokenManager",
-    "address": "0x69cd36b0198be5ce4dbbf2a99714df55b0d83735",
+    "address": "0x5aa5b0d2e107909b2f597e432affb196a041efd1",
     "args": [
       "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
     ]
@@ -101,53 +101,53 @@
   "BondManagerV1": {
     "registryName": "BondManagerV1",
     "name": "BondManager",
-    "address": "0x4128ab8d430bd757b8f407352f4040a9073f3956",
+    "address": "0xbd624f40f1b38b04868697847fc9e4b142e0c360",
     "args": [
-      1616142205
+      1616695200
     ]
   },
   "EmissionManagerV1": {
     "registryName": "EmissionManagerV1",
     "name": "EmissionManager",
-    "address": "0xad769143551edc5dec8be6336a0f231f5e030f16",
+    "address": "0x8c0810cd4fff2759ddde736dc9fb410c5b396e63",
     "args": [
-      1616142205,
+      1616695200,
       86400
     ]
   },
   "KlonKlonXSwapPool": {
     "registryName": "KlonKlonXSwapPool",
     "name": "SwapPool",
-    "address": "0x5cdadc54bc713ed882d605e6fb53bca552ed406f",
+    "address": "0x25779781d9bbaaa8eeb442e009db3659fb1b21e0",
     "args": [
       "0xb9b4e3dae4593f789df58ed78bd8bad13abb308c",
-      "0x3c076d0c8f6c4ec7a030cc47b36e23e618f6a598",
-      1616142205,
-      1618734205
+      "0x138aec6a1828577588ab96ea4231dff09c3c39be",
+      1616522400,
+      1617127200
     ]
   },
   "KlonXWBTCLPKlonXPool": {
     "registryName": "KlonXWBTCLPKlonXPool",
     "name": "RewardsPool",
-    "address": "0x193e34397e8d9e4079d85c20816875a176d02fc1",
+    "address": "0x9d31d54a0812924ce1f5d563782dc3cd2aaad791",
     "args": [
       "KlonXWBTCLPKlonXPool",
       "0x6323a5ddCcc4f7A736477756e80947B823291528",
       "0xf38e21cc981abb24fa321e09ce5ef0b66f87c50f",
-      "0x3c076d0c8f6c4ec7a030cc47b36e23e618f6a598",
-      "0x7b3feaa270248934ffcb3e4968d531a5467dec59",
+      "0x138aec6a1828577588ab96ea4231dff09c3c39be",
+      "0xd6756a21d1a1a5c2a12847050efe8b22c4c4f9af",
       604800
     ]
   },
   "KWBTCWBTCLPKlonXPool": {
     "registryName": "KWBTCWBTCLPKlonXPool",
     "name": "RewardsPool",
-    "address": "0x575054994c6bc95477c1fc94e4b7d3e19c854c22",
+    "address": "0x3a3d55a15d93a2bfc449025cba3f8f991e1f5fdc",
     "args": [
       "KWBTCWBTCLPKlonXPool",
       "0x6323a5ddCcc4f7A736477756e80947B823291528",
       "0xf38e21cc981abb24fa321e09ce5ef0b66f87c50f",
-      "0x3c076d0c8f6c4ec7a030cc47b36e23e618f6a598",
+      "0x138aec6a1828577588ab96ea4231dff09c3c39be",
       "0x8fc1382146b19208ae350d4afa2e591d137d5d1f",
       604800
     ]
@@ -155,35 +155,90 @@
   "LiquidBoardroomV1": {
     "registryName": "LiquidBoardroomV1",
     "name": "LiquidBoardroom",
-    "address": "0x955cd37e74cb79e06100e1a3b6e0fa6270fdbd0a",
+    "address": "0xb722d505079f9e0033bd331b60e8d76adfd43d54",
     "args": [
-      "0x3c076d0c8f6c4ec7a030cc47b36e23e618f6a598",
-      "0x69cd36b0198be5ce4dbbf2a99714df55b0d83735",
-      "0xad769143551edc5dec8be6336a0f231f5e030f16",
-      1616142205
+      "0x138aec6a1828577588ab96ea4231dff09c3c39be",
+      "0x5aa5b0d2e107909b2f597e432affb196a041efd1",
+      "0x8c0810cd4fff2759ddde736dc9fb410c5b396e63",
+      1616695200
     ]
   },
   "UniswapBoardroomV1": {
     "registryName": "UniswapBoardroomV1",
     "name": "UniswapBoardroom",
-    "address": "0xf1a24ca80c96d07c439d7b53d80962c8f4fdf575",
+    "address": "0xae7c475d4612a1de0a7f0b8b5233455feba8c0d1",
     "args": [
-      "0x7b3feaa270248934ffcb3e4968d531a5467dec59",
-      "0x69cd36b0198be5ce4dbbf2a99714df55b0d83735",
-      "0xad769143551edc5dec8be6336a0f231f5e030f16",
-      1616142205
+      "0xd6756a21d1a1a5c2a12847050efe8b22c4c4f9af",
+      "0x5aa5b0d2e107909b2f597e432affb196a041efd1",
+      "0x8c0810cd4fff2759ddde736dc9fb410c5b396e63",
+      1616695200
     ]
   },
   "KWBTCWBTCOracle": {
     "registryName": "KWBTCWBTCOracle",
     "name": "Oracle",
-    "address": "0x4c8cdb0680329099d4413695d38e7fbe6d0d3d8b",
+    "address": "0xf666ea191a11322f6b1525c413d6631033fd2384",
     "args": [
       "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
       "0x016ad90cd53a8bc819ce47158d12c6243f42f50b",
       "0x718a412b16c0c27755510198ffe4ccf41cbe20c2",
-      120,
-      1616142205
+      3,
+      1617356535
+    ]
+  },
+  "KXUSD": {
+    "registryName": "KXUSD",
+    "name": "SyntheticToken",
+    "address": "0x6e1b38d537b579e31a8fd6e656b11e5eb734059f",
+    "args": [
+      "KXUSD",
+      "KXUSD",
+      18
+    ]
+  },
+  "KB-USD": {
+    "registryName": "KB-USD",
+    "name": "SyntheticToken",
+    "address": "0x53218793bf113fcbb5576a0339b40af2d2bec12c",
+    "args": [
+      "KB-USD",
+      "KB-USD",
+      18
+    ]
+  },
+  "KXUSDDAIOracle": {
+    "registryName": "KXUSDDAIOracle",
+    "name": "Oracle",
+    "address": "0x3940b3361611a5b24582d5ee2c8826bce82fc15c",
+    "args": [
+      "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
+      "0x6e1b38d537b579e31a8fd6e656b11e5eb734059f",
+      "0xad80dc70c563d76be3940d73d42c0d70d4652f41",
+      3,
+      1617366104
+    ]
+  },
+  "VeBoardroomV1": {
+    "registryName": "VeBoardroomV1",
+    "name": "VeBoardroom",
+    "address": "0xe6d1767f8ceedf40d28b9862f6b47a9e2a156ab5",
+    "args": [
+      "0x17208079ce802c0fb9b3ee5a09e3341bfab8c445",
+      "0x6323a5ddCcc4f7A736477756e80947B823291528",
+      "0x4503f8eb360f25d9db19ae95b633d5a542db2cc7"
+    ]
+  },
+  "KXUSDDAILPKlonXPool": {
+    "registryName": "KXUSDDAILPKlonXPool",
+    "name": "RewardsPool",
+    "address": "0x31362df9b070f45616f5245f10684a265498e351",
+    "args": [
+      "KXUSDDAILPKlonXPool",
+      "0x6323a5ddCcc4f7A736477756e80947B823291528",
+      "0xf38e21cc981abb24fa321e09ce5ef0b66f87c50f",
+      "0x138aec6a1828577588ab96ea4231dff09c3c39be",
+      "0x0cdbad4d8920e49c3137a95b38c6f8f7fb32c410",
+      604800
     ]
   }
 }
