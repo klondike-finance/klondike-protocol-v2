@@ -131,6 +131,16 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
     tx = await veKlonX.populateTransaction.apply_transfer_ownership();
     await sendTransaction(hre, tx);
   }
+  const veBoardroom = await findExistingContract(hre, "VeBoardroom");
+  const veBoardroomOwner = await veBoardroom.admin();
+  if (veBoardroomOwner.toLowerCase() != timelock.address.toLowerCase()) {
+    let tx = await veBoardroom.populateTransaction.commit_admin(
+      timelock.address
+    );
+    await sendTransaction(hre, tx);
+    tx = await veBoardroom.populateTransaction.apply_admin();
+    await sendTransaction(hre, tx);
+  }
 }
 
 async function addKWBTCToken(hre: HardhatRuntimeEnvironment) {

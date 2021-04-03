@@ -15,7 +15,6 @@ const VeToken = () => {
     (async () => {
       if (!provider || !deployments) return;
       const { address, abi } = deployments["VeKlonX"];
-      console.log(abi);
       
       const token = new ethers.Contract(address, abi, provider);
       try {
@@ -31,9 +30,7 @@ const VeToken = () => {
         } catch (e) {}
         
         const stakingTokenSupply = await token.supply();
-        const decimals = (await token.decimals()).toNumber();
-        console.log(stakingTokenSupply);
-        
+        const decimals = (await token.decimals()).toNumber();        
 
         const values = {
           admin,
