@@ -143,6 +143,56 @@ describe("StabFund", () => {
     });
   });
 
+  describe("#addVault", () => {
+    it("adds vault to vaults list", async () => {
+      expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(false);
+      await stabFund.addVault(kwbtc.address);
+      expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(true);
+    });
+    describe("when called twice for the same vault", async () => {
+      it("adds only one vault", async () => {
+        expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(false);
+        await stabFund.addVault(kwbtc.address);
+        const allowedVaults = await stabFund.allAllowedVaults();
+        expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(true);
+        await stabFund.addVault(kwbtc.address);
+        expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(true);
+        expect(await stabFund.allAllowedVaults()).to.eql(allowedVaults);
+      });
+    });
+    describe("when called not by Owner", () => {
+      it("fails", async () => {
+        await stabFund.transferOperator(other.address);
+        await expect(
+          stabFund.connect(other).addVault(kwbtc.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
+  describe("#deleteVault", () => {
+    it("deletes vault from vaults list", async () => {
+      await stabFund.addVault(kwbtc.address);
+      await stabFund.addVault(kdai.address);
+      expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(true);
+      expect(await stabFund.isAllowedVault(kdai.address)).to.eq(true);
+      await stabFund.deleteVault(kwbtc.address);
+      expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(false);
+      expect(await stabFund.isAllowedVault(kdai.address)).to.eq(true);
+      await stabFund.deleteVault(kdai.address);
+      expect(await stabFund.isAllowedVault(kwbtc.address)).to.eq(false);
+      expect(await stabFund.isAllowedVault(kdai.address)).to.eq(false);
+    });
+    describe("when called not by Owner", () => {
+      it("fails", async () => {
+        await stabFund.transferOperator(other.address);
+        await expect(
+          stabFund.connect(other).deleteVault(other.address)
+        ).to.be.revertedWith("Ownable: caller is not the owner");
+      });
+    });
+  });
+
   describe("#allAllowedTokens", () => {
     it("returns all allowed tokens", async () => {
       await stabFund.addToken(kwbtc.address);
@@ -159,6 +209,17 @@ describe("StabFund", () => {
       await stabFund.addTrader(other.address);
       await stabFund.addTrader(another.address);
       expect(await stabFund.allAllowedTraders()).to.eql([
+        other.address,
+        another.address,
+      ]);
+    });
+  });
+
+  describe("#allAllowedVaults", () => {
+    it("returns all allowed tokens", async () => {
+      await stabFund.addVault(other.address);
+      await stabFund.addVault(another.address);
+      expect(await stabFund.allAllowedVaults()).to.eql([
         other.address,
         another.address,
       ]);
