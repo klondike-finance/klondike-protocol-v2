@@ -28,6 +28,9 @@ const EmissionManager = () => {
 
         const devFundRate = await pool.devFundRate();
         const stableFundRate = await pool.stableFundRate();
+        const liquidBoardroomRate = await pool.liquidBoardroomRate();
+        const uniswapBoardroomRate = await pool.uniswapBoardroomRate();
+        const veBoardroomRate = await pool.veBoardroomRate();
         const threshold = await pool.threshold();
         const maxRebase = await pool.maxRebase();
 
@@ -53,6 +56,9 @@ const EmissionManager = () => {
           blank1: null,
           devFundRate,
           stableFundRate,
+          liquidBoardroomRate,
+          uniswapBoardroomRate,
+          veBoardroomRate,
           threshold,
           maxRebase,
           blank2: null,
