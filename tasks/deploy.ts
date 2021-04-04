@@ -15,7 +15,11 @@ import {
   transferOwnership,
 } from "./token";
 import { deployTreasury, setTreasuryLinks } from "./treasury";
-import { addLiquidity, UNISWAP_V2_FACTORY_ADDRESS } from "./uniswap";
+import {
+  addLiquidity,
+  UNISWAP_V2_FACTORY_ADDRESS,
+  UNISWAP_V2_ROUTER_ADDRESS,
+} from "./uniswap";
 import { tokenDeploy } from "./token";
 import { ETH, isProd, now, pairFor, sendTransaction } from "./utils";
 
@@ -43,6 +47,12 @@ function daiAddress(hre: HardhatRuntimeEnvironment) {
     : "0xad80dc70c563d76be3940d73d42c0d70d4652f41";
 }
 
+function trader(hre: HardhatRuntimeEnvironment) {
+  return isProd(hre)
+    ? "0x1be8DAA03cc29E39d6E6710a1570CDaf3f413Ef2"
+    : "0xac602665f618652d53565519eaf24d0326c2ec1a";
+}
+
 export async function deploy(hre: HardhatRuntimeEnvironment) {
   console.log(`Deploying on network ${hre.network.name}`);
   console.log(
@@ -55,6 +65,7 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await importExternalIntoRegistry(hre);
   await deployKlonX(hre);
   await deployVeKlonX(hre);
+  await deployFunds(hre);
   await deployTreasury(hre, 1, TREASURY_START_DATE);
   await deploySpecificPools(hre);
   await deployBoardrooms(hre);
@@ -62,6 +73,18 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await addKWBTCToken(hre);
   await addKXUSDToken(hre);
   await transferOwnerships(hre);
+}
+
+async function deployFunds(hre: HardhatRuntimeEnvironment) {
+  const kwbtc = await findExistingContract(hre, "KWBTC");
+  await contractDeploy(
+    hre,
+    "StabFund",
+    "StabFundV1",
+    UNISWAP_V2_ROUTER_ADDRESS,
+    [kwbtc.address, daiAddress(hre)],
+    [trader(hre)]
+  );
 }
 
 async function transferPoolOwnership(
@@ -118,6 +141,8 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
   await transferOwnership(hre, "BondManagerV1", "Timelock");
   await transferOperator(hre, "EmissionManagerV1", "MultisigWallet");
   await transferOwnership(hre, "EmissionManagerV1", "Timelock");
+  await transferOperator(hre, "StabFundV1", "MultisigWallet");
+  await transferOwnership(hre, "StabFundV1", "Timelock");
   await transferOwnership(hre, "KlonKlonXSwapPool", "Timelock");
 
   const veKlonX = await findExistingContract(hre, "VeKlonX");
@@ -131,7 +156,7 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
     tx = await veKlonX.populateTransaction.apply_transfer_ownership();
     await sendTransaction(hre, tx);
   }
-  const veBoardroom = await findExistingContract(hre, "VeBoardroom");
+  const veBoardroom = await findExistingContract(hre, "VeBoardroomV1");
   const veBoardroomOwner = await veBoardroom.admin();
   if (veBoardroomOwner.toLowerCase() != timelock.address.toLowerCase()) {
     let tx = await veBoardroom.populateTransaction.commit_admin(
@@ -261,7 +286,7 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   console.log("Setting links");
   await setTreasuryLinks(hre, 1, 1, 1);
   const devFund = await getRegistryContract(hre, "DevFund");
-  const stableFund = await getRegistryContract(hre, "StableFund");
+  const stabFund = await getRegistryContract(hre, "StabFundV1");
   const liquidBoardroom = await findExistingContract(hre, "LiquidBoardroomV1");
   const uniswapBoardroom = await findExistingContract(
     hre,
@@ -281,14 +306,14 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
     );
     await sendTransaction(hre, tx);
   }
-  console.log("Checking stableFund @ emissionsManager");
-  const stableFundAddress = await emissionsManager.stableFund();
-  if (stableFundAddress.toLowerCase() !== stableFund.address.toLowerCase()) {
+  console.log("Checking stabFund @ emissionsManager");
+  const stabFundAddress = await emissionsManager.stableFund();
+  if (stabFundAddress.toLowerCase() !== stabFund.address.toLowerCase()) {
     console.log(
-      `EmissionManager: StableFund is ${stableFundAddress}. Setting to ${stableFund.address}`
+      `EmissionManager: StabFund is ${stabFundAddress}. Setting to ${stabFund.address}`
     );
     const tx = await emissionsManager.populateTransaction.setStableFund(
-      stableFund.address
+      stabFund.address
     );
     await sendTransaction(hre, tx);
   }
@@ -478,7 +503,6 @@ async function migrateRegistry(hre: HardhatRuntimeEnvironment) {
     ["Klon", "SyntheticToken", "Klon"],
     ["WBTC", "SyntheticToken", "WBTC"],
     ["DevFund", null, "DevFund"],
-    ["StableFund", null, "StableFund"],
     ["MultiSigWallet", null, "MultisigWallet"],
     ["Timelock", null, "Timelock"],
   ]) {
