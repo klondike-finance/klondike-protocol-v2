@@ -545,7 +545,7 @@ async function deployKlonX(hre: HardhatRuntimeEnvironment) {
 }
 
 async function deployVeKlonX(hre: HardhatRuntimeEnvironment) {
-  const klonx = await findExistingContract(hre, "WBTC");
+  const klonx = await findExistingContract(hre, "KlonX");
   await contractDeploy(
     hre,
     "VeToken",
