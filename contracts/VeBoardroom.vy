@@ -45,7 +45,7 @@ struct Point:
 
 WEEK: constant(uint256) = 7 * 86400
 TOKEN_CHECKPOINT_DEADLINE: constant(uint256) = 86400
-MAX_TOKENS: constant(uint256) = 1000
+MAX_TOKENS: constant(uint256) = 50
 
 start_time: public(HashMap[address, uint256])
 time_cursor: public(uint256)

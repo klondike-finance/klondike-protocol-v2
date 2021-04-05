@@ -208,17 +208,6 @@
       604800
     ]
   },
-  "VeKlonX": {
-    "registryName": "VeKlonX",
-    "name": "VeToken",
-    "address": "0x14bf54adeaff476923fa9d5c70cc751c1cd85ba3",
-    "args": [
-      "0x718a412b16c0c27755510198ffe4ccf41cbe20c2",
-      "VeKlonX",
-      "VeKlonX",
-      "1"
-    ]
-  },
   "StabFundV1": {
     "registryName": "StabFundV1",
     "name": "StabFund",
@@ -234,12 +223,23 @@
       ]
     ]
   },
+  "VeKlonX": {
+    "registryName": "VeKlonX",
+    "name": "VeToken",
+    "address": "0x1c0e0deb4a6f62ff63b262a5485bcd83ceeba9d8",
+    "args": [
+      "0x138aec6a1828577588ab96ea4231dff09c3c39be",
+      "VeKlonX",
+      "VeKlonX",
+      "1"
+    ]
+  },
   "VeBoardroomV1": {
     "registryName": "VeBoardroomV1",
     "name": "VeBoardroom",
-    "address": "0xa0a3b5bd23c4ede537cf7e5a7646df9bde1ae3b1",
+    "address": "0x4ddfa1c1f85a9a46935905616e84ce2d86fd9e40",
     "args": [
-      "0x14bf54adeaff476923fa9d5c70cc751c1cd85ba3",
+      "0x1c0e0deb4a6f62ff63b262a5485bcd83ceeba9d8",
       "0x6323a5ddCcc4f7A736477756e80947B823291528",
       "0x4503f8eb360f25d9db19ae95b633d5a542db2cc7"
     ]

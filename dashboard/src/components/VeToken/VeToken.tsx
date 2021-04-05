@@ -6,7 +6,6 @@ import { EthereumContext } from '../../App';
 import { toDate, toDecimal } from '../../lib/utils';
 import Entry from '../Entry';
 
-
 const VeToken = () => {
   const { provider, deployments } = useContext(EthereumContext);
   const [data, setData] = useState<any>(null);
@@ -14,8 +13,8 @@ const VeToken = () => {
   useEffect(() => {
     (async () => {
       if (!provider || !deployments) return;
-      const { address, abi } = deployments["VeKlonX"];
-      
+      const { address, abi } = deployments['VeKlonX'];
+
       const token = new ethers.Contract(address, abi, provider);
       try {
         const admin = await token.admin();
@@ -23,14 +22,14 @@ const VeToken = () => {
         const controller = await token.controller();
         const transfersEnabled = await token.transfersEnabled();
         const epoch = await token.epoch();
-  
+
         let totalSupply = BigNumber.from(0);
         try {
-          totalSupply = await token.totalSupply();
+          totalSupply = await token['totalSupply()']();
         } catch (e) {}
-        
+
         const stakingTokenSupply = await token.supply();
-        const decimals = (await token.decimals()).toNumber();        
+        const decimals = (await token.decimals()).toNumber();
 
         const values = {
           admin,
@@ -54,7 +53,7 @@ const VeToken = () => {
   return (
     <Grid item xs={12} md={6} lg={6}>
       <Card>
-        <CardHeader title="VeKlonX" subheader={deployments && <Entry v={deployments["VeKlonX"].address} />} />
+        <CardHeader title="VeKlonX" subheader={deployments && <Entry v={deployments['VeKlonX'].address} />} />
         <CardContent>
           {error && <Alert severity="error">{`Error fetching pair data: ${error}`}</Alert>}
           {!data && !error && <CircularProgress />}

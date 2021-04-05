@@ -35,7 +35,7 @@ const TREASURY_START_DATE = BOARDROOM_START_DATE;
 const ORACLE_PERIOD = Math.round(DAY_TICK / 24);
 const UNISWAP_WBTC_AMOUNT = BigNumber.from(213000);
 const UNISWAP_KLONX_AMOUNT = ETH;
-const UNISWAP_KXUSD_AMOUNT = BigNumber.from(100).mul(ETH);
+const UNISWAP_KXUSD_AMOUNT = BigNumber.from(100 + 50000).mul(ETH);
 
 task("deploy", "Deploys the system").setAction(async (_, hre) => {
   await deploy(hre);
@@ -149,6 +149,8 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
   const timelock = await getRegistryContract(hre, "Timelock");
   const veKlonXOwner = await veKlonX.admin();
   if (veKlonXOwner.toLowerCase() != timelock.address.toLowerCase()) {
+    console.log(`Setting VeKlonX admin to ${timelock.address}`);
+
     let tx = await veKlonX.populateTransaction.commit_transfer_ownership(
       timelock.address
     );
@@ -156,6 +158,15 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
     tx = await veKlonX.populateTransaction.apply_transfer_ownership();
     await sendTransaction(hre, tx);
   }
+  const veKlonXController = await veKlonX.controller();
+  if (veKlonXController.toLowerCase() != timelock.address.toLowerCase()) {
+    console.log(`Setting VeKlonX controller to ${timelock.address}`);
+    let tx = await veKlonX.populateTransaction.changeController(
+      timelock.address
+    );
+    await sendTransaction(hre, tx);
+  }
+
   const veBoardroom = await findExistingContract(hre, "VeBoardroomV1");
   const veBoardroomOwner = await veBoardroom.admin();
   if (veBoardroomOwner.toLowerCase() != timelock.address.toLowerCase()) {
