@@ -29,18 +29,6 @@
     "name": null,
     "registryName": "DevFund"
   },
-  "StableFund": {
-    "address": "0xd4997A502dC06314afa17E03542F96198f7D36e5",
-    "args": [
-      "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "0xE6C3502997f97F9BDe34CB165fBce191065E068f",
-      "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
-      "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
-      "0x1be8DAA03cc29E39d6E6710a1570CDaf3f413Ef2"
-    ],
-    "name": null,
-    "registryName": "StableFund"
-  },
   "MultisigWallet": {
     "address": "0x901f9da0bc4b6327a18322717d0f29a34dffecc0",
     "name": null,
@@ -73,17 +61,6 @@
       "KlonX",
       "KlonX",
       18
-    ]
-  },
-  "VeKlonX": {
-    "registryName": "VeKlonX",
-    "name": "VeToken",
-    "address": "0x3d3f79aa694fa0bc2a727245f5142ef8b877095f",
-    "args": [
-      "0xbf15797bb5e47f6fb094a4abdb2cfc43f77179ef",
-      "VeKlonX",
-      "VeKlonX",
-      "1"
     ]
   },
   "TokenManagerV1": {
@@ -180,6 +157,87 @@
       "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
       3600,
       1616436000
+    ]
+  },
+  "VeKlonX": {
+    "registryName": "VeKlonX",
+    "name": "VeToken",
+    "address": "0xbfa81550af767e781c577e07e8a7f2ba4a53c8b4",
+    "args": [
+      "0xbf15797bb5e47f6fb094a4abdb2cfc43f77179ef",
+      "VeKlonX",
+      "VeKlonX",
+      "1"
+    ]
+  },
+  "StabFundV1": {
+    "registryName": "StabFundV1",
+    "name": "StabFund",
+    "address": "0x58285b88951de1c9a5255ddfde28a68b30ee7559",
+    "args": [
+      "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+      [
+        "0xe6c3502997f97f9bde34cb165fbce191065e068f",
+        "0x6b175474e89094c44da98b954eedeac495271d0f"
+      ],
+      [
+        "0x1be8DAA03cc29E39d6E6710a1570CDaf3f413Ef2"
+      ]
+    ]
+  },
+  "VeBoardroomV1": {
+    "registryName": "VeBoardroomV1",
+    "name": "VeBoardroom",
+    "address": "0xdace42fda4774bc4046a838894ae0d7439b356ca",
+    "args": [
+      "0xbfa81550af767e781c577e07e8a7f2ba4a53c8b4",
+      "0x4bFc3b8C82909Ad224D1E2C0305Fa5bFAB1E7f1C",
+      "0x2c5ba02bb750a24af83105bed28734e0e22933df"
+    ]
+  },
+  "KXUSD": {
+    "registryName": "KXUSD",
+    "name": "SyntheticToken",
+    "address": "0x43244c686a014c49d3d5b8c4b20b4e3fab0cbda7",
+    "args": [
+      "KXUSD",
+      "KXUSD",
+      18
+    ]
+  },
+  "KB-USD": {
+    "registryName": "KB-USD",
+    "name": "SyntheticToken",
+    "address": "0x64a903faf5d7e87b0307f1ec2027efb9bab8925a",
+    "args": [
+      "KB-USD",
+      "KB-USD",
+      18
+    ]
+  },
+  "KXUSDDAILPKlonXPool": {
+    "registryName": "KXUSDDAILPKlonXPool",
+    "name": "RewardsPool",
+    "address": "0xe301f632e573a3f8bd06fe623e4440560ab08692",
+    "args": [
+      "KXUSDDAILPKlonXPool",
+      "0x4bFc3b8C82909Ad224D1E2C0305Fa5bFAB1E7f1C",
+      "0x901f9da0bc4b6327a18322717d0f29a34dffecc0",
+      "0xbf15797bb5e47f6fb094a4abdb2cfc43f77179ef",
+      "0x672c973155c46fc264c077a41218ddc397bb7532",
+      604800
+    ]
+  },
+  "KXUSDDAIOracle": {
+    "registryName": "KXUSDDAIOracle",
+    "name": "Oracle",
+    "address": "0xf2663d75dc6fe7fb27f1b4904a1998db73737ede",
+    "args": [
+      "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
+      "0x43244c686a014c49d3d5b8c4b20b4e3fab0cbda7",
+      "0x6b175474e89094c44da98b954eedeac495271d0f",
+      3600,
+      1617751429
     ]
   }
 }
