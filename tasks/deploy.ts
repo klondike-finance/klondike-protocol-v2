@@ -201,7 +201,7 @@ async function deployFunds(hre: HardhatRuntimeEnvironment) {
     "StabFund",
     "StabFundV1",
     UNISWAP_V2_ROUTER_ADDRESS,
-    [kwbtc.address, dai],
+    [kwbtc.address, dai.address],
     [trader(hre)]
   );
   await contractDeploy(hre, "DevFund", "DevFundV1");
@@ -623,6 +623,11 @@ async function deployKlonX(hre: HardhatRuntimeEnvironment) {
     );
   }
   await tokenDeploy(hre, "KlonX", "KlonX");
+  if (!isProd(hre)) {
+    for (const address of [op.address, ...EXTERNAL_TESTERS]) {
+      await mint(hre, "KlonX", address, ETH.mul(1000000000));
+    }
+  }
   await mint(hre, "KlonX", op.address, ETH);
   await addLiquidity(
     hre,
