@@ -26,8 +26,6 @@ import { ETH, BTC, isProd, now, pairFor, sendTransaction } from "./utils";
 const DAY_TICK = 60; // for mainnet deploy set to 86400
 const T = Math.floor(new Date().getTime() / 1000);
 const VE_TOKEN_START = T;
-const SWAP_POOL_START_DATE = T + DAY_TICK;
-const SWAP_POOL_END_DATE = T + DAY_TICK * 8;
 const ORACLE_START_DATE = T;
 const REWARDS_POOL_INITIAL_DURATION = 86400 * 7;
 const BOARDROOM_START_DATE = T + DAY_TICK * 3;
@@ -87,9 +85,9 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await deployVeKlonX(hre);
   await deployFunds(hre);
   await deployTreasury(hre, 1, TREASURY_START_DATE, EMISSION_MANAGER_PERIOD);
+  await deployTimelockAndMultisig(hre);
   await deploySpecificPools(hre);
   await deployBoardrooms(hre);
-  await deployTimelockAndMultisig(hre);
   await setLinks(hre);
   await addTokensToTokenManagerAndVeBoardroom(hre);
   await transferOwnerships(hre);
@@ -246,24 +244,23 @@ async function transferPoolOwnership(
 }
 
 async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
-  await transferFullOwnership(hre, "KlonX", "KlonKlonXSwapPool");
+  await transferFullOwnership(hre, "KlonX", "Timelock");
 
-  await transferPoolOwnership(hre, "KlonXWBTCLPKlonXPool", "MultisigWallet");
-  await transferPoolOwnership(hre, "KWBTCWBTCLPKlonXPool", "MultisigWallet");
-  await transferPoolOwnership(hre, "KXUSDDAILPKlonXPool", "MultisigWallet");
-  await transferOperator(hre, "LiquidBoardroomV1", "MultisigWallet");
+  await transferPoolOwnership(hre, "KlonXWBTCLPKlonXPool", "MultiSigWallet");
+  await transferPoolOwnership(hre, "KWBTCWBTCLPKlonXPool", "MultiSigWallet");
+  await transferPoolOwnership(hre, "KXUSDDAILPKlonXPool", "MultiSigWallet");
+  await transferOperator(hre, "LiquidBoardroomV1", "MultiSigWallet");
   await transferOwnership(hre, "LiquidBoardroomV1", "Timelock");
-  await transferOperator(hre, "UniswapBoardroomV1", "MultisigWallet");
+  await transferOperator(hre, "UniswapBoardroomV1", "MultiSigWallet");
   await transferOwnership(hre, "UniswapBoardroomV1", "Timelock");
-  await transferOperator(hre, "TokenManagerV1", "MultisigWallet");
+  await transferOperator(hre, "TokenManagerV1", "MultiSigWallet");
   await transferOwnership(hre, "TokenManagerV1", "Timelock");
-  await transferOperator(hre, "BondManagerV1", "MultisigWallet");
+  await transferOperator(hre, "BondManagerV1", "MultiSigWallet");
   await transferOwnership(hre, "BondManagerV1", "Timelock");
-  await transferOperator(hre, "EmissionManagerV1", "MultisigWallet");
+  await transferOperator(hre, "EmissionManagerV1", "MultiSigWallet");
   await transferOwnership(hre, "EmissionManagerV1", "Timelock");
-  await transferOperator(hre, "StabFundV1", "MultisigWallet");
+  await transferOperator(hre, "StabFundV1", "MultiSigWallet");
   await transferOwnership(hre, "StabFundV1", "Timelock");
-  await transferOwnership(hre, "KlonKlonXSwapPool", "Timelock");
 
   const veKlonX = await findExistingContract(hre, "VeKlonX");
   const timelock = await getRegistryContract(hre, "Timelock");
@@ -347,7 +344,7 @@ async function addTokensToTokenManagerAndVeBoardroom(
     } else {
       console.log(`Adding ${syn.address} to VeBoardroom`);
       const tx = await veBoardroom.populateTransaction.add_token(
-        kwbtc.address,
+        syn.address,
         VE_TOKEN_START
       );
       await sendTransaction(hre, tx);
@@ -529,7 +526,7 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
   const kxusd = await findExistingContract(hre, "KXUSD");
   const dai = await findExistingContract(hre, "DAI");
   const wbtc = await findExistingContract(hre, "WBTC");
-  const multisig = await getRegistryContract(hre, "MultisigWallet");
+  const multisig = await getRegistryContract(hre, "MultiSigWallet");
   const [op] = await hre.ethers.getSigners();
   await contractDeploy(
     hre,
@@ -599,7 +596,7 @@ async function migrateRegistry(hre: HardhatRuntimeEnvironment) {
     ["Klon", "SyntheticToken", "Klon"],
     ["WBTC", "SyntheticToken", "WBTC"],
     ["DevFund", null, "DevFund"],
-    ["MultiSigWallet", null, "MultisigWallet"],
+    ["MultiSigWallet", null, "MultiSigWallet"],
     ["Timelock", null, "Timelock"],
   ]) {
     const [oldName, contractName, registryName] = tuple;
