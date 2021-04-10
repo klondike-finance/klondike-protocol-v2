@@ -90,7 +90,7 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await deployBoardrooms(hre);
   await setLinks(hre);
   await addTokensToTokenManagerAndVeBoardroom(hre);
-  await transferOwnerships(hre);
+  // await transferOwnerships(hre);
 }
 
 async function deployTimelockAndMultisig(hre: HardhatRuntimeEnvironment) {
@@ -193,13 +193,15 @@ async function deploySyntheticTokens(hre: HardhatRuntimeEnvironment) {
 
 async function deployFunds(hre: HardhatRuntimeEnvironment) {
   const kwbtc = await findExistingContract(hre, "KWBTC");
+  const wbtc = await findExistingContract(hre, "WBTC");
+  const kxusd = await findExistingContract(hre, "KXUSD");
   const dai = await findExistingContract(hre, "DAI");
   await contractDeploy(
     hre,
     "StabFund",
     "StabFundV1",
     UNISWAP_V2_ROUTER_ADDRESS,
-    [kwbtc.address, dai.address],
+    [kwbtc.address, wbtc.address, kxusd.address, dai.address],
     [trader(hre)]
   );
   await contractDeploy(hre, "DevFund", "DevFundV1");
@@ -245,6 +247,10 @@ async function transferPoolOwnership(
 
 async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
   await transferFullOwnership(hre, "KlonX", "Timelock");
+  await transferFullOwnership(hre, "KXUSD", "TokenManagerV1");
+  await transferFullOwnership(hre, "KWBTC", "TokenManagerV1");
+  await transferFullOwnership(hre, "KB-USD", "BondManagerV1");
+  await transferFullOwnership(hre, "KB-WBTC", "BondManagerV1");
 
   await transferPoolOwnership(hre, "KlonXWBTCLPKlonXPool", "MultiSigWallet");
   await transferPoolOwnership(hre, "KWBTCWBTCLPKlonXPool", "MultiSigWallet");
@@ -356,9 +362,10 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   console.log("Setting links");
   const [op] = await hre.ethers.getSigners();
   await setTreasuryLinks(hre, 1, 1, 1);
-  const devFund = await getRegistryContract(hre, "DevFundV1");
-  const stabFund = await getRegistryContract(hre, "StabFundV1");
+  const devFund = await findExistingContract(hre, "DevFundV1");
+  const stabFund = await findExistingContract(hre, "StabFundV1");
   const liquidBoardroom = await findExistingContract(hre, "LiquidBoardroomV1");
+  const veBoardroom = await findExistingContract(hre, "VeBoardroomV1");
   const uniswapBoardroom = await findExistingContract(
     hre,
     "UniswapBoardroomV1"
@@ -416,6 +423,20 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
       );
       const tx = await emissionsManager.populateTransaction.setUniswapBoardroom(
         uniswapBoardroom.address
+      );
+      await sendTransaction(hre, tx);
+    }
+
+    console.log("Checking veBoardroom @ emissionManager");
+    const veBoardroomAddress = await emissionsManager.veBoardroom();
+    if (
+      veBoardroomAddress.toLowerCase() !== veBoardroom.address.toLowerCase()
+    ) {
+      console.log(
+        `EmissionManager: VeBoardroom is ${veBoardroomAddress}. Setting to ${veBoardroom.address}`
+      );
+      const tx = await emissionsManager.populateTransaction.setVeBoardroom(
+        veBoardroom.address
       );
       await sendTransaction(hre, tx);
     }
