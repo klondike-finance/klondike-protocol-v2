@@ -17,11 +17,15 @@ const getUniswapPools = () => {
   const kwbtc = deployments['KWBTC'];
   const wbtc = deployments['WBTC'];
   const klonx = deployments['KlonX'];
+  const kxusd = deployments['KXUSD'];
+  const dai = deployments['DAI'];
   const wbtcKwbtcLp = pairFor(UNISWAP_V2_FACTORY_ADDRESS, wbtc.address, kwbtc.address);
-  const klonxDaiLp = pairFor(UNISWAP_V2_FACTORY_ADDRESS, wbtc.address, klonx.address);
+  const klonxWbtcLp = pairFor(UNISWAP_V2_FACTORY_ADDRESS, wbtc.address, klonx.address);
+  const kxusdDaiLp = pairFor(UNISWAP_V2_FACTORY_ADDRESS, dai.address, kxusd.address);
   return [
     { token0: 'WBTC', token1: 'KWBTC', pair: wbtcKwbtcLp },
-    { token0: 'WBTC', token1: 'KlonX', pair: klonxDaiLp },
+    { token0: 'WBTC', token1: 'KlonX', pair: klonxWbtcLp },
+    { token0: 'DAI', token1: 'KXUSD', pair: kxusdDaiLp },
   ];
 };
 

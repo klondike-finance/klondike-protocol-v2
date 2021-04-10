@@ -11,12 +11,11 @@ import Entry from '../Entry';
 type PropsType = { token0: string; token1: string; pair: string };
 
 const UniswapPool = ({ token0, token1, pair }: PropsType) => {
-  const name = `${token1} - ${token0} Uniswap Pool`;
-  const [t0, t1] = token0.toLowerCase() < token1.toLowerCase() ? [token0, token1] : [token1, token0];
   const { provider, deployments } = useContext(EthereumContext);
+  const [error, setError] = useState(null);
   const [reserve0, setReserve0] = useState<number | null>(null);
   const [reserve1, setReserve1] = useState<number | null>(null);
-  const [error, setError] = useState(null);
+
   useEffect(() => {
     (async () => {
       const p = new ethers.Contract(pair, unipairabi, provider);
@@ -27,10 +26,12 @@ const UniswapPool = ({ token0, token1, pair }: PropsType) => {
         const decimals0 = await contract0.decimals();
         const decimals1 = await contract1.decimals();
         const [reserveA, reserveB] = await p.getReserves();
-        const [res0, res1] = token0.toLowerCase() < token1.toLowerCase() ? [reserveA, reserveB] : [reserveB, reserveA];
-        const [dec0, dec1] = token0.toLowerCase() < token1.toLowerCase() ? [decimals0, decimals1] : [decimals1, decimals0];
-        const reserve0 = res0 / (10 ** dec0);
-        const reserve1 = res1 / (10 ** dec1);
+        const [res0, res1] =
+          token0Address.toLowerCase() < token1Address.toLowerCase() ? [reserveA, reserveB] : [reserveB, reserveA];
+        const [dec0, dec1] =
+          token0Address.toLowerCase() < token1Address.toLowerCase() ? [decimals0, decimals1] : [decimals1, decimals0];
+        const reserve0 = res0 / 10 ** dec0;
+        const reserve1 = res1 / 10 ** dec1;
         setReserve0(reserve0);
         setReserve1(reserve1);
       } catch (e) {
@@ -38,6 +39,11 @@ const UniswapPool = ({ token0, token1, pair }: PropsType) => {
       }
     })();
   }, [pair]);
+  if (!deployments) return null;
+  const name = `${token1} - ${token0} Uniswap Pool`;
+  const token0Address = deployments[token0].address;
+  const token1Address = deployments[token1].address;
+  const [t0, t1] = token0Address.toLowerCase() < token1Address.toLowerCase() ? [token0, token1] : [token1, token0];
   return (
     <Grid item xs={12} md={6} lg={6}>
       <Card>
