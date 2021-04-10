@@ -6,14 +6,13 @@ const routes: { [key: string]: number } = {
   '/': 0,
   '/uniswap': 0,
   '/reward_pools': 1,
-  '/swap_pools': 2,
-  '/managers': 3,
-  '/boardrooms': 4,
-  '/funds': 5,
-  '/tokens': 6,
+  '/managers': 2,
+  '/boardrooms': 3,
+  '/funds': 4,
+  '/tokens': 5,
 };
 
-const reverseRoutes = ['/uniswap', '/reward_pools', '/swap_pools', '/managers', '/boardrooms', '/funds', '/tokens'];
+const reverseRoutes = ['/uniswap', '/reward_pools', '/managers', '/boardrooms', '/funds', '/tokens'];
 
 const Toolbar = ({ history, location }: { history: History; location: Location }) => {
   function handleChange(_: any, value: number) {
@@ -25,7 +24,6 @@ const Toolbar = ({ history, location }: { history: History; location: Location }
       <Tabs value={routes[location.pathname]} onChange={handleChange} indicatorColor="primary">
         <Tab label="Uniswap Pools" />
         <Tab label="Reward Pools" />
-        <Tab label="Swap Pools" />
         <Tab label="Managers" />
         <Tab label="Boardrooms" />
         <Tab label="Funds" />

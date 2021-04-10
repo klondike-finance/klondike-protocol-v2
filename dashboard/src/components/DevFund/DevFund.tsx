@@ -37,7 +37,7 @@ const DevFund = () => {
   return (
     <Grid item xs={12} md={6} lg={6}>
       <Card>
-        <CardHeader title="DevFund" subheader={registry && <Entry v={registry['DevFundV1'].address} />} />
+        <CardHeader title="DevFundV1" subheader={registry && <Entry v={registry['DevFundV1'].address} />} />
         <CardContent>
           {error && <Alert severity="error">{`Error fetching pair data: ${error}`}</Alert>}
           {!data && !error && <CircularProgress />}
