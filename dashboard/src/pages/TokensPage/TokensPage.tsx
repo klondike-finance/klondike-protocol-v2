@@ -7,7 +7,7 @@ const FundsPage = () => {
   return (
     <Grid container spacing={3}>
       <VeToken />
-      {['KlonX', 'KWBTC', 'KB-WBTC', 'Klon', 'WBTC', 'DAI'].map((name) => (
+      {['KlonX', 'KWBTC', 'KB-WBTC', 'KXUSD', 'KB-USD', 'Klon', 'WBTC', 'DAI'].map((name) => (
         <Token key={name} name={name} />
       ))}
     </Grid>
