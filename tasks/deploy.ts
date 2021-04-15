@@ -90,7 +90,7 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
   await deployBoardrooms(hre);
   await setLinks(hre);
   await addTokensToTokenManagerAndVeBoardroom(hre);
-  // await transferOwnerships(hre);
+  await transferOwnerships(hre);
 }
 
 async function deployTimelockAndMultisig(hre: HardhatRuntimeEnvironment) {
