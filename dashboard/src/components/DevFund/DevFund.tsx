@@ -14,12 +14,12 @@ const DevFund = () => {
   useEffect(() => {
     (async () => {
       if (!provider || !registry || !deployments) return;
-      const pool = new ethers.Contract(registry['DevFund'].address, devfundabi, provider);
+      const pool = new ethers.Contract(registry['DevFundV1'].address, devfundabi, provider);
       const kwbtc = new ethers.Contract(deployments['KWBTC'].address, deployments['KWBTC'].abi, provider);
       try {
         const owner = await pool.owner();
         const operator = await pool.operator();
-        const balanceKWBTC = await kwbtc.balanceOf(registry['DevFund'].address);
+        const balanceKWBTC = await kwbtc.balanceOf(registry['DevFundV1'].address);
 
         const values = {
           owner,
@@ -37,7 +37,7 @@ const DevFund = () => {
   return (
     <Grid item xs={12} md={6} lg={6}>
       <Card>
-        <CardHeader title="DevFund" subheader={registry && <Entry v={registry['DevFund'].address} />} />
+        <CardHeader title="DevFundV1" subheader={registry && <Entry v={registry['DevFundV1'].address} />} />
         <CardContent>
           {error && <Alert severity="error">{`Error fetching pair data: ${error}`}</Alert>}
           {!data && !error && <CircularProgress />}

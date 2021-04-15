@@ -6,7 +6,8 @@ import { sendTransaction } from "./utils";
 export async function deployTreasury(
   hre: HardhatRuntimeEnvironment,
   version: number,
-  start: number = Math.floor(new Date().getTime() / 1000)
+  start: number = Math.floor(new Date().getTime() / 1000),
+  debouncePeriod: number
 ) {
   const factory = await getUniswapFactory(hre);
   const tokenManager = await contractDeploy(
@@ -26,7 +27,7 @@ export async function deployTreasury(
     "EmissionManager",
     `EmissionManagerV${version}`,
     start,
-    86400
+    debouncePeriod
   );
 }
 
@@ -50,6 +51,17 @@ export async function setTreasuryLinks(
     hre,
     `EmissionManagerV${emissionManagerVersion}`
   );
+
+  const [op] = await hre.ethers.getSigners();
+  for (const contract of [tokenManager, bondManager, emissionManager]) {
+    const operator = await contract.operator();
+    if (op.address.toLowerCase() != operator.toLowerCase()) {
+      console.log(
+        `Cannot set treasury links since ${contract.address} operator is ${operator}, not ${op.address}. Skipping...`
+      );
+      return;
+    }
+  }
 
   let tx;
   console.log(`Setting bond manager for token manager`);

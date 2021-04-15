@@ -66,7 +66,7 @@ const Inner = (props: any) => {
         <Switch>
           <Route path="/uniswap" component={UniswapPage} />
           <Route path="/reward_pools" component={RewardPoolsPage} />
-          <Route path="/swap_pools" component={SwapPoolsPage} />
+          {/* <Route path="/swap_pools" component={SwapPoolsPage} /> */}
           <Route path="/funds" component={FundsPage} />
           <Route path="/managers" component={ManagersPage} />
           <Route path="/boardrooms" component={BoardroomsPage} />

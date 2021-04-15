@@ -21,31 +21,49 @@ import {
   UNISWAP_V2_ROUTER_ADDRESS,
 } from "./uniswap";
 import { tokenDeploy } from "./token";
-import { ETH, isProd, now, pairFor, sendTransaction } from "./utils";
+import { ETH, BTC, isProd, now, pairFor, sendTransaction } from "./utils";
 
 const DAY_TICK = 60; // for mainnet deploy set to 86400
 const T = Math.floor(new Date().getTime() / 1000);
 const VE_TOKEN_START = T;
-const SWAP_POOL_START_DATE = T + DAY_TICK;
-const SWAP_POOL_END_DATE = T + DAY_TICK * 8;
 const ORACLE_START_DATE = T;
 const REWARDS_POOL_INITIAL_DURATION = 86400 * 7;
 const BOARDROOM_START_DATE = T + DAY_TICK * 3;
 const TREASURY_START_DATE = BOARDROOM_START_DATE;
 const ORACLE_PERIOD = Math.round(DAY_TICK / 24);
-const UNISWAP_WBTC_AMOUNT = BigNumber.from(213000);
-const UNISWAP_KLONX_AMOUNT = ETH;
-const UNISWAP_KXUSD_AMOUNT = BigNumber.from(100 + 50000).mul(ETH);
+const EMISSION_MANAGER_PERIOD = DAY_TICK;
+const TIMELOCK_PERIOD = DAY_TICK * 2;
+const LP_KLONX_WBTC_WBTC_AMOUNT = BigNumber.from(213000);
+const LP_KLONX_WBTC_KLONX_AMOUNT = ETH;
+const LP_KXUSD_DAI_KXUSD_AMOUNT = BigNumber.from(100).mul(ETH);
+const LP_KXUSD_DAI_DAI_AMOUNT = BigNumber.from(100).mul(ETH);
+const LP_KWBTC_WBTC_KWBTC_AMOUNT = BigNumber.from(1).mul(ETH).div(1000);
+const LP_KWBTC_WBTC_WBTC_AMOUNT = BigNumber.from(1).mul(BTC).div(1000);
+const EXTERNAL_TESTERS = [
+  "0x2ceffca5c29c3e1d9a2586e49d80c7a057d8c5f9",
+  "0xCEbc1DEcABb266e064FB9759fd413A885dA885dd",
+];
+const MULTISIG_ADDRESSES_PROD = [
+  "0xc9703331D70faEea6516FB793b9f49d3CcD1037C",
+  "0x7217084Dd74CD28c9cFd4C7e612cdc631c4A5030",
+  "0x6c907824d4c5b34920602EbA103649c435AAD449",
+];
+const MULTISIG_ADDRESSES_TEST = [
+  "0x6323a5ddCcc4f7A736477756e80947B823291528",
+  "0xCEbc1DEcABb266e064FB9759fd413A885dA885dd",
+  "0x2CEFFCA5C29c3E1d9a2586E49D80c7A057d8c5F9",
+];
+
+const INITIAL_KXUSD_LIQUIDITY = LP_KXUSD_DAI_KXUSD_AMOUNT.add(
+  BigNumber.from(50000).mul(ETH)
+);
+const INITIAL_KWBTC_LIQUIDITY = LP_KWBTC_WBTC_KWBTC_AMOUNT.add(
+  BigNumber.from(1).mul(ETH)
+);
 
 task("deploy", "Deploys the system").setAction(async (_, hre) => {
   await deploy(hre);
 });
-
-function daiAddress(hre: HardhatRuntimeEnvironment) {
-  return isProd(hre)
-    ? "0x6b175474e89094c44da98b954eedeac495271d0f"
-    : "0xad80dc70c563d76be3940d73d42c0d70d4652f41";
-}
 
 function trader(hre: HardhatRuntimeEnvironment) {
   return isProd(hre)
@@ -61,30 +79,132 @@ export async function deploy(hre: HardhatRuntimeEnvironment) {
       : "Continuing previous deploy"
   );
 
-  await migrateRegistry(hre);
   await importExternalIntoRegistry(hre);
+  await deploySyntheticTokens(hre);
   await deployKlonX(hre);
   await deployVeKlonX(hre);
   await deployFunds(hre);
-  await deployTreasury(hre, 1, TREASURY_START_DATE);
+  await deployTreasury(hre, 1, TREASURY_START_DATE, EMISSION_MANAGER_PERIOD);
+  await deployTimelockAndMultisig(hre);
   await deploySpecificPools(hre);
   await deployBoardrooms(hre);
   await setLinks(hre);
-  await addKWBTCToken(hre);
-  await addKXUSDToken(hre);
-  await transferOwnerships(hre);
+  await addTokensToTokenManagerAndVeBoardroom(hre);
+  // await transferOwnerships(hre);
+}
+
+async function deployTimelockAndMultisig(hre: HardhatRuntimeEnvironment) {
+  const addresses = isProd(hre)
+    ? MULTISIG_ADDRESSES_PROD
+    : MULTISIG_ADDRESSES_TEST;
+  const requirement = isProd(hre)
+    ? Math.floor(MULTISIG_ADDRESSES_PROD.length / 2) + 1
+    : 1;
+  const multisig = await contractDeploy(
+    hre,
+    "MultiSigWallet",
+    "MultiSigWallet",
+    addresses,
+    requirement
+  );
+  await contractDeploy(
+    hre,
+    "Timelock",
+    "Timelock",
+    multisig.address,
+    TIMELOCK_PERIOD
+  );
+}
+
+async function deploySyntheticTokens(hre: HardhatRuntimeEnvironment) {
+  const initialExternalLiquidity = ETH.mul(1000000);
+  const [op] = await hre.ethers.getSigners();
+  const kwbtc = await tokenDeploy(hre, "KWBTC", "KWBTC");
+  const kbwbtc = await tokenDeploy(hre, "KB-WBTC", "KB-WBTC");
+  const wbtc = await tokenDeploy(hre, "WBTC", "WBTC", 8);
+  const kxusd = await tokenDeploy(hre, "KXUSD", "KXUSD");
+  const kbusd = await tokenDeploy(hre, "KB-USD", "KB-USD");
+  const dai = await tokenDeploy(hre, "DAI", "DAI");
+  if (!isProd(hre)) {
+    for (const address of [op.address, ...EXTERNAL_TESTERS]) {
+      await mint(
+        hre,
+        "WBTC",
+        address,
+        initialExternalLiquidity.div(BigNumber.from(10).pow(10))
+      );
+      await mint(hre, "DAI", address, initialExternalLiquidity);
+      await mint(hre, "KWBTC", address, initialExternalLiquidity);
+      await mint(hre, "KXUSD", address, initialExternalLiquidity);
+    }
+  } else {
+    await mint(hre, "KWBTC", op.address, INITIAL_KWBTC_LIQUIDITY);
+    await mint(hre, "KXUSD", op.address, INITIAL_KXUSD_LIQUIDITY);
+  }
+  const wbtcBalance = await wbtc.balanceOf(op.address);
+  if (wbtcBalance < LP_KWBTC_WBTC_WBTC_AMOUNT) {
+    throw new Error(
+      `LP-KWBTC-WBTC: Current WBTC balance \`${wbtcBalance}\` < required Uniswap balance \`${LP_KLONX_WBTC_WBTC_AMOUNT}\``
+    );
+  }
+  await addLiquidity(
+    hre,
+    "KWBTC",
+    "WBTC",
+    BigNumber.from(LP_KWBTC_WBTC_KWBTC_AMOUNT),
+    BigNumber.from(LP_KWBTC_WBTC_WBTC_AMOUNT)
+  );
+
+  const daiBalance = await dai.balanceOf(op.address);
+  if (daiBalance < LP_KXUSD_DAI_DAI_AMOUNT) {
+    throw new Error(
+      `LP-KXUSD-DAI: Current DAI balance \`${daiBalance}\` < required Uniswap balance \`${LP_KXUSD_DAI_DAI_AMOUNT}\``
+    );
+  }
+  await addLiquidity(
+    hre,
+    "KXUSD",
+    "DAI",
+    BigNumber.from(LP_KXUSD_DAI_KXUSD_AMOUNT),
+    BigNumber.from(LP_KXUSD_DAI_DAI_AMOUNT)
+  );
+
+  await contractDeploy(
+    hre,
+    "Oracle",
+    "KWBTCWBTCOracle",
+    UNISWAP_V2_FACTORY_ADDRESS,
+    kwbtc.address,
+    wbtc.address,
+    ORACLE_PERIOD,
+    ORACLE_START_DATE
+  );
+  await contractDeploy(
+    hre,
+    "Oracle",
+    "KXUSDDAIOracle",
+    UNISWAP_V2_FACTORY_ADDRESS,
+    kxusd.address,
+    dai.address,
+    ORACLE_PERIOD,
+    ORACLE_START_DATE
+  );
 }
 
 async function deployFunds(hre: HardhatRuntimeEnvironment) {
   const kwbtc = await findExistingContract(hre, "KWBTC");
+  const wbtc = await findExistingContract(hre, "WBTC");
+  const kxusd = await findExistingContract(hre, "KXUSD");
+  const dai = await findExistingContract(hre, "DAI");
   await contractDeploy(
     hre,
     "StabFund",
     "StabFundV1",
     UNISWAP_V2_ROUTER_ADDRESS,
-    [kwbtc.address, daiAddress(hre)],
+    [kwbtc.address, wbtc.address, kxusd.address, dai.address],
     [trader(hre)]
   );
+  await contractDeploy(hre, "DevFund", "DevFundV1");
 }
 
 async function transferPoolOwnership(
@@ -126,24 +246,27 @@ async function transferPoolOwnership(
 }
 
 async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
-  await transferFullOwnership(hre, "KlonX", "KlonKlonXSwapPool");
+  await transferFullOwnership(hre, "KlonX", "Timelock");
+  await transferFullOwnership(hre, "KXUSD", "TokenManagerV1");
+  await transferFullOwnership(hre, "KWBTC", "TokenManagerV1");
+  await transferFullOwnership(hre, "KB-USD", "BondManagerV1");
+  await transferFullOwnership(hre, "KB-WBTC", "BondManagerV1");
 
-  await transferPoolOwnership(hre, "KlonXWBTCLPKlonXPool", "MultisigWallet");
-  await transferPoolOwnership(hre, "KWBTCWBTCLPKlonXPool", "MultisigWallet");
-  await transferPoolOwnership(hre, "KXUSDDAILPKlonXPool", "MultisigWallet");
-  await transferOperator(hre, "LiquidBoardroomV1", "MultisigWallet");
+  await transferPoolOwnership(hre, "KlonXWBTCLPKlonXPool", "MultiSigWallet");
+  await transferPoolOwnership(hre, "KWBTCWBTCLPKlonXPool", "MultiSigWallet");
+  await transferPoolOwnership(hre, "KXUSDDAILPKlonXPool", "MultiSigWallet");
+  await transferOperator(hre, "LiquidBoardroomV1", "MultiSigWallet");
   await transferOwnership(hre, "LiquidBoardroomV1", "Timelock");
-  await transferOperator(hre, "UniswapBoardroomV1", "MultisigWallet");
+  await transferOperator(hre, "UniswapBoardroomV1", "MultiSigWallet");
   await transferOwnership(hre, "UniswapBoardroomV1", "Timelock");
-  await transferOperator(hre, "TokenManagerV1", "MultisigWallet");
+  await transferOperator(hre, "TokenManagerV1", "MultiSigWallet");
   await transferOwnership(hre, "TokenManagerV1", "Timelock");
-  await transferOperator(hre, "BondManagerV1", "MultisigWallet");
+  await transferOperator(hre, "BondManagerV1", "MultiSigWallet");
   await transferOwnership(hre, "BondManagerV1", "Timelock");
-  await transferOperator(hre, "EmissionManagerV1", "MultisigWallet");
+  await transferOperator(hre, "EmissionManagerV1", "MultiSigWallet");
   await transferOwnership(hre, "EmissionManagerV1", "Timelock");
-  await transferOperator(hre, "StabFundV1", "MultisigWallet");
+  await transferOperator(hre, "StabFundV1", "MultiSigWallet");
   await transferOwnership(hre, "StabFundV1", "Timelock");
-  await transferOwnership(hre, "KlonKlonXSwapPool", "Timelock");
 
   const veKlonX = await findExistingContract(hre, "VeKlonX");
   const timelock = await getRegistryContract(hre, "Timelock");
@@ -179,36 +302,22 @@ async function transferOwnerships(hre: HardhatRuntimeEnvironment) {
   }
 }
 
-async function addKWBTCToken(hre: HardhatRuntimeEnvironment) {
-  console.log("Adding KWBTC token...");
+async function addTokensToTokenManagerAndVeBoardroom(
+  hre: HardhatRuntimeEnvironment
+) {
+  console.log(`Adding tokens to TokenManager`);
   const kwbtc = await findExistingContract(hre, "KWBTC");
   const kbwbtc = await findExistingContract(hre, "KB-WBTC");
   const wbtc = await findExistingContract(hre, "WBTC");
+  const kxusd = await findExistingContract(hre, "KXUSD");
+  const kbusd = await findExistingContract(hre, "KB-USD");
+  const dai = await findExistingContract(hre, "DAI");
+
   const tokenManager = await findExistingContract(hre, "TokenManagerV1");
   const veBoardroom = await findExistingContract(hre, "VeBoardroomV1");
-  const oracle = await contractDeploy(
-    hre,
-    "Oracle",
-    "KWBTCWBTCOracle",
-    UNISWAP_V2_FACTORY_ADDRESS,
-    kwbtc.address,
-    wbtc.address,
-    ORACLE_PERIOD,
-    ORACLE_START_DATE
-  );
-  const isManagedToken = await tokenManager.isManagedToken(kwbtc.address);
-  if (isManagedToken) {
-    console.log(`KWBTC is already managed by TokenManager. Skipping...`);
-  } else {
-    console.log(`Adding KBTC token to TokenManager...`);
-    const tx = await tokenManager.populateTransaction.addToken(
-      kwbtc.address,
-      kbwbtc.address,
-      wbtc.address,
-      oracle.address
-    );
-    await sendTransaction(hre, tx);
-  }
+  const kwtbcOracle = await findExistingContract(hre, "KWBTCWBTCOracle");
+  const kxusdOracle = await findExistingContract(hre, "KXUSDDAIOracle");
+
   const veTokensLen = await veBoardroom.tokens_len();
   const promises = [];
   for (let i = 0; i < veTokensLen; i++) {
@@ -216,89 +325,47 @@ async function addKWBTCToken(hre: HardhatRuntimeEnvironment) {
   }
   const veTokens = (await Promise.all(promises)).map((x) => x.toLowerCase());
 
-  const isManagedByVeBoadroom = veTokens.includes(kwbtc.address.toLowerCase());
-  if (isManagedByVeBoadroom) {
-    console.log(`KWBTC is already managed by VeBoardroom. Skipping...`);
-    return;
-  }
-  console.log("Adding KWBTC to VeBoardroom");
-  const tx = await veBoardroom.populateTransaction.add_token(
-    kwbtc.address,
-    VE_TOKEN_START
-  );
-  await sendTransaction(hre, tx);
-}
+  for (const { syn, und, bond, oracle } of [
+    { syn: kwbtc, und: wbtc, bond: kbwbtc, oracle: kwtbcOracle },
+    { syn: kxusd, und: dai, bond: kbusd, oracle: kxusdOracle },
+  ]) {
+    if (await tokenManager.isManagedToken(syn.address)) {
+      console.log(`${syn.address} is already managed. Skipping...`);
+    } else {
+      console.log(`Adding ${syn.address} token to TokenManager...`);
+      const tx = await tokenManager.populateTransaction.addToken(
+        syn.address,
+        bond.address,
+        und.address,
+        oracle.address
+      );
+      await sendTransaction(hre, tx);
+    }
 
-async function addKXUSDToken(hre: HardhatRuntimeEnvironment) {
-  console.log("Adding KXUSD token...");
-  const tokenManager = await findExistingContract(hre, "TokenManagerV1");
-  const veBoardroom = await findExistingContract(hre, "VeBoardroomV1");
-  const [op] = await hre.ethers.getSigners();
-  const kxusd = await tokenDeploy(hre, "KXUSD", "KXUSD");
-  await mint(hre, "KXUSD", op.address, BigNumber.from(UNISWAP_KXUSD_AMOUNT));
-  const kbusd = await tokenDeploy(hre, "KB-USD", "KB-USD");
-  await addLiquidity(
-    hre,
-    "KXUSD",
-    "DAI",
-    BigNumber.from(UNISWAP_KXUSD_AMOUNT),
-    BigNumber.from(UNISWAP_KXUSD_AMOUNT)
-  );
-  const oracle = await contractDeploy(
-    hre,
-    "Oracle",
-    "KXUSDDAIOracle",
-    UNISWAP_V2_FACTORY_ADDRESS,
-    kxusd.address,
-    daiAddress(hre),
-    ORACLE_PERIOD,
-    ORACLE_START_DATE
-  );
-  const isManagedToken = await tokenManager.isManagedToken(kxusd.address);
-  if (isManagedToken) {
-    console.log(`KXUSD is already managed. Skipping...`);
-    return;
+    const isManagedByVeBoadroom = veTokens.includes(syn.address.toLowerCase());
+    if (isManagedByVeBoadroom) {
+      console.log(
+        `${syn.address} is already managed by VeBoardroom. Skipping...`
+      );
+    } else {
+      console.log(`Adding ${syn.address} to VeBoardroom`);
+      const tx = await veBoardroom.populateTransaction.add_token(
+        syn.address,
+        VE_TOKEN_START
+      );
+      await sendTransaction(hre, tx);
+    }
   }
-  console.log(`Adding KXUSD token to TokenManager...`);
-  const tokenManagerOperator = await tokenManager.operator();
-  if (tokenManagerOperator.toLowerCase() !== op.address.toLowerCase()) {
-    console.log(
-      `TokenManager ownership is set to ${tokenManagerOperator}. Current operator is ${op.address}. Skipping...`
-    );
-  } else {
-    const tx = await tokenManager.populateTransaction.addToken(
-      kxusd.address,
-      kbusd.address,
-      daiAddress(hre),
-      oracle.address
-    );
-    await sendTransaction(hre, tx);
-  }
-  const veTokensLen = await veBoardroom.tokens_len();
-  const promises = [];
-  for (let i = 0; i < veTokensLen; i++) {
-    promises.push(veBoardroom.tokens(i));
-  }
-  const veTokens = (await Promise.all(promises)).map((x) => x.toLowerCase());
-  const isManagedByVeBoadroom = veTokens.includes(kxusd.address.toLowerCase());
-  if (isManagedByVeBoadroom) {
-    console.log(`KXUSD is already managed by VeBoardroom. Skipping...`);
-    return;
-  }
-  console.log("Adding KXUSD to VeBoardroom");
-  const tx = await veBoardroom.populateTransaction.add_token(
-    kxusd.address,
-    VE_TOKEN_START
-  );
-  await sendTransaction(hre, tx);
 }
 
 async function setLinks(hre: HardhatRuntimeEnvironment) {
   console.log("Setting links");
+  const [op] = await hre.ethers.getSigners();
   await setTreasuryLinks(hre, 1, 1, 1);
-  const devFund = await getRegistryContract(hre, "DevFund");
-  const stabFund = await getRegistryContract(hre, "StabFundV1");
+  const devFund = await findExistingContract(hre, "DevFundV1");
+  const stabFund = await findExistingContract(hre, "StabFundV1");
   const liquidBoardroom = await findExistingContract(hre, "LiquidBoardroomV1");
+  const veBoardroom = await findExistingContract(hre, "VeBoardroomV1");
   const uniswapBoardroom = await findExistingContract(
     hre,
     "UniswapBoardroomV1"
@@ -306,97 +373,134 @@ async function setLinks(hre: HardhatRuntimeEnvironment) {
   const emissionsManager = await findExistingContract(hre, "EmissionManagerV1");
   const lpPool = await findExistingContract(hre, "KlonXWBTCLPKlonXPool");
   const veKlonX = await findExistingContract(hre, "VeKlonX");
-  console.log("Checking devFund @ emissionManager");
-  const devFundAddress = await emissionsManager.devFund();
-  if (devFundAddress.toLowerCase() !== devFund.address.toLowerCase()) {
-    console.log(
-      `EmissionManager: DevFund is ${devFundAddress}. Setting to ${devFund.address}`
-    );
-    const tx = await emissionsManager.populateTransaction.setDevFund(
-      devFund.address
-    );
-    await sendTransaction(hre, tx);
-  }
-  console.log("Checking stabFund @ emissionsManager");
-  const stabFundAddress = await emissionsManager.stableFund();
-  if (stabFundAddress.toLowerCase() !== stabFund.address.toLowerCase()) {
-    console.log(
-      `EmissionManager: StabFund is ${stabFundAddress}. Setting to ${stabFund.address}`
-    );
-    const tx = await emissionsManager.populateTransaction.setStableFund(
-      stabFund.address
-    );
-    await sendTransaction(hre, tx);
-  }
-  console.log("Checking liquidBoardroom @ emissionManager");
-  const liquidBoardroomAddress = await emissionsManager.liquidBoardroom();
-  if (
-    liquidBoardroomAddress.toLowerCase() !==
-    liquidBoardroom.address.toLowerCase()
-  ) {
-    console.log(
-      `EmissionManager: LiquidBoardroom is ${liquidBoardroomAddress}. Setting to ${liquidBoardroom.address}`
-    );
-    const tx = await emissionsManager.populateTransaction.setLiquidBoardroom(
-      liquidBoardroom.address
-    );
-    await sendTransaction(hre, tx);
-  }
+  const emissionManagerOwner = await emissionsManager.owner();
+  if (emissionManagerOwner.toLowerCase() === op.address.toLowerCase()) {
+    console.log("Checking devFund @ emissionManager");
+    const devFundAddress = await emissionsManager.devFund();
+    if (devFundAddress.toLowerCase() !== devFund.address.toLowerCase()) {
+      console.log(
+        `EmissionManager: DevFund is ${devFundAddress}. Setting to ${devFund.address}`
+      );
+      const tx = await emissionsManager.populateTransaction.setDevFund(
+        devFund.address
+      );
+      await sendTransaction(hre, tx);
+    }
+    console.log("Checking stabFund @ emissionsManager");
+    const stabFundAddress = await emissionsManager.stableFund();
+    if (stabFundAddress.toLowerCase() !== stabFund.address.toLowerCase()) {
+      console.log(
+        `EmissionManager: StabFund is ${stabFundAddress}. Setting to ${stabFund.address}`
+      );
+      const tx = await emissionsManager.populateTransaction.setStableFund(
+        stabFund.address
+      );
+      await sendTransaction(hre, tx);
+    }
+    console.log("Checking liquidBoardroom @ emissionManager");
+    const liquidBoardroomAddress = await emissionsManager.liquidBoardroom();
+    if (
+      liquidBoardroomAddress.toLowerCase() !==
+      liquidBoardroom.address.toLowerCase()
+    ) {
+      console.log(
+        `EmissionManager: LiquidBoardroom is ${liquidBoardroomAddress}. Setting to ${liquidBoardroom.address}`
+      );
+      const tx = await emissionsManager.populateTransaction.setLiquidBoardroom(
+        liquidBoardroom.address
+      );
+      await sendTransaction(hre, tx);
+    }
 
-  console.log("Checking uniswapBoardroom @ emissionManager");
-  const uniswapBoardroomAddress = await emissionsManager.uniswapBoardroom();
-  if (
-    uniswapBoardroomAddress.toLowerCase() !==
-    uniswapBoardroom.address.toLowerCase()
-  ) {
+    console.log("Checking uniswapBoardroom @ emissionManager");
+    const uniswapBoardroomAddress = await emissionsManager.uniswapBoardroom();
+    if (
+      uniswapBoardroomAddress.toLowerCase() !==
+      uniswapBoardroom.address.toLowerCase()
+    ) {
+      console.log(
+        `EmissionManager: UniswapBoardroom is ${uniswapBoardroomAddress}. Setting to ${uniswapBoardroom.address}`
+      );
+      const tx = await emissionsManager.populateTransaction.setUniswapBoardroom(
+        uniswapBoardroom.address
+      );
+      await sendTransaction(hre, tx);
+    }
+
+    console.log("Checking veBoardroom @ emissionManager");
+    const veBoardroomAddress = await emissionsManager.veBoardroom();
+    if (
+      veBoardroomAddress.toLowerCase() !== veBoardroom.address.toLowerCase()
+    ) {
+      console.log(
+        `EmissionManager: VeBoardroom is ${veBoardroomAddress}. Setting to ${veBoardroom.address}`
+      );
+      const tx = await emissionsManager.populateTransaction.setVeBoardroom(
+        veBoardroom.address
+      );
+      await sendTransaction(hre, tx);
+    }
+  } else {
     console.log(
-      `EmissionManager: UniswapBoardroom is ${uniswapBoardroomAddress}. Setting to ${uniswapBoardroom.address}`
+      `EmissionManager owner is ${emissionManagerOwner}, current operator is ${op.address}. Cannot set boardroom links - skipping`
     );
-    const tx = await emissionsManager.populateTransaction.setUniswapBoardroom(
-      uniswapBoardroom.address
-    );
-    await sendTransaction(hre, tx);
-  }
-
-  console.log("Checking boardroom @ KlonXWBTCLPKlonXPool");
-  const lpPoolBoardroomAddress = await lpPool.boardroom();
-  if (
-    lpPoolBoardroomAddress.toLowerCase() !=
-    uniswapBoardroom.address.toLowerCase()
-  ) {
-    console.log(
-      `KlonXWBTCLPKlonXPool: Boardroom is ${lpPoolBoardroomAddress}. Setting to ${uniswapBoardroom.address}`
-    );
-
-    const tx = await lpPool.populateTransaction.setBoardroom(
-      uniswapBoardroom.address
-    );
-    await sendTransaction(hre, tx);
-  }
-
-  console.log("Checking veToken @ LiquidBoardroom");
-  const veKlonXAddress = await liquidBoardroom.veToken();
-  if (veKlonXAddress.toLowerCase() != veKlonX.address.toLowerCase()) {
-    console.log(
-      `LiquidBoardroom: VeToken is ${veKlonXAddress}. Setting to ${veKlonX.address}`
-    );
-
-    const tx = await liquidBoardroom.populateTransaction.setVeToken(
-      veKlonX.address
-    );
-    await sendTransaction(hre, tx);
   }
 
-  console.log("Checking lpPool @ UniswapBoardroom");
-  const lpPoolAddress = await uniswapBoardroom.lpPool();
-  if (lpPoolAddress.toLowerCase() != lpPool.address.toLowerCase()) {
-    console.log(
-      `UniswapBoardroom: LpPool is ${lpPoolAddress}. Setting to ${lpPool.address}`
-    );
-    const tx = await uniswapBoardroom.populateTransaction.setLpPool(
-      lpPool.address
-    );
-    await sendTransaction(hre, tx);
+  const lpPoolOwner = await lpPool.owner();
+  if (lpPoolOwner.toLowerCase() !== op.address) {
+    console.log("KlonXWBTCLPKlonXPool ownership transferred. Skipping...");
+  } else {
+    console.log("Checking boardroom @ KlonXWBTCLPKlonXPool");
+
+    const lpPoolBoardroomAddress = await lpPool.boardroom();
+    if (
+      lpPoolBoardroomAddress.toLowerCase() !=
+      uniswapBoardroom.address.toLowerCase()
+    ) {
+      console.log(
+        `KlonXWBTCLPKlonXPool: Boardroom is ${lpPoolBoardroomAddress}. Setting to ${uniswapBoardroom.address}`
+      );
+
+      const tx = await lpPool.populateTransaction.setBoardroom(
+        uniswapBoardroom.address
+      );
+      await sendTransaction(hre, tx);
+    }
+  }
+
+  const liquidBoardroomOwner = await liquidBoardroom.owner();
+  if (liquidBoardroomOwner.toLowerCase() !== op.address) {
+    console.log("LiquidBoardroom ownership transferred. Skipping...");
+  } else {
+    console.log("Checking veToken @ LiquidBoardroom");
+    const veKlonXAddress = await liquidBoardroom.veToken();
+    if (veKlonXAddress.toLowerCase() != veKlonX.address.toLowerCase()) {
+      console.log(
+        `LiquidBoardroom: VeToken is ${veKlonXAddress}. Setting to ${veKlonX.address}`
+      );
+
+      const tx = await liquidBoardroom.populateTransaction.setVeToken(
+        veKlonX.address
+      );
+      await sendTransaction(hre, tx);
+    }
+  }
+
+  const uniswapBoardroomOwner = await uniswapBoardroom.owner();
+  if (uniswapBoardroomOwner.toLowerCase() !== op.address) {
+    console.log("UniswapBoardroom ownership transferred. Skipping...");
+  } else {
+    console.log("Checking lpPool @ UniswapBoardroom");
+    const lpPoolAddress = await uniswapBoardroom.lpPool();
+    if (lpPoolAddress.toLowerCase() != lpPool.address.toLowerCase()) {
+      console.log(
+        `UniswapBoardroom: LpPool is ${lpPoolAddress}. Setting to ${lpPool.address}`
+      );
+      const tx = await uniswapBoardroom.populateTransaction.setLpPool(
+        lpPool.address
+      );
+      await sendTransaction(hre, tx);
+    }
   }
 }
 
@@ -438,22 +542,13 @@ async function deployBoardrooms(hre: HardhatRuntimeEnvironment) {
 }
 
 async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
-  const klon = await findExistingContract(hre, "Klon");
   const klonx = await findExistingContract(hre, "KlonX");
   const kwbtc = await findExistingContract(hre, "KWBTC");
   const kxusd = await findExistingContract(hre, "KXUSD");
+  const dai = await findExistingContract(hre, "DAI");
   const wbtc = await findExistingContract(hre, "WBTC");
-  const multisig = await getRegistryContract(hre, "MultisigWallet");
+  const multisig = await getRegistryContract(hre, "MultiSigWallet");
   const [op] = await hre.ethers.getSigners();
-  await contractDeploy(
-    hre,
-    "SwapPool",
-    "KlonKlonXSwapPool",
-    klon.address,
-    klonx.address,
-    SWAP_POOL_START_DATE,
-    SWAP_POOL_END_DATE
-  );
   await contractDeploy(
     hre,
     "RewardsPool",
@@ -484,19 +579,27 @@ async function deploySpecificPools(hre: HardhatRuntimeEnvironment) {
     op.address,
     multisig.address,
     klonx.address,
-    pairFor(UNISWAP_V2_FACTORY_ADDRESS, kxusd.address, daiAddress(hre)),
+    pairFor(UNISWAP_V2_FACTORY_ADDRESS, kxusd.address, dai.address),
     REWARDS_POOL_INITIAL_DURATION
   );
 }
 
 async function importExternalIntoRegistry(hre: HardhatRuntimeEnvironment) {
-  const entry = {
-    address: daiAddress(hre),
+  if (!isProd(hre)) {
+    return;
+  }
+  writeIfMissing(hre, "DAI", {
+    address: "0x6b175474e89094c44da98b954eedeac495271d0f",
     registryName: "DAI",
     name: "SyntheticToken",
     args: ["DAI", "DAI", 18],
-  };
-  writeIfMissing(hre, "DAI", entry);
+  });
+  writeIfMissing(hre, "WBTC", {
+    address: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+    registryName: "WBTC",
+    name: "SyntheticToken",
+    args: ["WBTC", "WBTC", 8],
+  });
 }
 
 async function migrateRegistry(hre: HardhatRuntimeEnvironment) {
@@ -514,7 +617,7 @@ async function migrateRegistry(hre: HardhatRuntimeEnvironment) {
     ["Klon", "SyntheticToken", "Klon"],
     ["WBTC", "SyntheticToken", "WBTC"],
     ["DevFund", null, "DevFund"],
-    ["MultiSigWallet", null, "MultisigWallet"],
+    ["MultiSigWallet", null, "MultiSigWallet"],
     ["Timelock", null, "Timelock"],
   ]) {
     const [oldName, contractName, registryName] = tuple;
@@ -532,26 +635,24 @@ async function deployKlonX(hre: HardhatRuntimeEnvironment) {
   const [op] = await hre.ethers.getSigners();
   const wbtc = await findExistingContract(hre, "WBTC");
   const wbtcBalance = await wbtc.balanceOf(op.address);
-  if (wbtcBalance < UNISWAP_WBTC_AMOUNT) {
+  if (wbtcBalance < LP_KLONX_WBTC_WBTC_AMOUNT) {
     throw new Error(
-      `Current WBTC balance \`${wbtcBalance}\` < required Uniswap balance \`${UNISWAP_WBTC_AMOUNT}\``
+      `Current WBTC balance \`${wbtcBalance}\` < required Uniswap balance \`${LP_KLONX_WBTC_WBTC_AMOUNT}\``
     );
   }
-  const klonx = await contractDeploy(
-    hre,
-    "SyntheticToken",
-    "KlonX",
-    "KlonX",
-    "KlonX",
-    18
-  );
+  await tokenDeploy(hre, "KlonX", "KlonX");
+  if (!isProd(hre)) {
+    for (const address of [op.address, ...EXTERNAL_TESTERS]) {
+      await mint(hre, "KlonX", address, ETH.mul(1000000000));
+    }
+  }
   await mint(hre, "KlonX", op.address, ETH);
   await addLiquidity(
     hre,
     "KlonX",
     "WBTC",
-    UNISWAP_KLONX_AMOUNT,
-    UNISWAP_WBTC_AMOUNT
+    LP_KLONX_WBTC_KLONX_AMOUNT,
+    LP_KLONX_WBTC_WBTC_AMOUNT
   );
 }
 

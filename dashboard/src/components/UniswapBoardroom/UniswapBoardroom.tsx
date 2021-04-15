@@ -22,19 +22,18 @@ const UniswapBoardroom = () => {
         const emissionManager = await pool.emissionManager();
         const stakingToken = await pool.stakingToken();
 
-        const start = await pool.start();
-        const finish = await pool.finish();
+        // const start = await pool.start();
+        // const finish = await pool.finish();
 
         const stakingTokenSupply = await pool.stakingTokenSupply();
-        const shareTokenSupply = await pool.shareTokenSupply();
+        // const shareTokenSupply = await pool.shareTokenSupply();
         const stakingTokenContract = new ethers.Contract(stakingToken, deployments['KlonX'].abi, provider);
-        const shareTokenContract = new ethers.Contract(stakingToken, deployments['KlonX'].abi, provider);
+        // const shareTokenContract = new ethers.Contract(stakingToken, deployments['KlonX'].abi, provider);
         const stakingTokenDecimals = await stakingTokenContract.decimals();
-        const shareTokenDecimals = await shareTokenContract.decimals();
+        // const shareTokenDecimals = await shareTokenContract.decimals();
 
-        const pause = await pool.pause();
-        const lpPool = await pool.lpPool();
-
+        // const pause = await pool.pause();
+        // const lpPool = await pool.lpPool();
 
         const values = {
           owner,
@@ -42,14 +41,14 @@ const UniswapBoardroom = () => {
           tokenManager,
           emissionManager,
           stakingToken,
-          lpPool,
+          // lpPool,
           blank1: null,
-          start: toDate(start),
-          finish: toDate(finish),
-          pause,
+          // start: toDate(start),
+          // finish: toDate(finish),
+          // pause,
           blank2: null,
           stakingTokenSupply: toDecimal(stakingTokenSupply, stakingTokenDecimals),
-          shareTokenSupply: toDecimal(shareTokenSupply, shareTokenDecimals),
+          // shareTokenSupply: toDecimal(shareTokenSupply, shareTokenDecimals),
         };
         setData(values);
       } catch (e) {

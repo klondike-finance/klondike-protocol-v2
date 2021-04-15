@@ -8,7 +8,6 @@ import {
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { resolve } from "path";
 const REGISTRY = {
-  path: "",
   data: {} as { [key: string]: any },
   index: {} as { [key: string]: any },
   timestamp: new Date().toISOString(),
@@ -20,7 +19,6 @@ export function initRegistry(hre: HardhatRuntimeEnvironment) {
     return;
   }
   const root = resolve(__dirname, "..", "registry", hre.network.name);
-  REGISTRY.path = resolve(root, `${new Date().getTime()}.json`);
   try {
     mkdirSync(root, { recursive: true });
   } catch (e) {}
@@ -30,16 +28,9 @@ export function initRegistry(hre: HardhatRuntimeEnvironment) {
     REGISTRY.initialized = true;
     return;
   }
-  let max = 0;
-  let maxTime = statSync(files[0]).ctime;
-  for (let i = 1; i < files.length; i++) {
-    const time = statSync(files[i]).ctime;
-    if (time > maxTime) {
-      maxTime = time;
-      max = i;
-    }
-  }
-  REGISTRY.data = JSON.parse(readFileSync(files[max]).toString());
+  REGISTRY.data = JSON.parse(
+    readFileSync(resolve(root, "latest.json")).toString()
+  );
   for (const name in REGISTRY.data) {
     REGISTRY.index[REGISTRY.data[name].address] = name;
   }
@@ -68,17 +59,25 @@ export function updateRegistry(
   value: any
 ) {
   initRegistry(hre);
-  const root = resolve(
+  value.address = value.address.toLowerCase();
+  REGISTRY.data[key] = value;
+  REGISTRY.index[REGISTRY.data[key].address] = key;
+  const timestamped = resolve(
     __dirname,
     "..",
     "registry",
     hre.network.name,
     `${REGISTRY.timestamp}.json`
   );
-  value.address = value.address.toLowerCase();
-  REGISTRY.data[key] = value;
-  REGISTRY.index[REGISTRY.data[key].address] = key;
-  writeFileSync(root, JSON.stringify(REGISTRY.data, null, 2));
+  writeFileSync(timestamped, JSON.stringify(REGISTRY.data, null, 2));
+  const latest = resolve(
+    __dirname,
+    "..",
+    "registry",
+    hre.network.name,
+    `latest.json`
+  );
+  writeFileSync(latest, JSON.stringify(REGISTRY.data, null, 2));
 }
 
 export function writeIfMissing(

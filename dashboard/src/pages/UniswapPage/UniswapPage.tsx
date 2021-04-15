@@ -6,7 +6,7 @@ const UniswapPage = () => {
   return (
     <Grid container spacing={3}>
       {getUniswapPools().map((pool) => (
-        <UniswapPool key={pool.pair} {...pool} />
+        <UniswapPool key={pool} pair={pool} />
       ))}
     </Grid>
   );
@@ -21,12 +21,8 @@ const getUniswapPools = () => {
   const dai = deployments['DAI'];
   const wbtcKwbtcLp = pairFor(UNISWAP_V2_FACTORY_ADDRESS, wbtc.address, kwbtc.address);
   const klonxWbtcLp = pairFor(UNISWAP_V2_FACTORY_ADDRESS, wbtc.address, klonx.address);
-  const kxusdDaiLp = pairFor(UNISWAP_V2_FACTORY_ADDRESS, kxusd.address, dai.address);
-  return [
-    { token0: 'WBTC', token1: 'KWBTC', pair: wbtcKwbtcLp },
-    { token0: 'WBTC', token1: 'KlonX', pair: klonxWbtcLp },
-    { token0: 'KXUSD', token1: 'DAI', pair: kxusdDaiLp },
-  ];
+  const kxusdDaiLp = pairFor(UNISWAP_V2_FACTORY_ADDRESS, dai.address, kxusd.address);
+  return [wbtcKwbtcLp, klonxWbtcLp, kxusdDaiLp];
 };
 
 export default UniswapPage;

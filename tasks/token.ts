@@ -124,101 +124,20 @@ export async function mint(
     console.log(
       `Address \`${to}\` already has nonzero balance of token \`${registryNameOrAddress}\` already. Skipping minting...`
     );
-    console.log("Done");
     return;
   }
-
+  const tokenOperator = await contract.owner();
+  const [operator] = await hre.ethers.getSigners();
+  if (operator.address.toLowerCase() !== tokenOperator.toLowerCase()) {
+    console.log(
+      `Operator of the token is \`${tokenOperator}\`, current operator is ${operator.address} - cannot mint. Skipping minting...`
+    );
+    return;
+  }
   const tx = await contract.populateTransaction.mint(to, value);
   await sendTransaction(hre, tx);
   console.log("Done");
 }
-
-// export async function deployTokens(
-//   hre: HardhatRuntimeEnvironment,
-//   underlyingRegistryName: string,
-//   initialLiquidityMint: BigNumber = BigNumber.from(0)
-// ) {
-//   console.log(
-//     `Deploying 3 tokens for ${underlyingRegistryName} with initial mint ${initialLiquidityMint.toString()}`
-//   );
-
-//   const [operator] = await hre.ethers.getSigners();
-//   let underlying;
-//   if (isProd(hre)) {
-//     underlying = await findExistingContract(hre, underlyingRegistryName);
-//   } else {
-//     underlying = await contractDeploy(
-//       hre,
-//       "SyntheticToken",
-//       underlyingRegistryName,
-//       underlyingRegistryName,
-//       underlyingRegistryName,
-//       8
-//     );
-//   }
-//   const synthetic = await contractDeploy(
-//     hre,
-//     "SyntheticToken",
-//     deriveSyntheticName(underlyingRegistryName),
-//     deriveSyntheticName(underlyingRegistryName),
-//     deriveSyntheticName(underlyingRegistryName),
-//     18
-//   );
-//   const bond = await contractDeploy(
-//     hre,
-//     "SyntheticToken",
-//     deriveBondName(underlyingRegistryName),
-//     deriveBondName(underlyingRegistryName),
-//     deriveBondName(underlyingRegistryName),
-//     18
-//   );
-//   const klon = await contractDeploy(
-//     hre,
-//     "SyntheticToken",
-//     "Klon",
-//     "Klon",
-//     "Klon",
-//     18
-//   );
-
-//   const jedi = await contractDeploy(
-//     hre,
-//     "SyntheticToken",
-//     "Jedi",
-//     "Jedi",
-//     "Jedi",
-//     18
-//   );
-//   const droid = await contractDeploy(
-//     hre,
-//     "SyntheticToken",
-//     "Droid",
-//     "Droid",
-//     "Droid",
-//     18
-//   );
-
-//   if (isProd(hre)) {
-//     await mint(
-//       hre,
-//       underlyingRegistryName,
-//       operator.address,
-//       initialLiquidityMint
-//     );
-//   } else {
-//     await mint(
-//       hre,
-//       deriveSyntheticName(underlyingRegistryName),
-//       operator.address,
-//       ETH.mul(1000)
-//     );
-//     await mint(hre, underlyingRegistryName, operator.address, ETH.mul(1000));
-//     await mint(hre, "Klon", operator.address, ETH.mul(1000));
-//   }
-//   console.log("Deployed 5 tokens");
-
-//   return { synthetic, bond, underlying, jedi, droid, klon };
-// }
 
 export function deriveSyntheticName(underlyingName: string) {
   return `KX${underlyingName}`;

@@ -60,6 +60,15 @@ const config: HardhatUserConfig = {
           evmVersion: "istanbul",
         },
       },
+      {
+        version: "0.4.24",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 999999,
+          },
+        },
+      },
     ],
   },
   etherscan: {

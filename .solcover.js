@@ -1,3 +1,8 @@
 module.exports = {
-  skipFiles: ["synthetix/StakingRewards.sol"],
+  skipFiles: [
+    "synthetix/StakingRewards.sol",
+    "Timelock.sol",
+    "MultiSigWallet.sol",
+    "DevFund.sol",
+  ],
 };
