@@ -7,6 +7,7 @@ import { getRegistryContract } from "./registry";
 import { log, sendTransaction } from "./utils";
 
 const CALL_BEFORE_REBASE_SECS = 90 * 60;
+const GAS_INCREASE = 20; // $percent
 
 task("cron:tick")
   .addFlag("dry", "Dry run")
@@ -192,5 +193,11 @@ async function sendTransactionWithIncreasedGas(
   hre: HardhatRuntimeEnvironment,
   tx: PopulatedTransaction
 ) {
+  const gasEstimate = await hre.ethers.provider.estimateGas(tx);
+  const gasPrice = gasEstimate.mul(100 + GAS_INCREASE).div(100);
+  log(
+    `Estimated gas price: ${gasEstimate.toString()}, applying gas price ${gasPrice.toString()}`
+  );
+  tx.gasPrice = gasPrice;
   await sendTransaction(hre, tx);
 }
