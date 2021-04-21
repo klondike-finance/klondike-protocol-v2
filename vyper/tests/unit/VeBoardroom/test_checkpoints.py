@@ -2,6 +2,7 @@ import pytest
 
 WEEK = 86400 * 7
 
+
 @pytest.fixture(scope="module")
 def distributor(accounts, chain, ve_boardroom, ve_token, token, coin_a, coin_b):
     distributor = ve_boardroom()
@@ -10,7 +11,8 @@ def distributor(accounts, chain, ve_boardroom, ve_token, token, coin_a, coin_b):
     distributor.add_token(coin_b, t)
 
     token.approve(ve_token, 2 ** 256 - 1, {"from": accounts[0]})
-    ve_token.create_lock(10 ** 21, chain.time() + WEEK * 52, {"from": accounts[0]})
+    ve_token.create_lock(10 ** 21, chain.time() + WEEK *
+                         52, {"from": accounts[0]})
 
     yield distributor
 
@@ -27,7 +29,8 @@ def test_checkpoint_total_supply(accounts, chain, distributor, ve_token):
     distributor.checkpoint_total_supply({"from": accounts[0]})
 
     assert distributor.ve_supply(start_time) == 0
-    assert distributor.ve_supply(week_epoch) == ve_token.totalSupplyAt(week_block)
+    assert distributor.ve_supply(
+        week_epoch) == ve_token.totalSupplyAt(week_block)
 
 
 def test_advance_time_cursor(accounts, chain, distributor):
@@ -63,6 +66,8 @@ def test_claim_checkpoints_total_supply(accounts, chain, distributor, coin_a):
 
 def test_toggle_allow_checkpoint(accounts, chain, distributor, coin_a):
 
+    # set to False
+    distributor.toggle_allow_checkpoint_token({"from": accounts[0]})
     last_token_time = distributor.last_token_time(coin_a)
     chain.sleep(WEEK)
 

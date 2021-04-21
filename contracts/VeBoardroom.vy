@@ -87,6 +87,7 @@ def __init__(
     self.voting_escrow = _voting_escrow
     self.admin = _admin
     self.emergency_return = _emergency_return
+    self.can_checkpoint_token = True
 
 
 @internal
@@ -123,6 +124,14 @@ def _checkpoint_token(token: address):
 
     log CheckpointToken(block.timestamp, to_distribute)
 
+@external
+def notifyTransfer(token: address, amount: uint256):
+    """
+    @notice Function for compatibility with emission manager
+    """
+    assert (msg.sender == self.admin) or\
+           (self.can_checkpoint_token and (block.timestamp > self.last_token_time[token] + TOKEN_CHECKPOINT_DEADLINE))
+    self._checkpoint_token(token)
 
 @external
 def checkpoint_token(token: address):
