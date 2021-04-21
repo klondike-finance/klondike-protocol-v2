@@ -1,5 +1,5 @@
 import { BigNumber } from "@ethersproject/bignumber";
-import { Contract } from "@ethersproject/contracts";
+import { Contract, PopulatedTransaction } from "@ethersproject/contracts";
 import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { findExistingContract } from "./contract";
@@ -11,7 +11,7 @@ const CALL_BEFORE_REBASE_SECS = 90 * 60;
 task("cron:tick")
   .addFlag("dry", "Dry run")
   .setAction(async ({ dry }, hre: HardhatRuntimeEnvironment) => {
-    log("Starting new tick");
+    log(`-------------------------------------------------------------------`);
     const tokenManager = await findExistingContract(hre, "TokenManagerV1");
     const emissionManager = await findExistingContract(
       hre,
@@ -33,6 +33,7 @@ async function emissionManagerTick(
   emissionManager: Contract,
   dry: boolean
 ) {
+  log("*********");
   log(`Processing EmissionManager (${emissionManager.address}) update`);
   const start = (await emissionManager.start()).toNumber();
   const now = Math.floor(new Date().getTime() / 1000);
@@ -49,15 +50,15 @@ async function emissionManagerTick(
     (emissionManagerLastCalled + debouncePeriod) * 1000
   );
   if (emissionManagerNextCallDate > new Date()) {
-    console.log(
-      `[${new Date()}] EmissionManager update date \`${emissionManagerNextCallDate}\` is in future. Skipping.`
+    log(
+      `EmissionManager update date \`${emissionManagerNextCallDate.toISOString()}\` is in future. Skipping.`
     );
     return;
   }
   console.log(`[${new Date()}] Updating EmissionManager`);
   const tx = await emissionManager.populateTransaction.makePositiveRebase();
   if (!dry) {
-    await sendTransaction(hre, tx);
+    await sendTransactionWithIncreasedGas(hre, tx);
   }
   console.log(`[${new Date()}]. Done`);
 }
@@ -69,6 +70,7 @@ async function oracleTick(
   emissionManager: Contract,
   dry: boolean
 ) {
+  log("+++++++++++++");
   log(`Processing oracle for token ${token}`);
   const [
     synAddress,
@@ -107,7 +109,6 @@ async function oracleTick(
   const undDecimals = await undToken.decimals();
   let adjSynReserve = synReserve;
   let adjUndReserve = undReserve;
-  log(`AdjUndReserve: ${adjUndReserve}`);
   if (synDecimals > undDecimals) {
     adjUndReserve = adjUndReserve.mul(
       BigNumber.from(10).pow(synDecimals - undDecimals)
@@ -119,14 +120,13 @@ async function oracleTick(
   }
   let price = adjUndReserve.mul(10000).div(adjSynReserve);
   price = price.toNumber() / 10000;
-  log(`AdjSynReserve: ${adjSynReserve}, AdjUndReserve: ${adjUndReserve}`);
   let oraclePrice = await oracle.consult(
     synAddress,
     BigNumber.from(10).pow(synDecimals)
   );
   oraclePrice = oraclePrice.mul(10000).div(BigNumber.from(10).pow(undDecimals));
   oraclePrice = oraclePrice.toNumber() / 10000;
-  log(` Price \`${price}\`. OraclePrice \`${oraclePrice}\``);
+  // log(` Price \`${price}\`. OraclePrice \`${oraclePrice}\``);
 
   const oracleLastCalled = (await oracle.lastCalled()).toNumber();
   const debouncePeriod = (await oracle.debouncePeriod()).toNumber();
@@ -135,9 +135,11 @@ async function oracleTick(
     (oracleLastCalled + debouncePeriod) * 1000
   );
 
-  log(`Next oracle call date: ${oracleNextCallDate}`);
+  log(`Oracle can be called later than: ${oracleNextCallDate.toISOString()}`);
   if (oracleNextCallDate > new Date()) {
-    log(`Oracle update date \`${oracleNextCallDate}\` is in future. Skipping.`);
+    log(
+      `Oracle update date \`${oracleNextCallDate.toISOString()}\` is in future. Skipping.`
+    );
     return;
   }
 
@@ -151,30 +153,44 @@ async function oracleTick(
   const updateBeforeRebase =
     oracleLastCalled < oracleRebaseCallTime &&
     new Date().getTime() / 1000 > oracleRebaseCallTime;
+  log(`Should update before rebase: ${updateBeforeRebase}`);
   log(
-    `Should update before rebase: ${updateBeforeRebase}. Rebase call time: ${oracleRebaseCallTime}`
+    `Expected call time before rebase: ${new Date(
+      oracleRebaseCallTime * 1000
+    ).toISOString()}`
   );
 
   if (!updateBeforeRebase) {
-    if (price >= 1 && oraclePrice >= 1) {
-      log("Bonds are not available to buy -> no need to update price");
-      return;
-    }
-
-    if (price >= oraclePrice) {
-      log(
-        "Bonds are priced at `price`, not `oraclePrice` -> no need to update"
-      );
-      return;
-    }
-  } else {
-    log(`Force call before rebase`);
+    return;
   }
+
+  // if (!updateBeforeRebase) {
+  //   if (price >= 1 && oraclePrice >= 1) {
+  //     log("Bonds are not available to buy -> no need to update price");
+  //     return;
+  //   }
+
+  //   if (price >= oraclePrice) {
+  //     log(
+  //       "Bonds are priced at `price`, not `oraclePrice` -> no need to update"
+  //     );
+  //     return;
+  //   }
+  // } else {
+  //   log(`Force call before rebase`);
+  // }
 
   log(`Updating oracle`);
   const tx = await oracle.populateTransaction.update();
   if (!dry) {
-    await sendTransaction(hre, tx);
+    await sendTransactionWithIncreasedGas(hre, tx);
   }
   log(`Updated`);
+}
+
+async function sendTransactionWithIncreasedGas(
+  hre: HardhatRuntimeEnvironment,
+  tx: PopulatedTransaction
+) {
+  await sendTransaction(hre, tx);
 }
