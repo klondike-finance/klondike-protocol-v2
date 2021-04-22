@@ -193,7 +193,7 @@ async function sendTransactionWithIncreasedGas(
   hre: HardhatRuntimeEnvironment,
   tx: PopulatedTransaction
 ) {
-  const gasEstimate = await hre.ethers.provider.estimateGas(tx);
+  const gasEstimate = await hre.ethers.provider.getGasPrice();
   const gasPrice = gasEstimate.mul(100 + GAS_INCREASE).div(100);
   log(
     `Estimated gas price: ${gasEstimate.toString()}, applying gas price ${gasPrice.toString()}`
